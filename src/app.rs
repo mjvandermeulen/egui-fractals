@@ -67,10 +67,10 @@ impl eframe::App for TemplateApp {
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
-            ui.heading("eframe template");
+            ui.heading("Fractal Designer");
 
             ui.horizontal(|ui| {
-                ui.label("Write something: ");
+                ui.label("Write something EGUI FRACTAL: ");
                 ui.text_edit_singleline(&mut self.label);
             });
 
@@ -82,7 +82,7 @@ impl eframe::App for TemplateApp {
             ui.separator();
 
             ui.add(egui::github_link_file!(
-                "https://github.com/emilk/eframe_template/blob/main/",
+                "https://github.com/mjvandermeulen/egui-fractals/blob/main",
                 "Source code."
             ));
 
