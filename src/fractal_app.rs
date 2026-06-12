@@ -470,6 +470,31 @@ impl eframe::App for FractalApp {
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
 
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        // Sets the clear color of the window to white
+        [1.0, 1.0, 1.0, 1.0]
+    }
+
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Force the app to use the light theme
+        let mut visuals = egui::Visuals::light();
+
+        // Ensure panels and windows are explicitly white
+        visuals.panel_fill = egui::Color32::WHITE;
+        visuals.window_fill = egui::Color32::WHITE;
+
+        // (Optional) Make widgets blend nicely into the white background
+        visuals.widgets.noninteractive.weak_bg_fill = egui::Color32::from_gray(240);
+        visuals.widgets.inactive.weak_bg_fill = egui::Color32::from_gray(230);
+
+        ctx.set_visuals(visuals);
+
+        // Your panels/windows go here
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.label("This text is on a white background!");
+        });
+    }
+
     /// Called each time the UI needs repainting, which may be many times per second.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let painter = Painter::new(
