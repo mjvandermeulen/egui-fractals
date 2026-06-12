@@ -22,7 +22,7 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "egui fractals",
         native_options,
-        Box::new(|cc| Ok(Box::new(egui_fractals::TemplateApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(egui_fractals::FractalApp::new(cc)))),
     )
 }
 
@@ -52,7 +52,7 @@ fn main() {
             .start(
                 canvas,
                 web_options,
-                Box::new(|cc| Ok(Box::new(egui_fractals::TemplateApp::new(cc)))),
+                Box::new(|cc| Ok(Box::new(egui_fractals::FractalApp::new(cc)))),
             )
             .await;
 
