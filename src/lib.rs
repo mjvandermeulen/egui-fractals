@@ -1,4 +1,4 @@
 #![warn(clippy::all, rust_2018_idioms)]
 
-mod app;
-pub use app::TemplateApp;
+mod fractal_app;
+pub use fractal_app::FractalApp;
