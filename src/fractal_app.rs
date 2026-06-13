@@ -145,7 +145,7 @@ impl FractalApp {
         if let Some(storage) = cc.storage {
             eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
         } else {
-            Default::default()
+            Self::default()
         }
     }
     fn options_ui(&mut self, ui: &mut Ui) {
@@ -175,10 +175,6 @@ impl FractalApp {
 
         egui::reset_button(ui, self, "Reset");
 
-        ui.hyperlink_to(
-            "Inspired by a screensaver by Rob Mayoff",
-            "http://www.dqd.com/~mayoff/programs/FractalClock/",
-        );
         ui.add(egui::github_link_file!(
             "https://github.com/mjvandermeulen/egui-fractals/blob/main/",
             "Source code."
@@ -216,6 +212,7 @@ impl FractalApp {
                 }
             });
             // up and down arrows
+            // TODO make this more beautiful :)
             if self.depth[0] > self.depth[1] //clamping doesn't avoid a usize overflow soon enough
                 && ui.input_mut(|i| i.key_pressed(egui::Key::ArrowDown))
             {
@@ -327,6 +324,7 @@ impl FractalApp {
             paint_directed_line_segment(painter, vec, width, color);
         });
     }
+
     fn paint(&mut self, painter: &Painter, design_vectors: &[DesignVector]) {
         fn line_color(depth: usize, luminance_u8: u8, rainbow: bool) -> Color32 {
             if rainbow {
@@ -488,11 +486,6 @@ impl eframe::App for FractalApp {
         visuals.widgets.inactive.weak_bg_fill = egui::Color32::from_gray(230);
 
         ctx.set_visuals(visuals);
-
-        // Your panels/windows go here
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label("This text is on a white background!");
-        });
     }
 
     /// Called each time the UI needs repainting, which may be many times per second.
@@ -509,6 +502,10 @@ impl eframe::App for FractalApp {
         } else {
             self.paint(&painter, &design_vectors);
         }
+
+        // if let Some(line) = self.hovered_design_line {
+        //     paint_directed_line_segment(&painter, dvec, width, color);
+        // }
 
         // Make sure we allocate what we used (everything)
         ui.expand_to_include_rect(painter.clip_rect());
