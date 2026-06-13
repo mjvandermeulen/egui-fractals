@@ -180,7 +180,7 @@ impl FractalApp {
             "http://www.dqd.com/~mayoff/programs/FractalClock/",
         );
         ui.add(egui::github_link_file!(
-            "https://github.com/mjvandermeulen/egui-fractals.git",
+            "https://github.com/mjvandermeulen/egui-fractals/blob/main/",
             "Source code."
         ));
     }
