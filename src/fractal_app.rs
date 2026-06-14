@@ -81,8 +81,6 @@ pub struct FractalApp {
     start_line_width: f32,
     depth: [usize; 3],
     length_factor: f32,
-    luminance_factor: f32,
-    width_factor: f32,
     width_factor_line_ratio: bool,
     line_count: usize,
     show_design_only: bool,
@@ -126,8 +124,6 @@ impl Default for FractalApp {
             start_line_width: 2.5, // TODO strangely global screen coords width...
             depth: [9, 0, 18],
             length_factor: 0.8,
-            luminance_factor: 0.9,
-            width_factor: 0.9,
             width_factor_line_ratio: false,
             line_count: 0,
             show_design_only: false,
@@ -170,8 +166,6 @@ impl FractalApp {
         ui.add(Slider::new(&mut self.start_line_width, 0.0..=5.0).text("Start line width"));
         ui.add(Slider::new(&mut self.depth[0], min_depth..=max_depth).text("depth"));
         ui.add(Slider::new(&mut self.length_factor, 0.0..=1.0).text("length factor"));
-        ui.add(Slider::new(&mut self.luminance_factor, 0.0..=1.0).text("luminance factor"));
-        ui.add(Slider::new(&mut self.width_factor, 0.0..=1.0).text("width factor"));
         ui.checkbox(
             &mut self.width_factor_line_ratio,
             "Width factor matches line ratio. Only applies if design line count is 1.",
@@ -330,11 +324,11 @@ impl FractalApp {
     }
 
     fn paint(&mut self, painter: &Painter, design_vectors: &[DesignVector]) {
-        fn line_color(depth: usize, luminance_u8: u8, rainbow: bool) -> Color32 {
+        fn line_color(depth: usize, rainbow: bool) -> Color32 {
             if rainbow {
                 RAINBOW_COLORS[depth % RAINBOW_COLORS.len()]
             } else {
-                Color32::from_black_alpha(luminance_u8)
+                Color32::BLACK
             }
         }
 
@@ -393,7 +387,6 @@ impl FractalApp {
         struct Node {
             pos: Pos2,
             dir: Vec2,
-            line_width: f32,
         }
         let color = if self.rainbow {
             RAINBOW_COLORS[0]
@@ -411,26 +404,11 @@ impl FractalApp {
         let mut nodes = vec![Node {
             pos: base_vec.pos,
             dir: base_vec.vec,
-            line_width: self.start_line_width,
         }];
-
-        let mut luminance = 0.7; // Start dimmer than main hands
-        let mut luminance_factor = self.luminance_factor;
-        let mut width_factor = self.width_factor;
-        if self.width_factor_line_ratio && self.design_line_count == 1 {
-            width_factor = transformations[0].length_factor;
-            luminance_factor = 1.0;
-        }
 
         let mut new_nodes = Vec::new();
         for depth in 1..self.depth[0] + 1 {
-            luminance *= luminance_factor;
-
-            let luminance_u8 = (255.0 * luminance).round() as u8;
-            let color = line_color(depth, luminance_u8, self.rainbow);
-            if luminance_u8 == 0 {
-                break;
-            }
+            let color = line_color(depth, self.rainbow);
 
             if depth < self.depth[0] {
                 new_nodes.clear();
@@ -448,10 +426,11 @@ impl FractalApp {
                     let painted_node = Node {
                         pos: paint_a,
                         dir: paint_dir,
-                        line_width: parent_node.line_width * width_factor,
                     };
+                    let line_width =
+                        (painted_node.dir.length() / base_vec.length) * self.start_line_width;
                     if !self.replace_line || depth == self.depth[0] {
-                        paint_line([paint_a, paint_b], color, painted_node.line_width);
+                        paint_line([paint_a, paint_b], color, line_width);
                     }
                     if depth < self.depth[0] {
                         new_nodes.push(painted_node);
