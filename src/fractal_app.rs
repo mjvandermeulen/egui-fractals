@@ -80,7 +80,6 @@ pub struct FractalApp {
     center: Pos2,
     start_line_width: f32,
     depth: [usize; 3],
-    length_factor: f32,
     width_factor_line_ratio: bool,
     line_count: usize,
     show_design_only: bool,
@@ -123,7 +122,6 @@ impl Default for FractalApp {
             center: pos2(0.0, -2.5),
             start_line_width: 2.5, // TODO strangely global screen coords width...
             depth: [9, 0, 18],
-            length_factor: 0.8,
             width_factor_line_ratio: false,
             line_count: 0,
             show_design_only: false,
@@ -165,7 +163,6 @@ impl FractalApp {
         ui.add(Slider::new(&mut self.zoom, 0.001..=2.0).text("zoom"));
         ui.add(Slider::new(&mut self.start_line_width, 0.0..=5.0).text("Start line width"));
         ui.add(Slider::new(&mut self.depth[0], min_depth..=max_depth).text("depth"));
-        ui.add(Slider::new(&mut self.length_factor, 0.0..=1.0).text("length factor"));
         ui.checkbox(
             &mut self.width_factor_line_ratio,
             "Width factor matches line ratio. Only applies if design line count is 1.",
@@ -336,7 +333,6 @@ impl FractalApp {
         struct LineTransform {
             base_rot: emath::Rot2,
             rot: emath::Rot2,
-            length_factor: f32,
         }
 
         impl LineTransform {
@@ -356,7 +352,6 @@ impl FractalApp {
                         * emath::Rot2::from_angle(
                             mirror_sign * (design_line.angle - base_line.angle),
                         ),
-                    length_factor: design_line.length / base_line.length,
                 }
             }
         }
