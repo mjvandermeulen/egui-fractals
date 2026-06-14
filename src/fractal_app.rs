@@ -10,8 +10,10 @@ use design_helpers::{
     closest_handle, closest_line, design_lines_to_global_design_vectors,
     paint_directed_line_segment,
 };
+use tools::max_depth_with_branches;
 
 mod design_helpers;
+mod tools;
 
 const RAINBOW_COLORS: [Color32; 6] = [
     Color32::from_rgb(255, 0, 0),   // Red
@@ -149,7 +151,9 @@ impl FractalApp {
         }
     }
     fn options_ui(&mut self, ui: &mut Ui) {
-        let (min_depth, max_depth): (usize, usize) = (self.depth[1], self.depth[2]);
+        let (min_depth, _max_depth): (usize, usize) = (self.depth[1], self.depth[2]);
+        // TODO: get rid of fixed max_depth in favor of next line
+        let max_depth = max_depth_with_branches(300_000, self.design_line_count, self.mirror); // HARDCODED
         ui.label(format!("Painted line count: {}", self.line_count));
         ui.checkbox(&mut self.replace_line, "Replace");
         ui.checkbox(&mut self.mirror, "Mirror");
@@ -490,6 +494,11 @@ impl eframe::App for FractalApp {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.depth[0] = self.depth[0].min(max_depth_with_branches(
+            300_000, // HARDCODED
+            self.design_line_count,
+            self.mirror,
+        ));
         let painter = Painter::new(
             ui.ctx().clone(),
             ui.layer_id(),
