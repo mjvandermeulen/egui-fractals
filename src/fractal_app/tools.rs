@@ -4,7 +4,6 @@ pub fn max_depth_with_branches(
     num_design_branches: usize,
     mirror: bool,
 ) -> usize {
-    // copied from gemini
     let construction_branches = if mirror {
         num_design_branches * 2
     } else {
@@ -15,12 +14,11 @@ pub fn max_depth_with_branches(
         return max_painted_line_count - 1;
     }
 
+    // copied from gemini
     let argument: usize = max_painted_line_count * (construction_branches - 1) + 1;
-
     if argument == 0 {
         return 0;
     }
-
     let max_depth_float = ((argument as f32).ln() / (construction_branches as f32).ln()) - 1.0;
 
     max_depth_float.floor() as usize

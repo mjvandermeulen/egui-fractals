@@ -155,7 +155,7 @@ impl FractalApp {
         // TODO: get rid of fixed max_depth in favor of next line
         let max_depth = max_depth_with_branches(300_000, self.design_line_count, self.mirror); // HARDCODED
         ui.label(format!("Painted line count: {}", self.line_count));
-        ui.checkbox(&mut self.replace_line, "Replace");
+        ui.checkbox(&mut self.replace_line, "Replace the red initiator (base)");
         ui.checkbox(&mut self.mirror, "Mirror");
         ui.checkbox(&mut self.rainbow, "Rainbow");
         ui.add(
@@ -400,7 +400,7 @@ impl FractalApp {
         } else {
             Color32::BLACK
         };
-        if !self.replace_line {
+        if self.depth[0] == 0 || !self.replace_line {
             paint_line(
                 [base_vec.pos, base_vec.pos + base_vec.vec],
                 color,
