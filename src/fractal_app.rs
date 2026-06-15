@@ -99,6 +99,7 @@ impl FractalApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
+        cc.egui_ctx.set_visuals(egui::Visuals::light());
 
         // Load previous app state (if any).
         // Note that you must enable the `persistence` feature for this to work.
@@ -369,21 +370,6 @@ impl eframe::App for FractalApp {
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
         // Sets the clear color of the window to white
         [1.0, 1.0, 1.0, 1.0]
-    }
-
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Force the app to use the light theme
-        let mut visuals = egui::Visuals::light();
-
-        // Ensure panels and windows are explicitly white
-        visuals.panel_fill = egui::Color32::WHITE;
-        visuals.window_fill = egui::Color32::WHITE;
-
-        // (Optional) Make widgets blend nicely into the white background
-        visuals.widgets.noninteractive.weak_bg_fill = egui::Color32::from_gray(240);
-        visuals.widgets.inactive.weak_bg_fill = egui::Color32::from_gray(230);
-
-        ctx.set_visuals(visuals);
     }
 
     /// Called each time the UI needs repainting, which may be many times per second.
