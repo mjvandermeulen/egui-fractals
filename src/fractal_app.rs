@@ -172,10 +172,10 @@ impl FractalApp {
             if self.depth > 0 //clamping doesn't avoid a usize overflow soon enough
                 && ui.input_mut(|i| i.key_pressed(egui::Key::ArrowDown))
             {
-                self.depth -= 1.clamp(0, max_depth);
+                self.depth = (self.depth - 1).clamp(0, max_depth);
             }
             if ui.input_mut(|i| i.key_pressed(egui::Key::ArrowUp)) {
-                self.depth += 1.clamp(0, max_depth);
+                self.depth = (self.depth + 1).clamp(0, max_depth);
             }
         }
 
@@ -271,8 +271,6 @@ impl FractalApp {
     }
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredDesignLine]) {
-        // log::info!("design: self.depth = {}", { self.depth });
-
         design_vectors.iter().enumerate().for_each(|(i, vec)| {
             let (width, color) = if i == 0 {
                 (self.start_line_width * 1.5, Color32::RED)
@@ -284,20 +282,19 @@ impl FractalApp {
     }
 
     fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredDesignLine]) {
-        log::info!("top self.depth = {}", { self.depth });
         debug_assert!(
             self.depth
                 <= max_depth_with_branches(
                     MAX_PAINTED_LINE_COUNT,
                     vectored_design_lines.len() - 1,
-                    false
+                    self.mirror
                 ),
             "self.depth = {}, max_depth_with_branches(...) = {}",
             self.depth,
             max_depth_with_branches(
                 MAX_PAINTED_LINE_COUNT,
-                vectored_design_lines.len() + 1,
-                false
+                vectored_design_lines.len() - 1,
+                self.mirror
             )
         );
         let mut shapes: Vec<Shape> = Vec::new();
