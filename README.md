@@ -12,6 +12,10 @@ OR
 
     $ bacon # and then r for run OR bacon run
 
+to see `log::` output in stdout
+
+    $ bacon # and then l for run-with-log
+
 ### web WASM
 
 Push the main branch. This will trigger a rebuild on Github and Github will serve the page through github pages:

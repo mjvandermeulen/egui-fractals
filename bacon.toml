@@ -83,6 +83,15 @@ command = [
     "cargo", "run",
     # put launch parameters for your program behind a `--` separator
 ]
+need_stdout = true
+allow_warnings = true
+background = true
+
+[jobs.run-with-log]
+command = [
+    "cargo", "run",
+    # put launch parameters for your program behind a `--` separator
+]
 env = { RUST_LOG = "debug" } 
 need_stdout = true
 allow_warnings = true
@@ -126,3 +135,4 @@ allow_warnings = true
 # alt-m = "job:my-job"
 c = "job:clippy-all" # comment this to have 'c' run clippy on only the default target
 p = "job:pedantic" 
+l = "job:run-with-log"
