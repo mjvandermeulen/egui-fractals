@@ -22,7 +22,9 @@
 
 ## FIX
 
-- [x] don't pass `rect` to self.painter. It equals the self.painter.clip_rect()
+- [ ] use "initiator" and "generator"
+    - [ ] When not replacing, the initiator is present in the generator
+    - [ ] `replace_line` -> replace initiator.
 
 ## NOTE
 

@@ -1,29 +1,24 @@
-use egui::{
-    Color32, Painter, Pos2, Rect, Shape, Stroke, Ui, Vec2,
-    containers::{CollapsingHeader, Frame},
-    emath::{self, RectTransform},
-    pos2,
-    widgets::Slider,
-};
+mod design_helpers;
+mod paint_fractal_helpers;
+mod structs;
+mod tools;
 
 use design_helpers::{
     closest_handle, closest_line, design_lines_to_global_design_vectors,
     paint_directed_line_segment,
 };
+use egui::{
+    Color32, Painter, Pos2, Rect, Shape, Stroke, Ui,
+    containers::{CollapsingHeader, Frame},
+    emath::{self},
+    pos2,
+    widgets::Slider,
+};
+use paint_fractal_helpers::line_color;
+use structs::{LineTransform, Node, VectoredDesignLine};
 use tools::max_depth_with_branches;
 
-mod design_helpers;
-mod tools;
-
-const RAINBOW_COLORS: [Color32; 6] = [
-    Color32::from_rgb(255, 0, 0),   // Red
-    Color32::from_rgb(255, 127, 0), // Orange
-    Color32::from_rgb(255, 255, 0), // Yellow
-    Color32::from_rgb(0, 255, 0),   // Green
-    Color32::from_rgb(0, 0, 255),   // Blue
-    Color32::from_rgb(139, 0, 255), // Magenta (a more visually distinct purple)
-];
-
+const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 1; // 2 to the power of 18 + 1. HARDCODED
 #[derive(PartialEq, Eq, Debug, serde::Deserialize, serde::Serialize)]
 pub enum LinesStyle {
     Free,
@@ -35,36 +30,6 @@ pub struct DesignLine {
     line: [Pos2; 2],
     reversed: bool,
 }
-#[derive(Clone, Copy)]
-struct DesignVector {
-    pos: Pos2,
-    vec: Vec2,
-    length: f32,
-    angle: f32,
-}
-
-impl DesignVector {
-    fn from_design_line(
-        DesignLine { line, reversed }: DesignLine,
-        to_screen: RectTransform,
-    ) -> Self {
-        let (start, end) = if reversed {
-            (to_screen * line[1], to_screen * line[0])
-        } else {
-            (to_screen * line[0], to_screen * line[1])
-        };
-
-        let vec = end - start;
-        Self {
-            pos: start,
-            vec,
-            length: vec.length(),
-            angle: vec.angle(),
-        }
-    }
-}
-// const OLD_RAINBOW_COLORS: [Color32; 6] = [Color32::RED,Color32::ORANGE,Color32::YELLOW,Color32::GREEN,Color32::BLUE,Color32::MAGENTA];
-
 #[derive(PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct FractalApp {
@@ -74,16 +39,11 @@ pub struct FractalApp {
     design_line_count: usize,
     design_lines: Vec<DesignLine>,
     replace_line: bool,
-    connect_lines: bool,
     lines_style: LinesStyle,
     zoom: f32,
     center: Pos2,
     start_line_width: f32,
-    depth: [usize; 3],
-    length_factor: f32,
-    luminance_factor: f32,
-    width_factor: f32,
-    width_factor_line_ratio: bool,
+    depth: usize,
     line_count: usize,
     show_design_only: bool,
     fine_tune: bool,
@@ -119,16 +79,11 @@ impl Default for FractalApp {
                 },
             ],
             replace_line: false,
-            connect_lines: false,
             lines_style: LinesStyle::Free,
             zoom: 0.18,
             center: pos2(0.0, -2.5),
             start_line_width: 2.5, // TODO strangely global screen coords width...
-            depth: [9, 0, 18],
-            length_factor: 0.8,
-            luminance_factor: 0.9,
-            width_factor: 0.9,
-            width_factor_line_ratio: false,
+            depth: 9,
             line_count: 0,
             show_design_only: false,
             fine_tune: false,
@@ -141,6 +96,7 @@ impl FractalApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
+        cc.egui_ctx.set_visuals(egui::Visuals::light());
 
         // Load previous app state (if any).
         // Note that you must enable the `persistence` feature for this to work.
@@ -150,32 +106,24 @@ impl FractalApp {
             Self::default()
         }
     }
+
     fn options_ui(&mut self, ui: &mut Ui) {
-        let (min_depth, _max_depth): (usize, usize) = (self.depth[1], self.depth[2]);
-        // TODO: get rid of fixed max_depth in favor of next line
-        let max_depth = max_depth_with_branches(300_000, self.design_line_count, self.mirror); // HARDCODED
+        let max_depth =
+            max_depth_with_branches(MAX_PAINTED_LINE_COUNT, self.design_line_count, self.mirror);
         ui.label(format!("Painted line count: {}", self.line_count));
-        ui.checkbox(&mut self.replace_line, "Replace");
+        ui.checkbox(&mut self.replace_line, "Replace parent with children");
         ui.checkbox(&mut self.mirror, "Mirror");
         ui.checkbox(&mut self.rainbow, "Rainbow");
         ui.add(
             Slider::new(&mut self.design_line_count, 1..=self.design_lines.len() - 1)
                 .text("Design line count"),
         );
-        ui.checkbox(&mut self.connect_lines, "Connect lines to each other");
         ui.radio_value(&mut self.lines_style, LinesStyle::Free, "Free");
         ui.radio_value(&mut self.lines_style, LinesStyle::Tree, "Tree");
         ui.radio_value(&mut self.lines_style, LinesStyle::Loop, "Loop");
-        ui.add(Slider::new(&mut self.zoom, 0.001..=2.0).text("zoom"));
-        ui.add(Slider::new(&mut self.start_line_width, 0.0..=5.0).text("Start line width"));
-        ui.add(Slider::new(&mut self.depth[0], min_depth..=max_depth).text("depth"));
-        ui.add(Slider::new(&mut self.length_factor, 0.0..=1.0).text("length factor"));
-        ui.add(Slider::new(&mut self.luminance_factor, 0.0..=1.0).text("luminance factor"));
-        ui.add(Slider::new(&mut self.width_factor, 0.0..=1.0).text("width factor"));
-        ui.checkbox(
-            &mut self.width_factor_line_ratio,
-            "Width factor matches line ratio. Only applies if design line count is 1.",
-        );
+        ui.add(Slider::new(&mut self.zoom, 0.001..=5.0).text("zoom"));
+        ui.add(Slider::new(&mut self.start_line_width, 0.0..=1000.0).text("Start line width"));
+        ui.add(Slider::new(&mut self.depth, 0..=max_depth).text("depth"));
 
         egui::reset_button(ui, self, "Reset");
 
@@ -185,7 +133,7 @@ impl FractalApp {
         ));
     }
 
-    fn design(&mut self, ui: &Ui, painter: &Painter) -> Vec<DesignVector> {
+    fn design(&mut self, ui: &Ui, painter: &Painter) -> Vec<VectoredDesignLine> {
         let to_screen = emath::RectTransform::from_to(
             Rect::from_center_size(
                 pos2(self.center.x, self.center.y),
@@ -202,6 +150,11 @@ impl FractalApp {
 
         // https://github.com/emilk/egui/discussions/1464 -> if. fine tuned with gemini. Maarten.
         if ui.ctx().memory(|mem| mem.focused()).is_none() {
+            let max_depth = max_depth_with_branches(
+                MAX_PAINTED_LINE_COUNT,
+                self.design_line_count,
+                self.mirror,
+            );
             // read number keys
             ui.ctx().input(|i| {
                 for event in &i.events {
@@ -210,20 +163,19 @@ impl FractalApp {
                         if text.chars().any(|c| c.is_ascii_digit())
                             && let Ok(number) = text.parse::<usize>()
                         {
-                            self.depth[0] = number.clamp(self.depth[1], self.depth[2]);
+                            self.depth = number.clamp(0, max_depth);
                         }
                     }
                 }
             });
             // up and down arrows
-            // TODO make this more beautiful :)
-            if self.depth[0] > self.depth[1] //clamping doesn't avoid a usize overflow soon enough
+            if self.depth > 0 //clamping doesn't avoid a usize overflow soon enough
                 && ui.input_mut(|i| i.key_pressed(egui::Key::ArrowDown))
             {
-                self.depth[0] -= 1.clamp(self.depth[1], self.depth[2]);
+                self.depth = (self.depth - 1).clamp(0, max_depth);
             }
             if ui.input_mut(|i| i.key_pressed(egui::Key::ArrowUp)) {
-                self.depth[0] += 1.clamp(self.depth[1], self.depth[2]);
+                self.depth = (self.depth + 1).clamp(0, max_depth);
             }
         }
 
@@ -281,7 +233,7 @@ impl FractalApp {
                     * (to_screen * self.design_lines[line].line[end]
                         + tuning_ratio * click_and_drag_response.drag_delta());
                 if self.lines_style == LinesStyle::Loop {
-                    assert_ne!(
+                    debug_assert_ne!(
                         end, 0,
                         "Loop style expects that the start point of a line can not be dragged"
                     );
@@ -318,7 +270,7 @@ impl FractalApp {
         )
     }
 
-    fn paint_design(&self, painter: &Painter, design_vectors: &[DesignVector]) {
+    fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredDesignLine]) {
         design_vectors.iter().enumerate().for_each(|(i, vec)| {
             let (width, color) = if i == 0 {
                 (self.start_line_width * 1.5, Color32::RED)
@@ -329,44 +281,22 @@ impl FractalApp {
         });
     }
 
-    fn paint(&mut self, painter: &Painter, design_vectors: &[DesignVector]) {
-        fn line_color(depth: usize, luminance_u8: u8, rainbow: bool) -> Color32 {
-            if rainbow {
-                RAINBOW_COLORS[depth % RAINBOW_COLORS.len()]
-            } else {
-                Color32::from_black_alpha(luminance_u8)
-            }
-        }
-
-        #[derive(Clone, Copy)]
-        struct LineTransform {
-            base_rot: emath::Rot2,
-            rot: emath::Rot2,
-            length_factor: f32,
-        }
-
-        impl LineTransform {
-            fn from_design_vector(
-                base_line: &DesignVector,
-                design_line: DesignVector,
-                mirrored: bool,
-            ) -> Self {
-                let base_to_dcl: Vec2 = design_line.pos - base_line.pos;
-                let mirror_sign: f32 = if mirrored { -1.0 } else { 1.0 };
-                Self {
-                    base_rot: base_to_dcl.length() / base_line.length
-                        * emath::Rot2::from_angle(
-                            mirror_sign * (base_to_dcl.angle() - base_line.angle),
-                        ),
-                    rot: design_line.length / base_line.length
-                        * emath::Rot2::from_angle(
-                            mirror_sign * (design_line.angle - base_line.angle),
-                        ),
-                    length_factor: design_line.length / base_line.length,
-                }
-            }
-        }
-
+    fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredDesignLine]) {
+        debug_assert!(
+            self.depth
+                <= max_depth_with_branches(
+                    MAX_PAINTED_LINE_COUNT,
+                    vectored_design_lines.len() - 1,
+                    self.mirror
+                ),
+            "self.depth = {}, max_depth_with_branches(...) = {}",
+            self.depth,
+            max_depth_with_branches(
+                MAX_PAINTED_LINE_COUNT,
+                vectored_design_lines.len() - 1,
+                self.mirror
+            )
+        );
         let mut shapes: Vec<Shape> = Vec::new();
         let rect = painter.clip_rect();
         let mut paint_line = |points: [Pos2; 2], color: Color32, width: f32| {
@@ -377,62 +307,36 @@ impl FractalApp {
             }
         };
 
-        let base_vec = design_vectors[0];
-        let transformations: Vec<LineTransform> = design_vectors[1..]
+        let base = vectored_design_lines[0];
+        let transformations: Vec<LineTransform> = vectored_design_lines[1..]
             .iter()
             .flat_map(|line| {
                 let mut line_transforms: Vec<LineTransform> =
-                    vec![LineTransform::from_design_vector(&base_vec, *line, false)];
+                    vec![LineTransform::from_design_vector(&base, *line, false)];
                 if self.mirror {
-                    line_transforms.push(LineTransform::from_design_vector(&base_vec, *line, true));
+                    line_transforms.push(LineTransform::from_design_vector(&base, *line, true));
                 }
                 line_transforms
             })
             .collect();
-        #[derive(Clone, Copy)]
-        struct Node {
-            pos: Pos2,
-            dir: Vec2,
-            line_width: f32,
-        }
-        let color = if self.rainbow {
-            RAINBOW_COLORS[0]
-        } else {
-            Color32::BLACK
-        };
-        if !self.replace_line {
+        if self.depth == 0 || !self.replace_line {
             paint_line(
-                [base_vec.pos, base_vec.pos + base_vec.vec],
-                color,
+                [base.pos, base.pos + base.vec],
+                line_color(0, self.rainbow),
                 self.start_line_width,
             );
         }
 
         let mut nodes = vec![Node {
-            pos: base_vec.pos,
-            dir: base_vec.vec,
-            line_width: self.start_line_width,
+            pos: base.pos,
+            dir: base.vec,
         }];
 
-        let mut luminance = 0.7; // Start dimmer than main hands
-        let mut luminance_factor = self.luminance_factor;
-        let mut width_factor = self.width_factor;
-        if self.width_factor_line_ratio && self.design_line_count == 1 {
-            width_factor = transformations[0].length_factor;
-            luminance_factor = 1.0;
-        }
-
         let mut new_nodes = Vec::new();
-        for depth in 1..self.depth[0] + 1 {
-            luminance *= luminance_factor;
+        for depth in 1..self.depth + 1 {
+            let color = line_color(depth, self.rainbow);
 
-            let luminance_u8 = (255.0 * luminance).round() as u8;
-            let color = line_color(depth, luminance_u8, self.rainbow);
-            if luminance_u8 == 0 {
-                break;
-            }
-
-            if depth < self.depth[0] {
+            if depth < self.depth {
                 new_nodes.clear();
                 new_nodes.reserve(nodes.len() * 2);
             }
@@ -448,12 +352,13 @@ impl FractalApp {
                     let painted_node = Node {
                         pos: paint_a,
                         dir: paint_dir,
-                        line_width: parent_node.line_width * width_factor,
                     };
-                    if !self.replace_line || depth == self.depth[0] {
-                        paint_line([paint_a, paint_b], color, painted_node.line_width);
+                    let line_width =
+                        (painted_node.dir.length() / base.vec.length()) * self.start_line_width;
+                    if !self.replace_line || depth == self.depth {
+                        paint_line([paint_a, paint_b], color, line_width);
                     }
-                    if depth < self.depth[0] {
+                    if depth < self.depth {
                         new_nodes.push(painted_node);
                     }
                 }
@@ -462,6 +367,7 @@ impl FractalApp {
             std::mem::swap(&mut nodes, &mut new_nodes);
         }
         self.line_count = shapes.len();
+        // log::info!("self.depth = {}", self.depth);
         painter.extend(shapes);
     }
 }
@@ -477,25 +383,11 @@ impl eframe::App for FractalApp {
         [1.0, 1.0, 1.0, 1.0]
     }
 
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Force the app to use the light theme
-        let mut visuals = egui::Visuals::light();
-
-        // Ensure panels and windows are explicitly white
-        visuals.panel_fill = egui::Color32::WHITE;
-        visuals.window_fill = egui::Color32::WHITE;
-
-        // (Optional) Make widgets blend nicely into the white background
-        visuals.widgets.noninteractive.weak_bg_fill = egui::Color32::from_gray(240);
-        visuals.widgets.inactive.weak_bg_fill = egui::Color32::from_gray(230);
-
-        ctx.set_visuals(visuals);
-    }
-
     /// Called each time the UI needs repainting, which may be many times per second.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        self.depth[0] = self.depth[0].min(max_depth_with_branches(
-            300_000, // HARDCODED
+        self.depth = self.depth.min(max_depth_with_branches(
+            // TODO move this to end of design. Add it to paint_fractal as a dbg assert
+            MAX_PAINTED_LINE_COUNT,
             self.design_line_count,
             self.mirror,
         ));
@@ -509,7 +401,7 @@ impl eframe::App for FractalApp {
         if self.show_design_only {
             self.paint_design(&painter, &design_vectors);
         } else {
-            self.paint(&painter, &design_vectors);
+            self.paint_fractal(&painter, &design_vectors);
         }
 
         // if let Some(line) = self.hovered_design_line {
