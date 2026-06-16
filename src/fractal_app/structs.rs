@@ -28,9 +28,12 @@ impl VectoredDesignLine {
 // paint_fractal structs
 
 #[derive(Clone, Copy)]
+// OPTI!!!: add length and add length factor to LineTransform,
+//   then the lengthfactor to calculate width does not need multiple length calcs
+//   (pythagoras sqrt is expensive)
 pub struct Node {
     pub pos: Pos2,
-    pub dir: Vec2, // this should be vec TODO!!
+    pub vec: Vec2,
 }
 
 #[derive(Clone, Copy)]

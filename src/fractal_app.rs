@@ -43,6 +43,7 @@ pub struct FractalApp {
     zoom: f32,
     center: Pos2,
     start_line_width: f32,
+    fixed_final_line_width: f32,
     depth: usize,
     line_count: usize,
     show_design_only: bool,
@@ -82,7 +83,8 @@ impl Default for FractalApp {
             lines_style: LinesStyle::Free,
             zoom: 0.18,
             center: pos2(0.0, -2.5),
-            start_line_width: 2.5, // TODO strangely global screen coords width...
+            start_line_width: 2.5, // TODO strangely global screen coords width... prob OK. Has to be visible
+            fixed_final_line_width: 1.0,
             depth: 9,
             line_count: 0,
             show_design_only: false,
@@ -122,7 +124,13 @@ impl FractalApp {
         ui.radio_value(&mut self.lines_style, LinesStyle::Tree, "Tree");
         ui.radio_value(&mut self.lines_style, LinesStyle::Loop, "Loop");
         ui.add(Slider::new(&mut self.zoom, 0.001..=5.0).text("zoom"));
-        ui.add(Slider::new(&mut self.start_line_width, 0.0..=1000.0).text("Start line width"));
+        if self.replace_line {
+            ui.add(
+                Slider::new(&mut self.fixed_final_line_width, 0.0..=7.0).text("Final line width"),
+            )
+        } else {
+            ui.add(Slider::new(&mut self.start_line_width, 0.0..=7.0).text("Start line width"))
+        };
         ui.add(Slider::new(&mut self.depth, 0..=max_depth).text("depth"));
 
         egui::reset_button(ui, self, "Reset");
@@ -319,17 +327,24 @@ impl FractalApp {
                 line_transforms
             })
             .collect();
-        if self.depth == 0 || !self.replace_line {
+        let base_line_width = if self.replace_line {
+            self.fixed_final_line_width
+        } else {
+            self.start_line_width
+        };
+        if !self.replace_line || self.depth == 0 {
             paint_line(
                 [base.pos, base.pos + base.vec],
                 line_color(0, self.rainbow),
-                self.start_line_width,
+                base_line_width,
             );
         }
 
+        // CORE paint_fractal loop:
+        let base_length = base.vec.length();
         let mut nodes = vec![Node {
             pos: base.pos,
-            dir: base.vec,
+            vec: base.vec,
         }];
 
         let mut new_nodes = Vec::new();
@@ -346,17 +361,24 @@ impl FractalApp {
             //  if we're not at the max depth, store the new node for the next iteration
             for parent_node in &nodes {
                 for &transform in &transformations {
-                    let paint_a = parent_node.pos + transform.base_rot * parent_node.dir;
-                    let paint_dir = transform.rot * parent_node.dir;
-                    let paint_b = paint_a + paint_dir;
+                    let paint_a = parent_node.pos + transform.base_rot * parent_node.vec;
+                    let paint_vec = transform.rot * parent_node.vec;
+                    let paint_b = paint_a + paint_vec;
                     let painted_node = Node {
                         pos: paint_a,
-                        dir: paint_dir,
+                        vec: paint_vec,
                     };
-                    let line_width =
-                        (painted_node.dir.length() / base.vec.length()) * self.start_line_width;
-                    if !self.replace_line || depth == self.depth {
-                        paint_line([paint_a, paint_b], color, line_width);
+
+                    if self.replace_line {
+                        if depth == self.depth {
+                            paint_line([paint_a, paint_b], color, self.fixed_final_line_width);
+                        }
+                    } else {
+                        paint_line(
+                            [paint_a, paint_b],
+                            color,
+                            (painted_node.vec.length() / base_length) * self.start_line_width,
+                        );
                     }
                     if depth < self.depth {
                         new_nodes.push(painted_node);
