@@ -8,7 +8,7 @@ use design_helpers::{
     paint_directed_line_segment,
 };
 use egui::{
-    Color32, Painter, Pos2, Rect, Shape, Stroke, Ui,
+    Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
     emath::{self},
     pos2,
@@ -171,7 +171,14 @@ impl FractalApp {
                         if text.chars().any(|c| c.is_ascii_digit())
                             && let Ok(number) = text.parse::<usize>()
                         {
-                            self.depth = number.clamp(0, max_depth);
+                            if number == 9 {
+                                self.depth = max_depth;
+                            } else if number == 8 {
+                                // NOTE: max_depth could be < 8, so you can't clamp(8, max_depth);
+                                self.depth = (max_depth / 2).at_least(8).clamp(0, max_depth);
+                            } else {
+                                self.depth = number.clamp(0, max_depth);
+                            }
                         }
                     }
                 }
@@ -407,7 +414,7 @@ impl eframe::App for FractalApp {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        self.depth = self.depth.min(max_depth_with_branches(
+        self.depth = self.depth.at_most(max_depth_with_branches(
             // TODO move this to end of design. Add it to paint_fractal as a dbg assert
             MAX_PAINTED_LINE_COUNT,
             self.design_line_count,
