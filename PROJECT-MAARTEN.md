@@ -16,21 +16,19 @@
 
 ## SUPER NOW
 
-- [ ] Alt: only show 1st and 2nd gen
+- [x] Alt: only show 1st and 2nd gen
 - [ ] on free/tree/loop switch: update design_lines
-- [ ] double click on line: switch direction
+- [x] double click on line: switch direction
 
 ## FIX
 
 - [ ] use "initiator" and "generator"
-    - [ ] When not replacing, the initiator is present in the generator
-    - [ ] `replace_line` -> replace initiator.
 
 ## NOTE
 
-- [ ] dir vs rot: dir is absolute. rot is relative.
-- [ ] dir and rot vectors INCLUDE SCALING!
-- [ ] don't allow dragging outside painter.rect() (although you can zoom out...)
+- [ ] I have change the naming to vec and rot (~~dir vs rot: dir is absolute. rot is relative.~~)
+- [ ] vec and rot INCLUDE SCALING!
+- [ ] ~~don't allow dragging outside painter.rect() (although you can zoom out...)~~
 
 ## LATER
 
@@ -45,20 +43,21 @@
 # THOUGHTS
 
 - the width of the line is independent of the screen size!
-- the width of the lines only decreases based on the `width_factor` not the size of the gen_1 line
-- (OLD: the hour hand starts at the center, so is turned 180 degrees. Hence - TAU / 2)
 
 # Design
 
 keys:
 
-- up down: level (google: egui consume a keystroke)
+- up down: level
+- 0..8: depth level
+- 9: deepest level
 
-- alt: show color and handles and only paint gen 0 and 1
-- ctrl: fine tune
-- shift: force paint up to full depth
+- press and hold d (or SHIFT-D to toggle): Show design
+- alt 10x fine tune
+- ctrl: 100x fine tune
 
-draggable zoom point.
+- two finger scroll
+- pinch zoom
 
 # Structs and such:
 
