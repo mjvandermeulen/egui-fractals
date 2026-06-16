@@ -1,28 +1,7 @@
-use egui::{Color32, Painter, Pos2, Stroke, Vec2, emath::RectTransform};
+use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
 
+use super::structs::VectoredDesignLine;
 use super::{DesignLine, LinesStyle};
-
-#[derive(Clone, Copy)]
-pub struct VectoredDesignLine {
-    pub pos: Pos2,
-    pub vec: Vec2,
-}
-
-impl VectoredDesignLine {
-    fn from_design_line(
-        DesignLine { line, reversed }: DesignLine,
-        to_screen: RectTransform,
-    ) -> Self {
-        let (start, end) = if reversed {
-            (to_screen * line[1], to_screen * line[0])
-        } else {
-            (to_screen * line[0], to_screen * line[1])
-        };
-
-        let vec = end - start;
-        Self { pos: start, vec }
-    }
-}
 
 // pub fn paint_line_handles(
 //     painter: &Painter,

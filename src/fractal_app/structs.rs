@@ -1,9 +1,36 @@
-use egui::{Pos2, Vec2};
+use crate::fractal_app::DesignLine;
+use egui::{Pos2, Vec2, emath::RectTransform};
+
+// design structs
+
+#[derive(Clone, Copy)]
+pub struct VectoredDesignLine {
+    pub pos: Pos2,
+    pub vec: Vec2,
+}
+
+impl VectoredDesignLine {
+    pub fn from_design_line(
+        DesignLine { line, reversed }: DesignLine,
+        to_screen: RectTransform,
+    ) -> Self {
+        let (start, end) = if reversed {
+            (to_screen * line[1], to_screen * line[0])
+        } else {
+            (to_screen * line[0], to_screen * line[1])
+        };
+
+        let vec = end - start;
+        Self { pos: start, vec }
+    }
+}
+
+// paint_fractal structs
 
 #[derive(Clone, Copy)]
 pub struct Node {
     pub pos: Pos2,
-    pub dir: Vec2,
+    pub dir: Vec2, // this should be vec TODO!!
 }
 
 #[derive(Clone, Copy)]
@@ -14,8 +41,8 @@ pub struct LineTransform {
 
 impl LineTransform {
     pub fn from_design_vector(
-        base: &super::design_structs_and_helpers::VectoredDesignLine,
-        design_line: super::design_structs_and_helpers::VectoredDesignLine,
+        base: &VectoredDesignLine,
+        design_line: VectoredDesignLine,
         mirrored: bool,
     ) -> Self {
         let base_to_dcl: Vec2 = design_line.pos - base.pos;
