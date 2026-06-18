@@ -1,5 +1,32 @@
-use crate::fractal_app::DesignLine;
 use egui::{Pos2, Vec2, emath::RectTransform};
+
+// State struct
+
+#[derive(PartialEq, Debug, serde::Deserialize, serde::Serialize)]
+pub enum LinesStyle {
+    Free,
+    Tree,
+    Loop,
+}
+#[derive(PartialEq, Eq, Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
+pub struct DesignLine {
+    pub line: [Pos2; 2],
+    pub reversed: bool,
+}
+#[derive(PartialEq, Debug, serde::Deserialize, serde::Serialize)]
+pub struct State {
+    pub mirror: bool,
+    pub rainbow: bool,
+    pub design_line_count: usize,
+    pub design_lines: Vec<DesignLine>,
+    pub replace_line: bool,
+    pub lines_style: LinesStyle,
+    pub zoom: f32,
+    pub center: Pos2,
+    pub start_line_width: f32,
+    pub fixed_final_line_width: f32,
+    pub depth: usize,
+}
 
 // design structs
 
