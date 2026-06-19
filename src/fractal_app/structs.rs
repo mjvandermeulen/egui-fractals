@@ -2,7 +2,7 @@ use egui::{Pos2, Vec2, emath::RectTransform};
 
 // Fractal struct
 
-#[derive(PartialEq, Eq, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 pub enum LinesStyle {
     Free,
     Tree,
@@ -13,7 +13,7 @@ pub struct DesignLine {
     pub line: [Pos2; 2],
     pub reversed: bool,
 }
-#[derive(PartialEq, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(PartialEq, Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Fractal {
     pub mirror: bool,
     pub rainbow: bool,

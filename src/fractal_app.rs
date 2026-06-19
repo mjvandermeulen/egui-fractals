@@ -9,7 +9,7 @@ use design_helpers::{
     paint_directed_line_segment,
 };
 use egui::{
-    Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
+    Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
     emath::{self},
     pos2,
@@ -100,7 +100,17 @@ impl FractalApp {
         };
         ui.add(Slider::new(&mut fractal.depth, 0..=max_depth).text("depth"));
 
-        egui::reset_button(ui, self, "Reset");
+        if ui
+            .add_enabled(
+                *fractal != Self::default().fractals[self.fractal_index],
+                Button::new("Reset"),
+            )
+            .clicked()
+        {
+            *fractal = Self::default().fractals[self.fractal_index].clone();
+        }
+
+        egui::reset_button(ui, self, "Reset All");
 
         ui.add(egui::github_link_file!(
             "https://github.com/mjvandermeulen/egui-fractals/blob/main/",
