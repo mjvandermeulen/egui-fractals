@@ -70,6 +70,13 @@ impl FractalApp {
             fractal.design_line_count,
             fractal.mirror,
         );
+
+        egui::ComboBox::from_label("Select starter Fractal")
+            .selected_text("A simple Fractal")
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut self.fractal_index, 0, "A simple Fractal");
+                ui.selectable_value(&mut self.fractal_index, 1, "Squares");
+            });
         ui.label(format!("Painted line count: {}", self.line_count));
         ui.checkbox(&mut fractal.replace_line, "Replace parent with children");
         ui.checkbox(&mut fractal.mirror, "Mirror");
