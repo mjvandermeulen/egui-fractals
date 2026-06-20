@@ -21,7 +21,7 @@ use tools::max_depth_with_branches;
 
 use crate::fractal_app::{fractals::fractals, structs::DesignLine};
 
-const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 1; // 2 to the power of 18 + 1. HARDCODED
+const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
 
 #[derive(PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -87,6 +87,7 @@ impl FractalApp {
             MAX_PAINTED_LINE_COUNT,
             fractal.design_line_count,
             fractal.mirror,
+            fractal.replace_line,
         );
 
         ui.label(format!("Painted line count: {}", self.line_count));
@@ -144,6 +145,7 @@ impl FractalApp {
                 MAX_PAINTED_LINE_COUNT,
                 fractal.design_line_count,
                 fractal.mirror,
+                fractal.replace_line,
             );
             // read number keys
             ui.ctx().input(|i| {
@@ -295,14 +297,16 @@ impl FractalApp {
                 <= max_depth_with_branches(
                     MAX_PAINTED_LINE_COUNT,
                     vectored_design_lines.len() - 1,
-                    fractal.mirror
+                    fractal.mirror,
+                    fractal.replace_line
                 ),
             "fractal.depth = {}, max_depth_with_branches(...) = {}",
             fractal.depth,
             max_depth_with_branches(
                 MAX_PAINTED_LINE_COUNT,
                 vectored_design_lines.len() - 1,
-                fractal.mirror
+                fractal.mirror,
+                fractal.replace_line
             )
         );
         let mut shapes: Vec<Shape> = Vec::new();
@@ -414,6 +418,7 @@ impl eframe::App for FractalApp {
             MAX_PAINTED_LINE_COUNT,
             fractal.design_line_count,
             fractal.mirror,
+            fractal.replace_line,
         ));
         let painter = Painter::new(
             ui.ctx().clone(),
