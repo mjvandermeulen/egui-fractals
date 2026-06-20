@@ -64,19 +64,31 @@ impl FractalApp {
     }
 
     fn options_ui(&mut self, ui: &mut Ui) {
+        egui::ComboBox::from_label("Select starter Fractal")
+            .selected_text(&self.fractals[self.fractal_index].name)
+            .show_ui(ui, |ui| {
+                for (index, fractal) in self.fractals.iter().enumerate() {
+                    ui.selectable_value(&mut self.fractal_index, index, &fractal.name);
+                }
+            });
+
         let fractal = &mut self.fractals[self.fractal_index];
+        if ui
+            .add_enabled(
+                *fractal != Self::default().fractals[self.fractal_index],
+                Button::new(format!("Reset {}", fractal.name)), // TODO change text with drop down menu name
+            )
+            .clicked()
+        {
+            *fractal = Self::default().fractals[self.fractal_index].clone();
+        }
+
         let max_depth = max_depth_with_branches(
             MAX_PAINTED_LINE_COUNT,
             fractal.design_line_count,
             fractal.mirror,
         );
 
-        egui::ComboBox::from_label("Select starter Fractal")
-            .selected_text("A simple Fractal")
-            .show_ui(ui, |ui| {
-                ui.selectable_value(&mut self.fractal_index, 0, "A simple Fractal");
-                ui.selectable_value(&mut self.fractal_index, 1, "Squares");
-            });
         ui.label(format!("Painted line count: {}", self.line_count));
         ui.checkbox(&mut fractal.replace_line, "Replace parent with children");
         ui.checkbox(&mut fractal.mirror, "Mirror");
@@ -92,7 +104,8 @@ impl FractalApp {
         ui.add(Slider::new(&mut fractal.zoom, 0.001..=5.0).text("zoom"));
         if fractal.replace_line {
             ui.add(
-                Slider::new(&mut fractal.fixed_final_line_width, 0.0..=7.0)
+                Slider::new(&mut fractal.fixed_final_line_width, 0.05..=1.1)
+                    .logarithmic(true)
                     .text("Final line width"),
             )
         } else {
@@ -100,17 +113,7 @@ impl FractalApp {
         };
         ui.add(Slider::new(&mut fractal.depth, 0..=max_depth).text("depth"));
 
-        if ui
-            .add_enabled(
-                *fractal != Self::default().fractals[self.fractal_index],
-                Button::new("Reset"),
-            )
-            .clicked()
-        {
-            *fractal = Self::default().fractals[self.fractal_index].clone();
-        }
-
-        egui::reset_button(ui, self, "Reset All");
+        egui::reset_button(ui, self, "Full Reset"); // NOTE: will not looked disabled, because of self.line_count
 
         ui.add(egui::github_link_file!(
             "https://github.com/mjvandermeulen/egui-fractals/blob/main/",

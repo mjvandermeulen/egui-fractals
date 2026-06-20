@@ -5,6 +5,7 @@ use crate::fractal_app::structs::{DesignLine, Fractal, LinesStyle};
 pub fn fractals() -> Vec<Fractal> {
     vec![
         Fractal {
+            name: "Simple Twig".to_owned(),
             mirror: false,
             rainbow: false,
             design_line_count: 1,
@@ -39,6 +40,7 @@ pub fn fractals() -> Vec<Fractal> {
             depth: 9,
         },
         Fractal {
+            name: "Squares".to_owned(),
             mirror: false,
             rainbow: false,
             design_line_count: 2,

@@ -1,4 +1,4 @@
-use egui::{Pos2, Vec2, emath::RectTransform};
+use egui::{emath::RectTransform, Pos2, Vec2};
 
 // Fractal struct
 
@@ -15,6 +15,7 @@ pub struct DesignLine {
 }
 #[derive(PartialEq, Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Fractal {
+    pub name: String,
     pub mirror: bool,
     pub rainbow: bool,
     pub design_line_count: usize,
