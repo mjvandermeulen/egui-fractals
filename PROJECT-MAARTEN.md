@@ -1,24 +1,20 @@
 # TODO
 
-## NOW
-
-- [x] try to paint a random line
-- [x] play with centering: x 0 y -2.0
-- [x] change `hands` to `design`.
-    - [x] `initiator` (`gen_0`). Always from (0,0) to (0,1) _for now_
-    - [x] `generator` (`gen_1`)
-- [x] HOVER
-    - [x] add ~~screen~~local_hover_pos to struct
-    - [x] from the hover pos calculate the gen_1 design line
-        - [x] using ~~atan2~~ built in vec.angle
-    - [x] only repaint if the new hover doesn't match struct hover.
-    - [x] always show hover coords
-
 ## SUPER NOW
 
-- [x] Alt: only show 1st and 2nd gen
+## NOW
+
+- [ ] fractals. START ALL WITH ONLY DEPTH = 1. NO SPOILER
+    - [ ] twig
+    - [ ] tree
+    - [ ] leaf (not mirrored, 2 branches)
+    - [ ] snowflake
+    - [ ] squares
 - [ ] on free/tree/loop switch: update design_lines
-- [x] double click on line: switch direction
+- [ ] fine tune:
+    - [ ] Alt: 10 times
+    - [ ] Ctrl: 100 times
+- [ ] hover to select line, then drag or flip that line
 
 ## FIX
 
@@ -26,15 +22,12 @@
 
 ## NOTE
 
-- [ ] I have change the naming to vec and rot (~~dir vs rot: dir is absolute. rot is relative.~~)
-- [ ] vec and rot INCLUDE SCALING!
-- [ ] ~~don't allow dragging outside painter.rect() (although you can zoom out...)~~
+- [ ] I have changed the naming to vec and rot (~~dir vs rot: dir is absolute. rot is relative.~~)
+- [ ] vec and **rot** INCLUDE SCALING!
 
 ## LATER
 
-- [x] scrolling:~~ update all desing line coords? Or~~ have a different center to the screen!!!!
-- [x] only use UI measurements in `self.design` and state (struct) and return the "screen" positions.
-    - [x] limit `to_` and `from_screen` to the `self.design` method.
+- [ ] add branches by drawing
 
 ## MUCH LATER
 

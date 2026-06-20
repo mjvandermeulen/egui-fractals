@@ -5,10 +5,7 @@ mod paint_fractal_helpers;
 mod structs;
 mod tools;
 
-use design_helpers::{
-    closest_handle, closest_line, design_lines_to_global_design_vectors,
-    paint_directed_line_segment,
-};
+use design_helpers::{design_lines_to_global_design_vectors, paint_directed_line_segment};
 use egui::{
     Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
@@ -21,7 +18,9 @@ use structs::{Fractal, LineTransform, LinesStyle, Node, VectoredDesignLine};
 use tools::max_depth_with_branches;
 
 use crate::fractal_app::{
-    design_input::handle_keyboard_input, fractals::fractals, structs::DesignLine,
+    design_input::{handle_keyboard_input, handle_mouse_input},
+    fractals::fractals,
+    structs::DesignLine,
 };
 
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
@@ -136,82 +135,11 @@ impl FractalApp {
             ),
             painter.clip_rect(),
         );
-        let from_screen = to_screen.inverse();
+        // NOTE: The line above is the last time fractal is used and the compiler "releases" the 1 mut ref only requirement.
 
-        let rect = painter.clip_rect();
-        let id = ui.make_persistent_id("design_painter_interaction");
+        handle_mouse_input(ui, self, to_screen, painter.clip_rect());
 
-        // Mouse input
-
-        let scroll_response = ui.interact(rect, id, egui::Sense::hover());
-        if scroll_response.hovered() {
-            ui.input(|input| {
-                for event in &input.events {
-                    if let egui::Event::MouseWheel { delta, .. } = event {
-                        // 'delta.y' is the vertical scroll (Mac trackpad two-finger vertical)
-                        // 'delta.x' is the horizontal scroll (Mac trackpad two-finger horizontal)
-                        fractal.center += from_screen.scale().x * (-1.0 * *delta);
-                    } else {
-                        let zoom_delta = input.zoom_delta();
-                        if zoom_delta != 1.0 {
-                            fractal.zoom *= zoom_delta;
-                        }
-                    }
-                }
-            });
-        }
-
-        let click_and_drag_response = ui.interact(rect, id, egui::Sense::click_and_drag());
-        if click_and_drag_response.is_pointer_button_down_on() {
-            // is_pointer_down vs dragged: see tool tip on `dragged`. We don't want a delay.
-            if self.dragged_line_end_point.is_none()
-                && let Some(screenpos) = click_and_drag_response.interact_pointer_pos()
-            {
-                let local_pos = from_screen * screenpos;
-                self.dragged_line_end_point = closest_handle(
-                    local_pos,
-                    &fractal.design_lines[..fractal.design_line_count + 1],
-                    &fractal.lines_style,
-                );
-            }
-            if let Some([line, end]) = self.dragged_line_end_point {
-                let tuning_ratio = if self.fine_tune { 0.02 } else { 1.0 };
-                let new_point = from_screen
-                    * (to_screen * fractal.design_lines[line].line[end]
-                        + tuning_ratio * click_and_drag_response.drag_delta());
-                if fractal.lines_style == LinesStyle::Loop {
-                    debug_assert_ne!(
-                        end, 0,
-                        "Loop style expects that the start point of a line can not be dragged"
-                    );
-                    fractal.design_lines[line].line[1] = new_point;
-                    let next_line_index = (line + 1) % (fractal.design_line_count + 1);
-                    fractal.design_lines[next_line_index].line[0] = new_point;
-                } else if fractal.lines_style == LinesStyle::Tree {
-                    fractal.design_lines[line].line[end] = new_point;
-                    if line == 0 && end == 1 {
-                        fractal
-                            .design_lines
-                            .iter_mut()
-                            .skip(1)
-                            .for_each(|d_line| d_line.line[0] = new_point);
-                    }
-                } else {
-                    fractal.design_lines[line].line[end] = new_point;
-                }
-            }
-        } else {
-            self.dragged_line_end_point = None;
-            if click_and_drag_response.double_clicked()
-                && let Some(screen_pos) = ui.input(|i| i.pointer.hover_pos())
-            {
-                let pos = from_screen * screen_pos;
-                if let Some(i) = closest_line(pos, &fractal.design_lines) {
-                    fractal.design_lines[i].reversed = !fractal.design_lines[i].reversed;
-                }
-            }
-        }
-
+        let fractal = &mut self.fractals[self.fractal_index]; // LEARN: moving out of a mut reference by taking ownership (again) see NOTE above.
         design_lines_to_global_design_vectors(
             &fractal.design_lines[..fractal.design_line_count + 1],
             to_screen,
