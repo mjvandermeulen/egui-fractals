@@ -1,4 +1,5 @@
 mod design_helpers;
+mod design_input;
 mod fractals;
 mod paint_fractal_helpers;
 mod structs;
@@ -19,7 +20,9 @@ use paint_fractal_helpers::line_color;
 use structs::{Fractal, LineTransform, LinesStyle, Node, VectoredDesignLine};
 use tools::max_depth_with_branches;
 
-use crate::fractal_app::{fractals::fractals, structs::DesignLine};
+use crate::fractal_app::{
+    design_input::handle_keyboard_input, fractals::fractals, structs::DesignLine,
+};
 
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
 
@@ -123,8 +126,9 @@ impl FractalApp {
     }
 
     fn design(&mut self, ui: &Ui, painter: &Painter) -> Vec<VectoredDesignLine> {
-        let fractal = &mut self.fractals[self.fractal_index];
+        handle_keyboard_input(ui, self);
 
+        let fractal = &mut self.fractals[self.fractal_index];
         let to_screen = emath::RectTransform::from_to(
             Rect::from_center_size(
                 pos2(fractal.center.x, fractal.center.y),
@@ -136,69 +140,6 @@ impl FractalApp {
 
         let rect = painter.clip_rect();
         let id = ui.make_persistent_id("design_painter_interaction");
-
-        // Keyboard Input
-
-        // https://github.com/emilk/egui/discussions/1464 -> if. fine tuned with gemini. Maarten.
-        if ui.ctx().memory(|mem| mem.focused()).is_none() {
-            let max_depth = max_depth_with_branches(
-                MAX_PAINTED_LINE_COUNT,
-                fractal.design_line_count,
-                fractal.mirror,
-                fractal.replace_line,
-            );
-            // read number keys
-            ui.ctx().input(|i| {
-                for event in &i.events {
-                    if let egui::Event::Text(text) = event {
-                        // Check if the typed character is a digit
-                        if text.chars().any(|c| c.is_ascii_digit())
-                            && let Ok(number) = text.parse::<usize>()
-                        {
-                            if number == 9 {
-                                fractal.depth = max_depth;
-                            } else if number == 8 {
-                                // NOTE: max_depth could be < 8, so you can't clamp(8, max_depth);
-                                fractal.depth = (max_depth / 2).at_least(8).clamp(0, max_depth);
-                            } else {
-                                fractal.depth = number.clamp(0, max_depth);
-                            }
-                        }
-                    }
-                }
-            });
-            // up and down arrows
-            if fractal.depth > 0 //clamping doesn't avoid a usize overflow soon enough
-                && ui.input_mut(|i| i.key_pressed(egui::Key::ArrowDown))
-            {
-                fractal.depth = (fractal.depth - 1).clamp(0, max_depth);
-            }
-            if ui.input_mut(|i| i.key_pressed(egui::Key::ArrowUp)) {
-                fractal.depth = (fractal.depth + 1).clamp(0, max_depth);
-            }
-        }
-
-        // d (design)
-
-        if ui.input(|i| i.modifiers.shift_only()) {
-            // shift down
-            if ui.input(|i| i.key_pressed(egui::Key::D)) {
-                self.show_design_only = !self.show_design_only;
-            }
-        } else {
-            // shift up
-            if ui.input(|i| i.key_down(egui::Key::D)) {
-                self.show_design_only = true;
-            } else if ui.input(|i| i.key_released(egui::Key::D)) {
-                self.show_design_only = false;
-            }
-        }
-        // l (log a fractal dump)
-        if ui.input(|i| i.key_down(egui::Key::L)) {
-            log::info!("Log a dump of the current fractal: {fractal:#?}",);
-        }
-
-        self.fine_tune = ui.input(|i| i.modifiers.ctrl);
 
         // Mouse input
 
