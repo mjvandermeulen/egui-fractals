@@ -30,11 +30,17 @@ const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 +
 pub struct FractalApp {
     fractals: Vec<Fractal>,
     fractal_index: usize,
-    fine_tune: bool,
+    #[serde(skip)]
     line_count: usize,
+    #[serde(skip)]
+    fine_tune: bool,
+    #[serde(skip)]
     dragged_line_end_point: Option<[usize; 2]>, // Add option for incorrect drag. Now it catches an endpoint when dragging over it, after starting in the middle of nowhere :)
+    #[serde(skip)]
     show_design_only: bool,
+    #[serde(skip)]
     new_line: Option<usize>,
+    #[serde(skip)]
     hovered_line: Option<usize>, // for coloring the hovered line neon green.
 }
 
