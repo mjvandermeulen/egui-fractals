@@ -4,8 +4,7 @@ use egui::{NumExt as _, Rect, emath::RectTransform};
 use crate::{
     FractalApp,
     fractal_app::{
-        design_helpers::{closest_handle, closest_line},
-        structs::LinesStyle,
+        design_helpers::{closest_handle, closest_line, continue_dragging_line_end},
         tools::max_depth_with_branches,
     },
 };
@@ -82,6 +81,12 @@ pub fn handle_mouse_input(
 ) {
     let from_screen = to_screen.inverse();
 
+    // let shift_down = ui.input(|i| i.modifiers.shift);
+    // if !self.paused
+    //     && shift_down
+    //     && response.hovered()
+    //     && let Some(pointer_pos) = response.hover_pos()
+
     let id = ui.make_persistent_id("design_painter_interaction");
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
 
@@ -104,6 +109,7 @@ pub fn handle_mouse_input(
     }
 
     let click_and_drag_response = ui.interact(rect, id, egui::Sense::click_and_drag());
+
     if click_and_drag_response.is_pointer_button_down_on() {
         // is_pointer_down vs dragged: see tool tip on `dragged`. We don't want a delay.
         if fractal_app.dragged_line_end_point.is_none()
@@ -117,30 +123,14 @@ pub fn handle_mouse_input(
             );
         }
         if let Some([line, end]) = fractal_app.dragged_line_end_point {
-            let tuning_ratio = if fractal_app.fine_tune { 0.02 } else { 1.0 };
-            let new_point = from_screen
-                * (to_screen * fractal.design_lines[line].line[end]
-                    + tuning_ratio * click_and_drag_response.drag_delta());
-            if fractal.lines_style == LinesStyle::Loop {
-                debug_assert_ne!(
-                    end, 0,
-                    "Loop style expects that the start point of a line can not be dragged"
-                );
-                fractal.design_lines[line].line[1] = new_point;
-                let next_line_index = (line + 1) % (fractal.design_line_count + 1);
-                fractal.design_lines[next_line_index].line[0] = new_point;
-            } else if fractal.lines_style == LinesStyle::Tree {
-                fractal.design_lines[line].line[end] = new_point;
-                if line == 0 && end == 1 {
-                    fractal
-                        .design_lines
-                        .iter_mut()
-                        .skip(1)
-                        .for_each(|d_line| d_line.line[0] = new_point);
-                }
-            } else {
-                fractal.design_lines[line].line[end] = new_point;
-            }
+            continue_dragging_line_end(
+                fractal_app,
+                from_screen,
+                to_screen,
+                &click_and_drag_response,
+                line,
+                end,
+            );
         }
     } else {
         fractal_app.dragged_line_end_point = None;
@@ -148,7 +138,9 @@ pub fn handle_mouse_input(
             && let Some(screen_pos) = ui.input(|i| i.pointer.hover_pos())
         {
             let pos = from_screen * screen_pos;
-            if let Some(i) = closest_line(pos, &fractal.design_lines) {
+            if let Some(i) = closest_line(pos, &fractal.design_lines, 0.1) {
+                let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
+
                 fractal.design_lines[i].reversed = !fractal.design_lines[i].reversed;
             }
         }

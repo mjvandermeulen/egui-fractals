@@ -1,7 +1,8 @@
-use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
-
 use super::structs::VectoredDesignLine;
 use super::{DesignLine, LinesStyle};
+use crate::FractalApp;
+use egui::Response;
+use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
 
 // pub fn paint_line_handles(
 //     painter: &Painter,
@@ -81,17 +82,16 @@ pub fn distance_to_line(p: Pos2, [a, b]: [Pos2; 2]) -> f32 {
     p.distance(closest_point)
 }
 
-pub fn closest_line(local_pos: Pos2, d_lines: &[DesignLine]) -> Option<usize> {
-    let mut min: f32 = 0.05;
+pub fn closest_line(local_pos: Pos2, design_lines: &[DesignLine], threshold: f32) -> Option<usize> {
+    let mut min: f32 = threshold;
     let mut nearest: Option<usize> = None;
-    for (line_index, design_line) in d_lines.iter().enumerate() {
+    for (line_index, design_line) in design_lines.iter().enumerate() {
         let d = distance_to_line(local_pos, design_line.line);
-        if d <= min && d < 0.1 {
+        if d <= min {
             min = d;
             nearest = Some(line_index);
         }
     }
-
     nearest
 }
 
@@ -108,4 +108,40 @@ pub fn paint_directed_line_segment(
         [middle, dvec.pos + dvec.vec],
         Stroke::new(width, Color32::BLACK),
     );
+}
+
+pub fn continue_dragging_line_end(
+    fractal_app: &mut FractalApp,
+    from_screen: RectTransform,
+    to_screen: RectTransform,
+    click_and_drag_response: &Response,
+    line: usize,
+    end: usize,
+) {
+    let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
+
+    let tuning_ratio = if fractal_app.fine_tune { 0.02 } else { 1.0 };
+    let new_point = from_screen
+        * (to_screen * fractal.design_lines[line].line[end]
+            + tuning_ratio * click_and_drag_response.drag_delta());
+    if fractal.lines_style == LinesStyle::Loop {
+        debug_assert_ne!(
+            end, 0,
+            "Loop style expects that the start point of a line can not be dragged"
+        );
+        fractal.design_lines[line].line[1] = new_point;
+        let next_line_index = (line + 1) % (fractal.design_line_count + 1);
+        fractal.design_lines[next_line_index].line[0] = new_point;
+    } else if fractal.lines_style == LinesStyle::Tree {
+        fractal.design_lines[line].line[end] = new_point;
+        if line == 0 && end == 1 {
+            fractal
+                .design_lines
+                .iter_mut()
+                .skip(1)
+                .for_each(|d_line| d_line.line[0] = new_point);
+        }
+    } else {
+        fractal.design_lines[line].line[end] = new_point;
+    }
 }
