@@ -81,68 +81,85 @@ pub fn handle_mouse_input(
 ) {
     let from_screen = to_screen.inverse();
 
-    // let shift_down = ui.input(|i| i.modifiers.shift);
-    // if !self.paused
-    //     && shift_down
-    //     && response.hovered()
-    //     && let Some(pointer_pos) = response.hover_pos()
-
     let id = ui.make_persistent_id("design_painter_interaction");
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
+    let click_and_drag_response = ui.interact(rect, id, egui::Sense::click_and_drag());
 
-    let scroll_response = ui.interact(rect, id, egui::Sense::hover());
-    if scroll_response.hovered() {
+    // check if dragging continues first
+    if let Some([line, end]) = fractal_app.dragged_line_end_point
+        && click_and_drag_response.is_pointer_button_down_on()
+    {
+        continue_dragging_line_end(
+            fractal_app,
+            from_screen,
+            to_screen,
+            &click_and_drag_response,
+            line,
+            end,
+        );
+        return;
+    } else if let Some(line) = fractal_app.new_line {
+        log::info!("continuing drawing a new line: {line}");
+        return;
+    }
+
+    fractal_app.dragged_line_end_point = None;
+    fractal_app.new_line = None;
+
+    let hover_response = ui.interact(rect, id, egui::Sense::hover());
+    if hover_response.hovered() {
         ui.input(|input| {
             for event in &input.events {
+                let zoom_delta = input.zoom_delta();
+                if zoom_delta != 1.0 {
+                    fractal.zoom *= zoom_delta;
+                    log::info!("returning after zoom");
+                    // TODO: turn off fractal_app.hovered_line OR turn off the return!!!!!
+                    return;
+                }
                 if let egui::Event::MouseWheel { delta, .. } = event {
                     // 'delta.y' is the vertical scroll (Mac trackpad two-finger vertical)
                     // 'delta.x' is the horizontal scroll (Mac trackpad two-finger horizontal)
                     fractal.center += from_screen.scale().x * (-1.0 * *delta);
-                } else {
-                    let zoom_delta = input.zoom_delta();
-                    if zoom_delta != 1.0 {
-                        fractal.zoom *= zoom_delta;
-                    }
+                    log::info!("returning after scroll");
+                    // TODO: turn off fractal_app.hovered_line
+                    return;
                 }
             }
         });
-    }
-
-    let click_and_drag_response = ui.interact(rect, id, egui::Sense::click_and_drag());
-
-    if click_and_drag_response.is_pointer_button_down_on() {
-        // is_pointer_down vs dragged: see tool tip on `dragged`. We don't want a delay.
-        if fractal_app.dragged_line_end_point.is_none()
-            && let Some(screenpos) = click_and_drag_response.interact_pointer_pos()
+        if let Some(hover_pos) = hover_response.hover_pos()
+            && let Some(hover_line) =
+                closest_line(from_screen * hover_pos, &fractal.design_lines, 0.1)
         {
-            let local_pos = from_screen * screenpos;
-            fractal_app.dragged_line_end_point = closest_handle(
-                local_pos,
-                &fractal.design_lines[..fractal.design_line_count + 1],
-                &fractal.lines_style,
-            );
-        }
-        if let Some([line, end]) = fractal_app.dragged_line_end_point {
-            continue_dragging_line_end(
-                fractal_app,
-                from_screen,
-                to_screen,
-                &click_and_drag_response,
-                line,
-                end,
-            );
-        }
-    } else {
-        fractal_app.dragged_line_end_point = None;
-        if click_and_drag_response.double_clicked()
-            && let Some(screen_pos) = ui.input(|i| i.pointer.hover_pos())
-        {
-            let pos = from_screen * screen_pos;
-            if let Some(i) = closest_line(pos, &fractal.design_lines, 0.1) {
-                let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
+            log::info!("hovering over line: {hover_line}");
+            fractal_app.hovered_line = Some(hover_line);
+            // TODO!!!!!
+            // - only allow changes on the hovered_line
 
-                fractal.design_lines[i].reversed = !fractal.design_lines[i].reversed;
+            if click_and_drag_response.is_pointer_button_down_on() {
+                // is_pointer_down vs dragged: see tool tip on `dragged`. We don't want a delay.
+                if fractal_app.dragged_line_end_point.is_none() // this has to be the case, see above logic
+                    && let Some(screenpos) = click_and_drag_response.interact_pointer_pos()
+                {
+                    let local_pos = from_screen * screenpos;
+                    fractal_app.dragged_line_end_point = closest_handle(
+                        local_pos,
+                        &fractal.design_lines[..fractal.design_line_count + 1],
+                        &fractal.lines_style,
+                    );
+                }
+            } else if click_and_drag_response.double_clicked()
+                && let Some(screen_pos) = ui.input(|i| i.pointer.hover_pos())
+            {
+                let pos = from_screen * screen_pos;
+                if let Some(i) = closest_line(pos, &fractal.design_lines, 0.1) {
+                    let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
+
+                    fractal.design_lines[i].reversed = !fractal.design_lines[i].reversed;
+                }
             }
+        } else {
+            fractal_app.hovered_line = None;
         }
     }
 }

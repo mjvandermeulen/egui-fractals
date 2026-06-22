@@ -34,6 +34,8 @@ pub struct FractalApp {
     line_count: usize,
     dragged_line_end_point: Option<[usize; 2]>, // Add option for incorrect drag. Now it catches an endpoint when dragging over it, after starting in the middle of nowhere :)
     show_design_only: bool,
+    new_line: Option<usize>,
+    hovered_line: Option<usize>, // for coloring the hovered line neon green.
 }
 
 impl Default for FractalApp {
@@ -45,6 +47,8 @@ impl Default for FractalApp {
             show_design_only: false,
             fine_tune: false,
             dragged_line_end_point: None,
+            new_line: None,
+            hovered_line: None,
         }
     }
 }
@@ -148,8 +152,18 @@ impl FractalApp {
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredDesignLine]) {
         let fractal = &self.fractals[self.fractal_index];
+        let hovered_line_index = match self.hovered_line {
+            Some(hovered_line) => hovered_line,
+            None => design_vectors.len() + 1, // so it will never match the index
+        };
         design_vectors.iter().enumerate().for_each(|(i, vec)| {
-            let (width, color) = if i == 0 {
+            let (width, color) = if i == hovered_line_index {
+                (
+                    fractal.start_line_width,
+                    Color32::from_hex("#0FFF50")
+                        .expect("Expected hex neon green to be parsed correctly"),
+                )
+            } else if i == 0 {
                 (fractal.start_line_width * 1.5, Color32::RED)
             } else {
                 (fractal.start_line_width, Color32::ORANGE)
