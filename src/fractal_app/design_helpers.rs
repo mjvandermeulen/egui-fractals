@@ -172,6 +172,9 @@ pub fn draw_new_line(
                 // Second click pressed this frame
 
                 log::info!("New DesignLine: {nl:#?}");
+                fractal_app.fractals[fractal_app.fractal_index]
+                    .design_lines
+                    .push(*nl);
                 fractal_app.new_line = None;
             } else if cd_response.is_pointer_button_down_on() {
                 // button not release yet after first mouse button down after new_line_key_down

@@ -7,11 +7,11 @@ mod tools;
 
 use design_helpers::{design_lines_to_global_design_vectors, paint_directed_line_segment};
 use egui::{
-    Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
     emath::{self},
     pos2,
     widgets::Slider,
+    Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
 };
 use paint_fractal_helpers::line_color;
 use structs::{Fractal, LineTransform, LinesStyle, Node, VectoredDesignLine};
@@ -100,7 +100,7 @@ impl FractalApp {
 
         let max_depth = max_depth_with_branches(
             MAX_PAINTED_LINE_COUNT,
-            fractal.design_lines.len(),
+            fractal.design_lines.len() - 1,
             fractal.mirror,
             fractal.replace_line,
         );
@@ -178,6 +178,7 @@ impl FractalApp {
     fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredDesignLine]) {
         let fractal = &self.fractals[self.fractal_index];
 
+        // TODO!!!!! this does not seem to be catching correctly with the new_line
         debug_assert!(
             fractal.depth
                 <= max_depth_with_branches(
@@ -302,7 +303,7 @@ impl eframe::App for FractalApp {
         fractal.depth = fractal.depth.at_most(max_depth_with_branches(
             // TODO move this to end of design. Add it to paint_fractal as a dbg assert
             MAX_PAINTED_LINE_COUNT,
-            fractal.design_lines.len(),
+            fractal.design_lines.len() - 1,
             fractal.mirror,
             fractal.replace_line,
         ));
