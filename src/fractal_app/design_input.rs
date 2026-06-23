@@ -4,7 +4,7 @@ use egui::{NumExt as _, Rect, emath::RectTransform};
 use crate::{
     FractalApp,
     fractal_app::{
-        design_helpers::{closest_handle, closest_line, continue_dragging_line_end},
+        design_helpers::{closest_handle, closest_line, continue_dragging_line_end, draw_new_line},
         tools::max_depth_with_branches,
     },
 };
@@ -15,7 +15,7 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
     if ui.ctx().memory(|mem| mem.focused()).is_none() {
         let max_depth = max_depth_with_branches(
             super::MAX_PAINTED_LINE_COUNT,
-            fractal.design_line_count,
+            fractal.design_lines.len(),
             fractal.mirror,
             fractal.replace_line,
         );
@@ -65,6 +65,17 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
             fractal_app.show_design_only = false;
         }
     }
+
+    // n (new line)
+    fractal_app.new_line_key_down = ui.input(|i| i.key_down(egui::Key::N));
+    // if ui.input(|i| i.key_down(egui::Key::N)) {
+    //     fractal_app.new_line_key_down = true;
+    //     log::info!("start drawing a new line");
+    // } else if ui.input(|i| i.key_released(egui::Key::N)) {
+    //     fractal_app.new_line_key_down = false;
+    //     log::info!("wrap up drawing a new line");
+    // }
+
     // l (log a fractal dump)
     if ui.input(|i| i.key_down(egui::Key::L)) {
         log::info!("Log a dump of the current fractal: {fractal:#?}",);
@@ -80,7 +91,6 @@ pub fn handle_mouse_input(
     rect: Rect,
 ) {
     let from_screen = to_screen.inverse();
-
     let id = ui.make_persistent_id("design_painter_interaction");
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
     let click_and_drag_response = ui.interact(rect, id, egui::Sense::click_and_drag());
@@ -98,25 +108,30 @@ pub fn handle_mouse_input(
             end,
         );
         return;
-    } else if let Some(line) = fractal_app.new_line {
-        log::info!("continuing drawing a new line: {line}");
-        return;
     }
 
     fractal_app.dragged_line_end_point = None;
-    fractal_app.new_line = None;
 
     let hover_response = ui.interact(rect, id, egui::Sense::hover());
-    if hover_response.hovered() {
+    if hover_response.hovered()
+        && let Some(global_hover_pos) = hover_response.hover_pos()
+    {
+        let hover_pos = from_screen * global_hover_pos;
+        fractal_app.hovered_line = closest_line(hover_pos, &fractal.design_lines, 0.1);
+        if draw_new_line(ui, fractal_app, &click_and_drag_response, hover_pos) {
+            return;
+        }
+
+        let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
         ui.input(|input| {
+            let zoom_delta = input.zoom_delta();
+            if zoom_delta != 1.0 {
+                fractal.zoom *= zoom_delta;
+                log::info!("returning after zoom");
+                // TODO: turn off fractal_app.hovered_line OR turn off the return!!!!!
+                return;
+            }
             for event in &input.events {
-                let zoom_delta = input.zoom_delta();
-                if zoom_delta != 1.0 {
-                    fractal.zoom *= zoom_delta;
-                    log::info!("returning after zoom");
-                    // TODO: turn off fractal_app.hovered_line OR turn off the return!!!!!
-                    return;
-                }
                 if let egui::Event::MouseWheel { delta, .. } = event {
                     // 'delta.y' is the vertical scroll (Mac trackpad two-finger vertical)
                     // 'delta.x' is the horizontal scroll (Mac trackpad two-finger horizontal)
@@ -127,11 +142,7 @@ pub fn handle_mouse_input(
                 }
             }
         });
-        if let Some(hover_pos) = hover_response.hover_pos()
-            && let Some(hover_line) =
-                closest_line(from_screen * hover_pos, &fractal.design_lines, 0.1)
-        {
-            log::info!("hovering over line: {hover_line}");
+        if let Some(hover_line) = fractal_app.hovered_line {
             fractal_app.hovered_line = Some(hover_line);
             // TODO!!!!!
             // - only allow changes on the hovered_line
@@ -144,22 +155,17 @@ pub fn handle_mouse_input(
                     let local_pos = from_screen * screenpos;
                     fractal_app.dragged_line_end_point = closest_handle(
                         local_pos,
-                        &fractal.design_lines[..fractal.design_line_count + 1],
+                        &fractal.design_lines[..fractal.design_lines.len()],
                         &fractal.lines_style,
                     );
                 }
-            } else if click_and_drag_response.double_clicked()
-                && let Some(screen_pos) = ui.input(|i| i.pointer.hover_pos())
-            {
-                let pos = from_screen * screen_pos;
-                if let Some(i) = closest_line(pos, &fractal.design_lines, 0.1) {
+            } else if click_and_drag_response.double_clicked() {
+                if let Some(i) = closest_line(hover_pos, &fractal.design_lines, 0.1) {
                     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
 
                     fractal.design_lines[i].reversed = !fractal.design_lines[i].reversed;
                 }
             }
-        } else {
-            fractal_app.hovered_line = None;
         }
     }
 }
