@@ -87,6 +87,10 @@ pub fn handle_mouse_input(
     to_screen: RectTransform,
     rect: Rect,
 ) {
+    if fractal_app.trash_line_key_down {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
+    }
+
     let from_screen = to_screen.inverse();
     let id = ui.make_persistent_id("design_painter_interaction");
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
@@ -139,9 +143,6 @@ pub fn handle_mouse_input(
         });
         if let Some(hover_line_index) = fractal_app.hovered_line {
             fractal_app.hovered_line = Some(hover_line_index);
-            // TODO!!!!!
-            // - only allow changes on the hovered_line
-
             if click_and_drag_response.is_pointer_button_down_on() {
                 // is_pointer_down vs dragged: see tool tip on `dragged`. We don't want a delay.
                 if fractal_app.dragged_line_end_point.is_none() // this has to be the case, see above logic
