@@ -130,7 +130,7 @@ pub fn continue_dragging_line_end(
             "Loop style expects that the start point of a line can not be dragged"
         );
         fractal.design_lines[line].line[1] = new_point;
-        let next_line_index = (line + 1) % (fractal.design_line_count + 1);
+        let next_line_index = (line + 1) % (fractal.design_lines.len());
         fractal.design_lines[next_line_index].line[0] = new_point;
     } else if fractal.lines_style == LinesStyle::Tree {
         fractal.design_lines[line].line[end] = new_point;
@@ -144,4 +144,39 @@ pub fn continue_dragging_line_end(
     } else {
         fractal.design_lines[line].line[end] = new_point;
     }
+}
+
+pub fn draw_new_line(
+    ui: &egui::Ui,
+    fractal_app: &mut FractalApp,
+    cd_response: &Response,
+    hover_pos: Pos2,
+) -> bool {
+    if !fractal_app.new_line_key_down && fractal_app.new_line.is_none() {
+        fractal_app.new_line = None;
+        return false;
+    }
+    ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
+    match fractal_app.new_line.as_mut() {
+        None => {
+            if cd_response.is_pointer_button_down_on() {
+                fractal_app.new_line = Some(DesignLine {
+                    line: [hover_pos, hover_pos],
+                    reversed: false,
+                });
+            }
+        }
+        Some(nl) => {
+            if cd_response.is_pointer_button_down_on() {
+                nl.line[1] = hover_pos;
+            } else {
+                log::info!("New DesignLine: {nl:#?}");
+                fractal_app.fractals[fractal_app.fractal_index]
+                    .design_lines
+                    .push(*nl);
+                fractal_app.new_line = None;
+            }
+        }
+    }
+    true
 }

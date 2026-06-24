@@ -1,4 +1,4 @@
-use egui::{emath::RectTransform, Pos2, Vec2};
+use egui::{Pos2, Vec2, emath::RectTransform};
 
 // Fractal struct
 
@@ -18,7 +18,6 @@ pub struct Fractal {
     pub name: String,
     pub mirror: bool,
     pub rainbow: bool,
-    pub design_line_count: usize,
     pub design_lines: Vec<DesignLine>,
     pub replace_line: bool,
     pub lines_style: LinesStyle,

@@ -30,10 +30,22 @@ const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 +
 pub struct FractalApp {
     fractals: Vec<Fractal>,
     fractal_index: usize,
-    fine_tune: bool,
+    #[serde(skip)]
     line_count: usize,
+    #[serde(skip)]
+    fine_tune: bool, // turn into f32 for normal 1.0, ten times (Alt) 10.0 and 100 times (Ctrl) 100.0
+    #[serde(skip)]
     dragged_line_end_point: Option<[usize; 2]>, // Add option for incorrect drag. Now it catches an endpoint when dragging over it, after starting in the middle of nowhere :)
+    #[serde(skip)]
     show_design_only: bool,
+    #[serde(skip)]
+    new_line: Option<DesignLine>,
+    #[serde(skip)]
+    new_line_key_down: bool,
+    #[serde(skip)]
+    trash_line_key_down: bool,
+    #[serde(skip)]
+    hovered_line: Option<usize>, // for coloring the hovered line neon green.
 }
 
 impl Default for FractalApp {
@@ -45,6 +57,10 @@ impl Default for FractalApp {
             show_design_only: false,
             fine_tune: false,
             dragged_line_end_point: None,
+            new_line: None,
+            new_line_key_down: false,
+            trash_line_key_down: false,
+            hovered_line: None,
         }
     }
 }
@@ -87,7 +103,7 @@ impl FractalApp {
 
         let max_depth = max_depth_with_branches(
             MAX_PAINTED_LINE_COUNT,
-            fractal.design_line_count,
+            fractal.design_lines.len() - 1,
             fractal.mirror,
             fractal.replace_line,
         );
@@ -96,11 +112,6 @@ impl FractalApp {
         ui.checkbox(&mut fractal.replace_line, "Replace parent with children");
         ui.checkbox(&mut fractal.mirror, "Mirror");
         ui.checkbox(&mut fractal.rainbow, "Rainbow");
-        let iterator_count = &fractal.design_lines.len() - 1;
-        ui.add(
-            Slider::new(&mut fractal.design_line_count, 1..=iterator_count)
-                .text("Design line count"),
-        );
         ui.radio_value(&mut fractal.lines_style, LinesStyle::Free, "Free");
         ui.radio_value(&mut fractal.lines_style, LinesStyle::Tree, "Tree");
         ui.radio_value(&mut fractal.lines_style, LinesStyle::Loop, "Loop");
@@ -139,17 +150,28 @@ impl FractalApp {
 
         handle_mouse_input(ui, self, to_screen, painter.clip_rect());
 
+        // update depth TODO!!!!!
+
         let fractal = &mut self.fractals[self.fractal_index]; // LEARN: moving out of a mut reference by taking ownership (again) see NOTE above.
-        design_lines_to_global_design_vectors(
-            &fractal.design_lines[..fractal.design_line_count + 1],
-            to_screen,
-        )
+        let mut temp_dls = fractal.design_lines.clone();
+        if let Some(nl) = self.new_line {
+            temp_dls.push(nl);
+        }
+        design_lines_to_global_design_vectors(&temp_dls, to_screen)
     }
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredDesignLine]) {
         let fractal = &self.fractals[self.fractal_index];
+        let hovered_line_index = match self.hovered_line {
+            Some(hovered_line) => hovered_line,
+            None => design_vectors.len() + 1, // so it will never match the index
+        };
+        let highlight_color =
+            Color32::from_hex("#0FFF50").expect("Expected hex neon green to be parsed correctly");
         design_vectors.iter().enumerate().for_each(|(i, vec)| {
-            let (width, color) = if i == 0 {
+            let (width, color) = if i == hovered_line_index {
+                (fractal.start_line_width, highlight_color)
+            } else if i == 0 {
                 (fractal.start_line_width * 1.5, Color32::RED)
             } else {
                 (fractal.start_line_width, Color32::ORANGE)
@@ -160,7 +182,6 @@ impl FractalApp {
 
     fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredDesignLine]) {
         let fractal = &self.fractals[self.fractal_index];
-
         debug_assert!(
             fractal.depth
                 <= max_depth_with_branches(
@@ -285,7 +306,7 @@ impl eframe::App for FractalApp {
         fractal.depth = fractal.depth.at_most(max_depth_with_branches(
             // TODO move this to end of design. Add it to paint_fractal as a dbg assert
             MAX_PAINTED_LINE_COUNT,
-            fractal.design_line_count,
+            fractal.design_lines.len() - 1,
             fractal.mirror,
             fractal.replace_line,
         ));
@@ -296,15 +317,12 @@ impl eframe::App for FractalApp {
         );
 
         let design_vectors = self.design(ui, &painter);
+
         if self.show_design_only {
             self.paint_design(&painter, &design_vectors);
         } else {
             self.paint_fractal(&painter, &design_vectors);
         }
-
-        // if let Some(line) = self.hovered_design_line {
-        //     paint_directed_line_segment(&painter, dvec, width, color);
-        // }
 
         // Make sure we allocate what we used (everything)
         ui.expand_to_include_rect(painter.clip_rect());
