@@ -69,13 +69,9 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
 
     // n (new line)
     fractal_app.new_line_key_down = ui.input(|i| i.key_down(egui::Key::N));
-    // if ui.input(|i| i.key_down(egui::Key::N)) {
-    //     fractal_app.new_line_key_down = true;
-    //     log::info!("start drawing a new line");
-    // } else if ui.input(|i| i.key_released(egui::Key::N)) {
-    //     fractal_app.new_line_key_down = false;
-    //     log::info!("wrap up drawing a new line");
-    // }
+
+    // t (trash line)
+    fractal_app.trash_line_key_down = ui.input(|i| i.key_down(egui::Key::T));
 
     // l (log a fractal dump)
     if ui.input(|i| i.key_down(egui::Key::L)) {
@@ -128,7 +124,6 @@ pub fn handle_mouse_input(
             let zoom_delta = input.zoom_delta();
             if zoom_delta != 1.0 {
                 fractal.zoom *= zoom_delta;
-                log::info!("returning after zoom");
                 // TODO: turn off fractal_app.hovered_line OR turn off the return!!!!!
                 return;
             }
@@ -137,14 +132,13 @@ pub fn handle_mouse_input(
                     // 'delta.y' is the vertical scroll (Mac trackpad two-finger vertical)
                     // 'delta.x' is the horizontal scroll (Mac trackpad two-finger horizontal)
                     fractal.center += from_screen.scale().x * (-1.0 * *delta);
-                    log::info!("returning after scroll");
                     // TODO: turn off fractal_app.hovered_line
                     return;
                 }
             }
         });
-        if let Some(hover_line) = fractal_app.hovered_line {
-            fractal_app.hovered_line = Some(hover_line);
+        if let Some(hover_line_index) = fractal_app.hovered_line {
+            fractal_app.hovered_line = Some(hover_line_index);
             // TODO!!!!!
             // - only allow changes on the hovered_line
 
@@ -161,10 +155,17 @@ pub fn handle_mouse_input(
                     );
                 }
             } else if click_and_drag_response.double_clicked() {
-                if let Some(i) = closest_line(hover_pos, &fractal.design_lines, 0.1) {
-                    let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
-
-                    fractal.design_lines[i].reversed = !fractal.design_lines[i].reversed;
+                let design_lines =
+                    &mut fractal_app.fractals[fractal_app.fractal_index].design_lines;
+                if fractal_app.trash_line_key_down {
+                    if hover_line_index != 0 {
+                        design_lines.remove(hover_line_index);
+                    } else {
+                        log::info!("can't remove the base line (index == 0)");
+                    }
+                } else {
+                    design_lines[hover_line_index].reversed =
+                        !design_lines[hover_line_index].reversed;
                 }
             }
         }

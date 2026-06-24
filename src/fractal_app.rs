@@ -43,6 +43,8 @@ pub struct FractalApp {
     #[serde(skip)]
     new_line_key_down: bool,
     #[serde(skip)]
+    trash_line_key_down: bool,
+    #[serde(skip)]
     hovered_line: Option<usize>, // for coloring the hovered line neon green.
 }
 
@@ -57,6 +59,7 @@ impl Default for FractalApp {
             dragged_line_end_point: None,
             new_line: None,
             new_line_key_down: false,
+            trash_line_key_down: false,
             hovered_line: None,
         }
     }
