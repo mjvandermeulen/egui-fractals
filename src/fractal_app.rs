@@ -7,11 +7,11 @@ mod tools;
 
 use design_helpers::{design_lines_to_global_design_vectors, paint_directed_line_segment};
 use egui::{
+    Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
     emath::{self},
     pos2,
     widgets::Slider,
-    Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
 };
 use paint_fractal_helpers::line_color;
 use structs::{Fractal, LineTransform, LinesStyle, Node, VectoredDesignLine};
@@ -147,6 +147,8 @@ impl FractalApp {
 
         handle_mouse_input(ui, self, to_screen, painter.clip_rect());
 
+        // update depth TODO!!!!!
+
         let fractal = &mut self.fractals[self.fractal_index]; // LEARN: moving out of a mut reference by taking ownership (again) see NOTE above.
         let mut temp_dls = fractal.design_lines.clone();
         if let Some(nl) = self.new_line {
@@ -177,8 +179,6 @@ impl FractalApp {
 
     fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredDesignLine]) {
         let fractal = &self.fractals[self.fractal_index];
-
-        // TODO!!!!! this does not seem to be catching correctly with the new_line
         debug_assert!(
             fractal.depth
                 <= max_depth_with_branches(
@@ -314,15 +314,12 @@ impl eframe::App for FractalApp {
         );
 
         let design_vectors = self.design(ui, &painter);
+
         if self.show_design_only {
             self.paint_design(&painter, &design_vectors);
         } else {
             self.paint_fractal(&painter, &design_vectors);
         }
-
-        // if let Some(line) = self.hovered_design_line {
-        //     paint_directed_line_segment(&painter, dvec, width, color);
-        // }
 
         // Make sure we allocate what we used (everything)
         ui.expand_to_include_rect(painter.clip_rect());
