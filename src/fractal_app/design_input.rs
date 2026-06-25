@@ -4,7 +4,8 @@ use egui::{NumExt as _, Rect, emath::RectTransform};
 use crate::{
     FractalApp,
     fractal_app::{
-        design_helpers::{closest_line, continue_dragging_line_end, draw_new_line},
+        design_helpers::{closest_handle, closest_line, continue_dragging_line_end, draw_new_line},
+        structs::LinesStyle,
         tools::max_depth_with_branches,
     },
 };
@@ -151,11 +152,12 @@ pub fn handle_mouse_input(
                 {
                     let local_pos = from_screen * screenpos;
                     // TODO!!!!! only allow changes on the hovered_line
-                    // fractal_app.dragged_line_end_point = closest_handle(
-                    //     local_pos,
-                    //     &fractal.design_lines[..fractal.design_lines.len()],
-                    //     &fractal.lines_style,
-                    // );
+                    fractal_app.dragged_line_end_point = closest_handle(
+                        local_pos,
+                        &fractal.design_lines[..fractal.design_lines.len()],
+                        0.05,
+                        &fractal.lines_style,
+                    );
                 }
             } else if click_and_drag_response.double_clicked() {
                 let design_lines =

@@ -31,9 +31,9 @@ pub fn closest_line_handle(
     dl: &DesignLine,
     threshold: f32,
     tip_only: bool, // index == 1
-) -> Option<usize> {
+) -> Option<(usize, f32)> {
     let mut min = threshold;
-    let mut nearest_end: Option<usize> = None;
+    let mut result: Option<(usize, f32)> = None;
     for (end_index, end_point) in dl.line.iter().enumerate() {
         if end_index == 0 && tip_only {
             continue;
@@ -41,10 +41,29 @@ pub fn closest_line_handle(
         let d = local_pos.distance(*end_point);
         if d <= min {
             min = d;
-            nearest_end = Some(end_index);
+            result = Some((end_index, min));
         }
     }
-    nearest_end
+    result
+}
+
+pub fn closest_handle(
+    local_pos: Pos2,
+    dlines: &[DesignLine],
+    threshold: f32,
+    lines_style: &LinesStyle,
+) -> Option<[usize; 2]> {
+    let mut min = threshold;
+    let mut nearest_handle: Option<[usize; 2]> = None;
+    for (i, dl) in dlines.iter().enumerate() {
+        let tip_only =
+            (*lines_style == LinesStyle::Tree && i != 0) || *lines_style == LinesStyle::Loop;
+        if let Some((closest, dist)) = closest_line_handle(local_pos, dl, min, tip_only) {
+            min = dist;
+            nearest_handle = Some([1, closest]);
+        }
+    }
+    nearest_handle
 }
 
 pub fn design_lines_to_global_design_vectors(
@@ -168,7 +187,6 @@ pub fn draw_new_line(
             if cd_response.is_pointer_button_down_on() {
                 nl.line[1] = hover_pos;
             } else {
-                log::info!("New DesignLine: {nl:#?}");
                 fractal_app.fractals[fractal_app.fractal_index]
                     .design_lines
                     .push(*nl);
@@ -189,7 +207,7 @@ pub fn handle_line_style_change(fractal_app: &mut FractalApp) {
             for dl in not_base_lines {
                 match closest_line_handle(base_tip, dl, f32::MAX, false) {
                     None => log::warn!("A closest line should always be found here"),
-                    Some(handle) => {
+                    Some((handle, _)) => {
                         if handle == 1 {
                             dl.line.swap(0, 1);
                             dl.reversed = !dl.reversed;
