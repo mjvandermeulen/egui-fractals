@@ -1,5 +1,3 @@
-use std::char::MAX;
-
 use super::structs::VectoredDesignLine;
 use super::{DesignLine, LinesStyle};
 use crate::FractalApp;
@@ -164,7 +162,7 @@ pub fn continue_dragging_line_end(
 }
 
 pub fn draw_new_line(
-    // change new line depeding on LineStyle TODO!!!!!
+    // draw new line depending on LineStyle TODO!!!!!
     ui: &egui::Ui,
     fractal_app: &mut FractalApp,
     cd_response: &Response,
@@ -198,6 +196,44 @@ pub fn draw_new_line(
     true
 }
 
+pub fn make_loop(fractal_app: &mut FractalApp) {
+    let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
+    let base = fractal.design_lines[0];
+    let mut remaining_lines = fractal.design_lines.split_off(1);
+    let mut new_dls: Vec<DesignLine> = Vec::with_capacity(remaining_lines.len());
+
+    let mut current_pos = base.line[1];
+    while !remaining_lines.is_empty() {
+        match closest_handle(current_pos, &remaining_lines, f32::MAX, &LinesStyle::Free) {
+            None => {
+                // TODO!! replace all over: closest => nearest
+                log::warn!("A closest line should always be found here");
+                break;
+            }
+            Some([index, handle]) => {
+                let mut dl = remaining_lines.remove(index);
+                if handle == 1 {
+                    dl.line.swap(0, 1);
+                    dl.reversed = !dl.reversed;
+                }
+                dl.line[0] = current_pos;
+                current_pos = dl.line[1];
+                new_dls.push(dl);
+            }
+        }
+    }
+    let new_len = new_dls.len();
+    if new_len > 1 && new_dls[new_len - 1].line[0] == base.line[0] {
+        // the last line would disappear
+        new_dls[new_len - 2].line[1] = new_dls[new_len - 1].line[1];
+        new_dls[new_len - 1].line[0] = new_dls[new_len - 1].line[1];
+    }
+    if new_len > 0 {
+        new_dls[new_len - 1].line[1] = base.line[0]; // close the loop
+    }
+    fractal.design_lines.extend(new_dls);
+}
+
 pub fn handle_line_style_change(fractal_app: &mut FractalApp) {
     // TODO!!!!! avoid lines of zero length
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
@@ -220,42 +256,7 @@ pub fn handle_line_style_change(fractal_app: &mut FractalApp) {
             }
         }
         LinesStyle::Loop => {
-            let base = fractal.design_lines[0];
-            let mut remaining_lines = fractal.design_lines.split_off(1);
-            let mut new_dls: Vec<DesignLine> = Vec::with_capacity(remaining_lines.len());
-
-            let mut current_pos = base.line[1];
-            while !remaining_lines.is_empty() {
-                match closest_handle(current_pos, &remaining_lines, f32::MAX, &LinesStyle::Free) {
-                    None => {
-                        log::warn!("A closest line should always be found here");
-                        break;
-                    }
-                    Some([index, handle]) => {
-                        let mut dl = remaining_lines.remove(index);
-                        if handle == 1 {
-                            dl.line.swap(0, 1);
-                            dl.reversed = !dl.reversed;
-                        }
-                        dl.line[0] = current_pos;
-                        current_pos = dl.line[1];
-                        new_dls.push(dl);
-                    }
-                }
-            }
-            let new_len = new_dls.len();
-            if new_len > 1 {
-                if new_dls[new_len - 1].line[0] == base.line[0] {
-                    // the last line would disappear
-                    new_dls[new_len - 2].line[1] = new_dls[new_len - 1].line[1];
-                    new_dls[new_len - 1].line[0] = new_dls[new_len - 1].line[1];
-                }
-                if new_len > 0 {
-                    new_dls[new_len - 1].line[1] = base.line[0]; // close the loop
-                }
-                fractal.design_lines.extend(new_dls);
-                log::info!("line style changed to Loop");
-            }
+            make_loop(fractal_app);
         }
     }
 }
