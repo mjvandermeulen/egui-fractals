@@ -4,7 +4,7 @@ use egui::{NumExt as _, Rect, emath::RectTransform};
 use crate::{
     FractalApp,
     fractal_app::{
-        design_helpers::{closest_handle, closest_line, continue_dragging_line_end, draw_new_line},
+        design_helpers::{closest_line, continue_dragging_line_end, draw_new_line},
         tools::max_depth_with_branches,
     },
 };
@@ -143,17 +143,19 @@ pub fn handle_mouse_input(
         });
         if let Some(hover_line_index) = fractal_app.hovered_line {
             fractal_app.hovered_line = Some(hover_line_index);
+
             if click_and_drag_response.is_pointer_button_down_on() {
                 // is_pointer_down vs dragged: see tool tip on `dragged`. We don't want a delay.
                 if fractal_app.dragged_line_end_point.is_none() // this has to be the case, see above logic
-                    && let Some(screenpos) = click_and_drag_response.interact_pointer_pos()
+                && let Some(screenpos) = click_and_drag_response.interact_pointer_pos()
                 {
                     let local_pos = from_screen * screenpos;
-                    fractal_app.dragged_line_end_point = closest_handle(
-                        local_pos,
-                        &fractal.design_lines[..fractal.design_lines.len()],
-                        &fractal.lines_style,
-                    );
+                    // TODO!!!!! only allow changes on the hovered_line
+                    // fractal_app.dragged_line_end_point = closest_handle(
+                    //     local_pos,
+                    //     &fractal.design_lines[..fractal.design_lines.len()],
+                    //     &fractal.lines_style,
+                    // );
                 }
             } else if click_and_drag_response.double_clicked() {
                 let design_lines =

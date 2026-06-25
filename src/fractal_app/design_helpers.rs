@@ -1,3 +1,5 @@
+use std::char::MAX;
+
 use super::structs::VectoredDesignLine;
 use super::{DesignLine, LinesStyle};
 use crate::FractalApp;
@@ -24,29 +26,25 @@ use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
 //     }
 // }
 
-pub fn closest_handle(
+pub fn closest_line_handle(
     local_pos: Pos2,
-    d_lines: &[DesignLine],
-    lines_style: &LinesStyle,
-) -> Option<[usize; 2]> {
-    let mut min: f32 = 0.05;
-    let mut nearest: Option<[usize; 2]> = None;
-    for (line_index, design_line) in d_lines.iter().enumerate() {
-        for (end_index, end_point) in design_line.line.iter().enumerate() {
-            if end_index == 0
-                && ((*lines_style == LinesStyle::Tree && line_index != 0)
-                    || *lines_style == LinesStyle::Loop)
-            {
-                continue;
-            }
-            let d = local_pos.distance(*end_point);
-            if d <= min && d < 0.05 {
-                min = d;
-                nearest = Some([line_index, end_index]);
-            }
+    dl: &DesignLine,
+    threshold: f32,
+    tip_only: bool, // index == 1
+) -> Option<usize> {
+    let mut min = threshold;
+    let mut nearest_end: Option<usize> = None;
+    for (end_index, end_point) in dl.line.iter().enumerate() {
+        if end_index == 0 && tip_only {
+            continue;
+        }
+        let d = local_pos.distance(*end_point);
+        if d <= min {
+            min = d;
+            nearest_end = Some(end_index);
         }
     }
-    nearest
+    nearest_end
 }
 
 pub fn design_lines_to_global_design_vectors(
@@ -179,4 +177,29 @@ pub fn draw_new_line(
         }
     }
     true
+}
+
+pub fn handle_line_style_change(fractal_app: &mut FractalApp) {
+    let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
+    match fractal.lines_style {
+        LinesStyle::Free => {}
+        LinesStyle::Tree => {
+            let (base, not_base_lines) = fractal.design_lines.split_at_mut(1);
+            let base_tip = base[0].line[1];
+            for dl in not_base_lines {
+                match closest_line_handle(base_tip, dl, f32::MAX, false) {
+                    None => log::warn!("A closest line should always be found here"),
+                    Some(handle) => {
+                        if handle == 1 {
+                            dl.line.swap(0, 1);
+                            dl.reversed = !dl.reversed;
+                        }
+                        dl.line[0] = base_tip;
+                    }
+                }
+            }
+            log::info!("line style changed to Tree");
+        }
+        LinesStyle::Loop => log::info!("line style changed to Loop"),
+    }
 }
