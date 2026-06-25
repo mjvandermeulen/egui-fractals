@@ -24,29 +24,44 @@ use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
 //     }
 // }
 
-pub fn closest_handle(
+pub fn closest_line_handle(
     local_pos: Pos2,
-    d_lines: &[DesignLine],
-    lines_style: &LinesStyle,
-) -> Option<[usize; 2]> {
-    let mut min: f32 = 0.05;
-    let mut nearest: Option<[usize; 2]> = None;
-    for (line_index, design_line) in d_lines.iter().enumerate() {
-        for (end_index, end_point) in design_line.line.iter().enumerate() {
-            if end_index == 0
-                && ((*lines_style == LinesStyle::Tree && line_index != 0)
-                    || *lines_style == LinesStyle::Loop)
-            {
-                continue;
-            }
-            let d = local_pos.distance(*end_point);
-            if d <= min && d < 0.05 {
-                min = d;
-                nearest = Some([line_index, end_index]);
-            }
+    dl: &DesignLine,
+    threshold: f32,
+    tip_only: bool, // index == 1
+) -> Option<(usize, f32)> {
+    let mut min = threshold;
+    let mut result: Option<(usize, f32)> = None;
+    for (end_index, end_point) in dl.line.iter().enumerate() {
+        if end_index == 0 && tip_only {
+            continue;
+        }
+        let d = local_pos.distance(*end_point);
+        if d <= min {
+            min = d;
+            result = Some((end_index, min));
         }
     }
-    nearest
+    result
+}
+
+pub fn closest_handle(
+    local_pos: Pos2,
+    dlines: &[DesignLine],
+    threshold: f32,
+    lines_style: &LinesStyle,
+) -> Option<[usize; 2]> {
+    let mut min = threshold;
+    let mut nearest_handle: Option<[usize; 2]> = None;
+    for (i, dl) in dlines.iter().enumerate() {
+        let tip_only =
+            (*lines_style == LinesStyle::Tree && i != 0) || *lines_style == LinesStyle::Loop;
+        if let Some((closest, dist)) = closest_line_handle(local_pos, dl, min, tip_only) {
+            min = dist;
+            nearest_handle = Some([i, closest]);
+        }
+    }
+    nearest_handle
 }
 
 pub fn design_lines_to_global_design_vectors(
@@ -147,6 +162,7 @@ pub fn continue_dragging_line_end(
 }
 
 pub fn draw_new_line(
+    // draw new line depending on LineStyle TODO!!!!!
     ui: &egui::Ui,
     fractal_app: &mut FractalApp,
     cd_response: &Response,
@@ -170,7 +186,6 @@ pub fn draw_new_line(
             if cd_response.is_pointer_button_down_on() {
                 nl.line[1] = hover_pos;
             } else {
-                log::info!("New DesignLine: {nl:#?}");
                 fractal_app.fractals[fractal_app.fractal_index]
                     .design_lines
                     .push(*nl);
@@ -179,4 +194,69 @@ pub fn draw_new_line(
         }
     }
     true
+}
+
+pub fn make_loop(fractal_app: &mut FractalApp) {
+    let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
+    let base = fractal.design_lines[0];
+    let mut remaining_lines = fractal.design_lines.split_off(1);
+    let mut new_dls: Vec<DesignLine> = Vec::with_capacity(remaining_lines.len());
+
+    let mut current_pos = base.line[1];
+    while !remaining_lines.is_empty() {
+        match closest_handle(current_pos, &remaining_lines, f32::MAX, &LinesStyle::Free) {
+            None => {
+                // TODO!! replace all over: closest => nearest
+                log::warn!("A closest line should always be found here");
+                break;
+            }
+            Some([index, handle]) => {
+                let mut dl = remaining_lines.remove(index);
+                if handle == 1 {
+                    dl.line.swap(0, 1);
+                    dl.reversed = !dl.reversed;
+                }
+                dl.line[0] = current_pos;
+                current_pos = dl.line[1];
+                new_dls.push(dl);
+            }
+        }
+    }
+    let new_len = new_dls.len();
+    if new_len > 1 && new_dls[new_len - 1].line[0] == base.line[0] {
+        // the last line would disappear
+        new_dls[new_len - 2].line[1] = new_dls[new_len - 1].line[1];
+        new_dls[new_len - 1].line[0] = new_dls[new_len - 1].line[1];
+    }
+    if new_len > 0 {
+        new_dls[new_len - 1].line[1] = base.line[0]; // close the loop
+    }
+    fractal.design_lines.extend(new_dls);
+}
+
+pub fn handle_line_style_change(fractal_app: &mut FractalApp) {
+    // TODO!!!!! avoid lines of zero length
+    let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
+    match fractal.lines_style {
+        LinesStyle::Free => {}
+        LinesStyle::Tree => {
+            let (base, not_base_lines) = fractal.design_lines.split_at_mut(1);
+            let base_tip = base[0].line[1];
+            for dl in not_base_lines {
+                match closest_line_handle(base_tip, dl, f32::MAX, false) {
+                    None => log::warn!("A closest line should always be found here"),
+                    Some((handle, _)) => {
+                        if handle == 1 {
+                            dl.line.swap(0, 1);
+                            dl.reversed = !dl.reversed;
+                        }
+                        dl.line[0] = base_tip;
+                    }
+                }
+            }
+        }
+        LinesStyle::Loop => {
+            make_loop(fractal_app);
+        }
+    }
 }

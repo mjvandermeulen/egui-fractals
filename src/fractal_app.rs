@@ -18,6 +18,7 @@ use structs::{Fractal, LineTransform, LinesStyle, Node, VectoredDesignLine};
 use tools::max_depth_with_branches;
 
 use crate::fractal_app::{
+    design_helpers::handle_line_style_change,
     design_input::{handle_keyboard_input, handle_mouse_input},
     fractals::fractals,
     structs::DesignLine,
@@ -327,11 +328,15 @@ impl eframe::App for FractalApp {
         // Make sure we allocate what we used (everything)
         ui.expand_to_include_rect(painter.clip_rect());
 
+        let lines_style = self.fractals[self.fractal_index].lines_style;
         Frame::popup(ui.style())
             .stroke(Stroke::NONE)
             .show(ui, |ui| {
                 ui.set_max_width(270.0);
                 CollapsingHeader::new("Settings").show(ui, |ui| self.options_ui(ui));
             });
+        if lines_style != self.fractals[self.fractal_index].lines_style {
+            handle_line_style_change(self);
+        }
     }
 }
