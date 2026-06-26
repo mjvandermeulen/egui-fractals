@@ -2,7 +2,7 @@ use super::structs::VectoredDesignLine;
 use super::{DesignLine, LinesStyle};
 use crate::FractalApp;
 use egui::Response;
-use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
+use egui::{emath::RectTransform, Color32, Painter, Pos2, Stroke};
 
 // pub fn paint_line_handles(
 //     painter: &Painter,
@@ -236,7 +236,6 @@ pub fn make_loop(fractal_app: &mut FractalApp) {
 }
 
 pub fn handle_line_style_change(fractal_app: &mut FractalApp) {
-    // TODO!!!!! avoid lines of zero length
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
     match fractal.lines_style {
         LinesStyle::Free => {}

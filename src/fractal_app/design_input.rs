@@ -5,8 +5,7 @@ use crate::{
     FractalApp,
     fractal_app::{
         design_helpers::{
-            closest_handle, closest_line, closest_line_handle, continue_dragging_line_end,
-            draw_new_line, make_loop,
+            closest_line, closest_line_handle, continue_dragging_line_end, draw_new_line, make_loop,
         },
         structs::LinesStyle,
         tools::max_depth_with_branches,

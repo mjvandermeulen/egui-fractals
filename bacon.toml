@@ -97,6 +97,16 @@ need_stdout = true
 allow_warnings = true
 background = true
 
+[jobs.run-with-info-logs-only]
+command = [
+    "cargo", "run",
+    # put launch parameters for your program behind a `--` separator
+]
+env = { RUST_LOG = "info" } 
+need_stdout = true
+allow_warnings = true
+background = true
+
 # Run your long-running application (eg server) and have the result displayed in bacon.
 # For programs that never stop (eg a server), `background` is set to false
 # to have the cargo run output immediately displayed instead of waiting for
@@ -135,4 +145,5 @@ allow_warnings = true
 # alt-m = "job:my-job"
 c = "job:clippy-all" # comment this to have 'c' run clippy on only the default target
 p = "job:pedantic" 
+f = "job:run-with-info-logs-only"
 l = "job:run-with-log"
