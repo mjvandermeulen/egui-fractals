@@ -54,6 +54,7 @@ pub fn closest_handle(
     let mut min = threshold;
     let mut nearest_handle: Option<[usize; 2]> = None;
     for (i, dl) in dlines.iter().enumerate() {
+        // TODO!!!! outdated, from before the time that first the line gets selected and then the handle
         let tip_only =
             (*lines_style == LinesStyle::Tree && i != 0) || *lines_style == LinesStyle::Loop;
         if let Some((closest, dist)) = closest_line_handle(local_pos, dl, min, tip_only) {
@@ -130,7 +131,7 @@ pub fn continue_dragging_line_end(
     from_screen: RectTransform,
     to_screen: RectTransform,
     click_and_drag_response: &Response,
-    line: usize,
+    mut line: usize,
     end: usize,
 ) {
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
@@ -140,10 +141,10 @@ pub fn continue_dragging_line_end(
         * (to_screen * fractal.design_lines[line].line[end]
             + tuning_ratio * click_and_drag_response.drag_delta());
     if fractal.lines_style == LinesStyle::Loop {
-        debug_assert_ne!(
-            end, 0,
-            "Loop style expects that the start point of a line can not be dragged"
-        );
+        if end == 0 {
+            // move the previous line tip (index == 1)
+            line = (line + fractal.design_lines.len() - 1) % (fractal.design_lines.len());
+        }
         fractal.design_lines[line].line[1] = new_point;
         let next_line_index = (line + 1) % (fractal.design_lines.len());
         fractal.design_lines[next_line_index].line[0] = new_point;
