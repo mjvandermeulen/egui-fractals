@@ -2,6 +2,32 @@
 
 A simple app to desing line segment fractals.
 
+## how to design fractals:
+
+- select a starter fractal
+- drag the line ends of the design lines
+- play with depth, etc etc
+
+### important keys:
+
+<!-- | Key     |  |
+| ------- | -------- |
+| Row 1 A | Row 1 B  |
+| Row 2 A | Row 2 B  | -->
+
+- d(D): show design (toggle)
+- n: draw a **n**ew line, while holding this key down
+- t: trash a line by double clicking on the line, while holding this key down
+- up/ down: to change depth
+- 1..7 to set depth
+- 8 half of 9
+- 9 set depth to max allowed
+
+### important mouse actions:
+
+- drag any line end
+- double click on a line, to reverse it. (or delete it while holding down "t")
+
 ## run
 
 ### local:

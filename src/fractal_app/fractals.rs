@@ -13,10 +13,10 @@ pub fn fractals() -> Vec<Fractal> {
                     line: [pos2(0.0, 0.0), pos2(0.0, -1.0)],
                     reversed: false,
                 },
-                // DesignLine {
-                //     line: [pos2(0.0, -1.0), pos2(0.5, -1.5)],
-                //     reversed: false,
-                // },
+                DesignLine {
+                    line: [pos2(0.0, -1.0), pos2(0.5, -1.5)],
+                    reversed: false,
+                },
             ],
             replace_line: false,
             lines_style: LinesStyle::Free,

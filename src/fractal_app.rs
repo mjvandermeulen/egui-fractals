@@ -134,6 +134,10 @@ impl FractalApp {
             "https://github.com/mjvandermeulen/egui-fractals/blob/main/",
             "Source code."
         ));
+        ui.hyperlink_to(
+            "README.md (with Instructions)",
+            "https://github.com/mjvandermeulen/egui-fractals/blob/main/",
+        );
     }
 
     fn design(&mut self, ui: &Ui, painter: &Painter) -> Vec<VectoredDesignLine> {
