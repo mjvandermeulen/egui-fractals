@@ -54,7 +54,7 @@ pub fn closest_handle(
     let mut min = threshold;
     let mut nearest_handle: Option<[usize; 2]> = None;
     for (i, dl) in dlines.iter().enumerate() {
-        // TODO!!!! outdated, from before the time that first the line gets selected and then the handle
+        // TODO!!! outdated, from before the time that first the line gets selected and then the handle
         let tip_only =
             (*lines_style == LinesStyle::Tree && i != 0) || *lines_style == LinesStyle::Loop;
         if let Some((closest, dist)) = closest_line_handle(local_pos, dl, min, tip_only) {

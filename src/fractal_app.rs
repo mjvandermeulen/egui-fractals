@@ -150,15 +150,22 @@ impl FractalApp {
         // NOTE: The line above is the last time fractal is used and the compiler "releases" the 1 mut ref only requirement.
 
         handle_mouse_input(ui, self, to_screen, painter.clip_rect());
+        let fractal = &mut self.fractals[self.fractal_index]; // LEARN: moving out of a mut reference by taking ownership (again) see NOTE above.
+        let mut current_dls = fractal.design_lines.clone();
+        if let Some(new_line) = self.new_line {
+            current_dls.push(new_line);
+        }
 
         // update depth TODO!!!!!
 
-        let fractal = &mut self.fractals[self.fractal_index]; // LEARN: moving out of a mut reference by taking ownership (again) see NOTE above.
-        let mut temp_dls = fractal.design_lines.clone();
-        if let Some(nl) = self.new_line {
-            temp_dls.push(nl);
-        }
-        design_lines_to_global_design_vectors(&temp_dls, to_screen)
+        fractal.depth = fractal.depth.at_most(max_depth_with_branches(
+            MAX_PAINTED_LINE_COUNT,
+            current_dls.len() - 1,
+            fractal.mirror,
+            fractal.replace_line,
+        ));
+
+        design_lines_to_global_design_vectors(&current_dls, to_screen)
     }
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredDesignLine]) {
