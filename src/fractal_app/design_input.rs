@@ -44,13 +44,11 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
             }
         });
         // up and down arrows
-        if fractal.depth > 0 //clamping doesn't avoid a usize overflow soon enough
-                && ui.input_mut(|i| i.key_pressed(egui::Key::ArrowDown))
-        {
-            fractal.depth = (fractal.depth - 1).clamp(0, max_depth);
+        if ui.input_mut(|i| i.key_pressed(egui::Key::ArrowDown)) {
+            fractal.depth = fractal.depth.at_least(1) - 1; // avoid subtract with overflow
         }
         if ui.input_mut(|i| i.key_pressed(egui::Key::ArrowUp)) {
-            fractal.depth = (fractal.depth + 1).clamp(0, max_depth);
+            fractal.depth = (fractal.depth + 1).at_most(max_depth);
         }
     }
 
