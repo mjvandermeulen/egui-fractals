@@ -4,6 +4,7 @@
 
 ## NOW
 
+- [ ] reset Zoom button
 - [ ] fractals. START ALL WITH ONLY DEPTH = 1. NO SPOILER
     - [ ] twig
     - [ ] tree
@@ -27,7 +28,7 @@
 
 ## LATER
 
-- [ ] add branches by drawing
+- [x] add branches by drawing
 
 ## MUCH LATER
 
