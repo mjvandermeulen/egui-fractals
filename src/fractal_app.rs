@@ -7,11 +7,11 @@ mod tools;
 
 use design_helpers::{design_lines_to_global_design_vectors, paint_directed_line_segment};
 use egui::{
-    Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
     emath::{self},
     pos2,
     widgets::Slider,
+    Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
 };
 use paint_fractal_helpers::line_color;
 use structs::{Fractal, LineTransform, LinesStyle, Node, VectoredDesignLine};
@@ -95,11 +95,22 @@ impl FractalApp {
         if ui
             .add_enabled(
                 *fractal != Self::default().fractals[self.fractal_index],
-                Button::new(format!("Reset {}", fractal.name)), // TODO change text with drop down menu name
+                Button::new(format!("Reset {}", fractal.name)),
             )
             .clicked()
         {
             *fractal = Self::default().fractals[self.fractal_index].clone();
+        }
+        if ui
+            .add_enabled(
+                fractal.zoom != Self::default().fractals[self.fractal_index].zoom
+                    || fractal.center != Self::default().fractals[self.fractal_index].center, // TODO!! and scroll
+                Button::new("Reset Zoom"),
+            )
+            .clicked()
+        {
+            fractal.zoom = Self::default().fractals[self.fractal_index].zoom;
+            fractal.center = Self::default().fractals[self.fractal_index].center;
         }
 
         let max_depth = max_depth_with_branches(
@@ -159,8 +170,6 @@ impl FractalApp {
         if let Some(new_line) = self.new_line {
             current_dls.push(new_line);
         }
-
-        // update depth TODO!!!!!
 
         fractal.depth = fractal.depth.at_most(max_depth_with_branches(
             MAX_PAINTED_LINE_COUNT,

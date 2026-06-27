@@ -2,7 +2,7 @@ use super::structs::VectoredDesignLine;
 use super::{DesignLine, LinesStyle};
 use crate::FractalApp;
 use egui::Response;
-use egui::{emath::RectTransform, Color32, Painter, Pos2, Stroke};
+use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
 
 // pub fn paint_line_handles(
 //     painter: &Painter,
@@ -28,14 +28,10 @@ pub fn closest_line_handle(
     local_pos: Pos2,
     dl: &DesignLine,
     threshold: f32,
-    tip_only: bool, // index == 1
 ) -> Option<(usize, f32)> {
     let mut min = threshold;
     let mut result: Option<(usize, f32)> = None;
     for (end_index, end_point) in dl.line.iter().enumerate() {
-        if end_index == 0 && tip_only {
-            continue;
-        }
         let d = local_pos.distance(*end_point);
         if d <= min {
             min = d;
@@ -49,15 +45,11 @@ pub fn closest_handle(
     local_pos: Pos2,
     dlines: &[DesignLine],
     threshold: f32,
-    lines_style: &LinesStyle,
 ) -> Option<[usize; 2]> {
     let mut min = threshold;
     let mut nearest_handle: Option<[usize; 2]> = None;
     for (i, dl) in dlines.iter().enumerate() {
-        // TODO!!! outdated, from before the time that first the line gets selected and then the handle
-        let tip_only =
-            (*lines_style == LinesStyle::Tree && i != 0) || *lines_style == LinesStyle::Loop;
-        if let Some((closest, dist)) = closest_line_handle(local_pos, dl, min, tip_only) {
+        if let Some((closest, dist)) = closest_line_handle(local_pos, dl, min) {
             min = dist;
             nearest_handle = Some([i, closest]);
         }
@@ -205,7 +197,7 @@ pub fn make_loop(fractal_app: &mut FractalApp) {
 
     let mut current_pos = base.line[1];
     while !remaining_lines.is_empty() {
-        match closest_handle(current_pos, &remaining_lines, f32::MAX, &LinesStyle::Free) {
+        match closest_handle(current_pos, &remaining_lines, f32::MAX) {
             None => {
                 // TODO!! replace all over: closest => nearest
                 log::warn!("A closest line should always be found here");
@@ -243,7 +235,7 @@ pub fn handle_line_style_change(fractal_app: &mut FractalApp) {
             let (base, not_base_lines) = fractal.design_lines.split_at_mut(1);
             let base_tip = base[0].line[1];
             for dl in not_base_lines {
-                match closest_line_handle(base_tip, dl, f32::MAX, false) {
+                match closest_line_handle(base_tip, dl, f32::MAX) {
                     None => log::warn!("A closest line should always be found here"),
                     Some((handle, _)) => {
                         if handle == 1 {

@@ -136,10 +136,8 @@ pub fn handle_mouse_input(
             }
             for event in &input.events {
                 if let egui::Event::MouseWheel { delta, .. } = event {
-                    // 'delta.y' is the vertical scroll (Mac trackpad two-finger vertical)
-                    // 'delta.x' is the horizontal scroll (Mac trackpad two-finger horizontal)
                     fractal.center += from_screen.scale().x * (-1.0 * *delta);
-                    // TODO: turn off fractal_app.hovered_line
+                    // TODO: turn off fractal_app.hovered_line? see note above
                     return;
                 }
             }
@@ -157,7 +155,6 @@ pub fn handle_mouse_input(
                         local_pos,
                         &fractal.design_lines[hover_line_index],
                         f32::MAX,
-                        false,
                     ) {
                         fractal_app.dragged_line_end_point = Some([hover_line_index, handle]);
                     }
