@@ -1,13 +1,11 @@
 mod design_helpers;
+mod design_input;
 mod fractals;
 mod paint_fractal_helpers;
 mod structs;
 mod tools;
 
-use design_helpers::{
-    closest_handle, closest_line, design_lines_to_global_design_vectors,
-    paint_directed_line_segment,
-};
+use design_helpers::{design_lines_to_global_design_vectors, paint_directed_line_segment};
 use egui::{
     Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
@@ -19,7 +17,12 @@ use paint_fractal_helpers::line_color;
 use structs::{Fractal, LineTransform, LinesStyle, Node, VectoredDesignLine};
 use tools::max_depth_with_branches;
 
-use crate::fractal_app::{fractals::fractals, structs::DesignLine};
+use crate::fractal_app::{
+    design_helpers::handle_line_style_change,
+    design_input::{handle_keyboard_input, handle_mouse_input},
+    fractals::fractals,
+    structs::DesignLine,
+};
 
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
 
@@ -28,10 +31,20 @@ const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 +
 pub struct FractalApp {
     fractals: Vec<Fractal>,
     fractal_index: usize,
-    fine_tune: bool,
+    #[serde(skip)]
     line_count: usize,
+    #[serde(skip)]
+    fine_tune: bool, // turn into f32 for normal 1.0, ten times (Alt) 10.0 and 100 times (Ctrl) 100.0
+    #[serde(skip)]
     dragged_line_end_point: Option<[usize; 2]>, // Add option for incorrect drag. Now it catches an endpoint when dragging over it, after starting in the middle of nowhere :)
+    #[serde(skip)]
     show_design_only: bool,
+    #[serde(skip)]
+    new_line_key_down: bool,
+    #[serde(skip)]
+    trash_line_key_down: bool,
+    #[serde(skip)]
+    hovered_line: Option<usize>, // for coloring the hovered line neon green.
 }
 
 impl Default for FractalApp {
@@ -43,6 +56,9 @@ impl Default for FractalApp {
             show_design_only: false,
             fine_tune: false,
             dragged_line_end_point: None,
+            new_line_key_down: false,
+            trash_line_key_down: false,
+            hovered_line: None,
         }
     }
 }
@@ -76,16 +92,27 @@ impl FractalApp {
         if ui
             .add_enabled(
                 *fractal != Self::default().fractals[self.fractal_index],
-                Button::new(format!("Reset {}", fractal.name)), // TODO change text with drop down menu name
+                Button::new(format!("Reset {}", fractal.name)),
             )
             .clicked()
         {
             *fractal = Self::default().fractals[self.fractal_index].clone();
         }
+        if ui
+            .add_enabled(
+                fractal.zoom != Self::default().fractals[self.fractal_index].zoom
+                    || fractal.center != Self::default().fractals[self.fractal_index].center, // TODO!! and scroll
+                Button::new("Reset Zoom"),
+            )
+            .clicked()
+        {
+            fractal.zoom = Self::default().fractals[self.fractal_index].zoom;
+            fractal.center = Self::default().fractals[self.fractal_index].center;
+        }
 
         let max_depth = max_depth_with_branches(
             MAX_PAINTED_LINE_COUNT,
-            fractal.design_line_count,
+            fractal.design_lines.len() - 1,
             fractal.mirror,
             fractal.replace_line,
         );
@@ -94,11 +121,6 @@ impl FractalApp {
         ui.checkbox(&mut fractal.replace_line, "Replace parent with children");
         ui.checkbox(&mut fractal.mirror, "Mirror");
         ui.checkbox(&mut fractal.rainbow, "Rainbow");
-        let iterator_count = &fractal.design_lines.len() - 1;
-        ui.add(
-            Slider::new(&mut fractal.design_line_count, 1..=iterator_count)
-                .text("Design line count"),
-        );
         ui.radio_value(&mut fractal.lines_style, LinesStyle::Free, "Free");
         ui.radio_value(&mut fractal.lines_style, LinesStyle::Tree, "Tree");
         ui.radio_value(&mut fractal.lines_style, LinesStyle::Loop, "Loop");
@@ -120,11 +142,16 @@ impl FractalApp {
             "https://github.com/mjvandermeulen/egui-fractals/blob/main/",
             "Source code."
         ));
+        ui.hyperlink_to(
+            "README.md (with Instructions)",
+            "https://github.com/mjvandermeulen/egui-fractals/blob/main/",
+        );
     }
 
     fn design(&mut self, ui: &Ui, painter: &Painter) -> Vec<VectoredDesignLine> {
-        let fractal = &mut self.fractals[self.fractal_index];
+        handle_keyboard_input(ui, self);
 
+        let fractal = &mut self.fractals[self.fractal_index];
         let to_screen = emath::RectTransform::from_to(
             Rect::from_center_size(
                 pos2(fractal.center.x, fractal.center.y),
@@ -132,155 +159,33 @@ impl FractalApp {
             ),
             painter.clip_rect(),
         );
-        let from_screen = to_screen.inverse();
+        // NOTE: The line above is the last time fractal is used and the compiler "releases" the 1 mut ref only requirement.
 
-        let rect = painter.clip_rect();
-        let id = ui.make_persistent_id("design_painter_interaction");
+        handle_mouse_input(ui, self, to_screen, painter.clip_rect());
+        let fractal = &mut self.fractals[self.fractal_index]; // LEARN: moving out of a mut reference by taking ownership (again) see NOTE above.
 
-        // Keyboard Input
+        fractal.depth = fractal.depth.at_most(max_depth_with_branches(
+            MAX_PAINTED_LINE_COUNT,
+            fractal.design_lines.len() - 1,
+            fractal.mirror,
+            fractal.replace_line,
+        ));
 
-        // https://github.com/emilk/egui/discussions/1464 -> if. fine tuned with gemini. Maarten.
-        if ui.ctx().memory(|mem| mem.focused()).is_none() {
-            let max_depth = max_depth_with_branches(
-                MAX_PAINTED_LINE_COUNT,
-                fractal.design_line_count,
-                fractal.mirror,
-                fractal.replace_line,
-            );
-            // read number keys
-            ui.ctx().input(|i| {
-                for event in &i.events {
-                    if let egui::Event::Text(text) = event {
-                        // Check if the typed character is a digit
-                        if text.chars().any(|c| c.is_ascii_digit())
-                            && let Ok(number) = text.parse::<usize>()
-                        {
-                            if number == 9 {
-                                fractal.depth = max_depth;
-                            } else if number == 8 {
-                                // NOTE: max_depth could be < 8, so you can't clamp(8, max_depth);
-                                fractal.depth = (max_depth / 2).at_least(8).clamp(0, max_depth);
-                            } else {
-                                fractal.depth = number.clamp(0, max_depth);
-                            }
-                        }
-                    }
-                }
-            });
-            // up and down arrows
-            if fractal.depth > 0 //clamping doesn't avoid a usize overflow soon enough
-                && ui.input_mut(|i| i.key_pressed(egui::Key::ArrowDown))
-            {
-                fractal.depth = (fractal.depth - 1).clamp(0, max_depth);
-            }
-            if ui.input_mut(|i| i.key_pressed(egui::Key::ArrowUp)) {
-                fractal.depth = (fractal.depth + 1).clamp(0, max_depth);
-            }
-        }
-
-        // d (design)
-
-        if ui.input(|i| i.modifiers.shift_only()) {
-            // shift down
-            if ui.input(|i| i.key_pressed(egui::Key::D)) {
-                self.show_design_only = !self.show_design_only;
-            }
-        } else {
-            // shift up
-            if ui.input(|i| i.key_down(egui::Key::D)) {
-                self.show_design_only = true;
-            } else if ui.input(|i| i.key_released(egui::Key::D)) {
-                self.show_design_only = false;
-            }
-        }
-        // l (log a fractal dump)
-        if ui.input(|i| i.key_down(egui::Key::L)) {
-            log::info!("Log a dump of the current fractal: {fractal:#?}",);
-        }
-
-        self.fine_tune = ui.input(|i| i.modifiers.ctrl);
-
-        // Mouse input
-
-        let scroll_response = ui.interact(rect, id, egui::Sense::hover());
-        if scroll_response.hovered() {
-            ui.input(|input| {
-                for event in &input.events {
-                    if let egui::Event::MouseWheel { delta, .. } = event {
-                        // 'delta.y' is the vertical scroll (Mac trackpad two-finger vertical)
-                        // 'delta.x' is the horizontal scroll (Mac trackpad two-finger horizontal)
-                        fractal.center += from_screen.scale().x * (-1.0 * *delta);
-                    } else {
-                        let zoom_delta = input.zoom_delta();
-                        if zoom_delta != 1.0 {
-                            fractal.zoom *= zoom_delta;
-                        }
-                    }
-                }
-            });
-        }
-
-        let click_and_drag_response = ui.interact(rect, id, egui::Sense::click_and_drag());
-        if click_and_drag_response.is_pointer_button_down_on() {
-            // is_pointer_down vs dragged: see tool tip on `dragged`. We don't want a delay.
-            if self.dragged_line_end_point.is_none()
-                && let Some(screenpos) = click_and_drag_response.interact_pointer_pos()
-            {
-                let local_pos = from_screen * screenpos;
-                self.dragged_line_end_point = closest_handle(
-                    local_pos,
-                    &fractal.design_lines[..fractal.design_line_count + 1],
-                    &fractal.lines_style,
-                );
-            }
-            if let Some([line, end]) = self.dragged_line_end_point {
-                let tuning_ratio = if self.fine_tune { 0.02 } else { 1.0 };
-                let new_point = from_screen
-                    * (to_screen * fractal.design_lines[line].line[end]
-                        + tuning_ratio * click_and_drag_response.drag_delta());
-                if fractal.lines_style == LinesStyle::Loop {
-                    debug_assert_ne!(
-                        end, 0,
-                        "Loop style expects that the start point of a line can not be dragged"
-                    );
-                    fractal.design_lines[line].line[1] = new_point;
-                    let next_line_index = (line + 1) % (fractal.design_line_count + 1);
-                    fractal.design_lines[next_line_index].line[0] = new_point;
-                } else if fractal.lines_style == LinesStyle::Tree {
-                    fractal.design_lines[line].line[end] = new_point;
-                    if line == 0 && end == 1 {
-                        fractal
-                            .design_lines
-                            .iter_mut()
-                            .skip(1)
-                            .for_each(|d_line| d_line.line[0] = new_point);
-                    }
-                } else {
-                    fractal.design_lines[line].line[end] = new_point;
-                }
-            }
-        } else {
-            self.dragged_line_end_point = None;
-            if click_and_drag_response.double_clicked()
-                && let Some(screen_pos) = ui.input(|i| i.pointer.hover_pos())
-            {
-                let pos = from_screen * screen_pos;
-                if let Some(i) = closest_line(pos, &fractal.design_lines) {
-                    fractal.design_lines[i].reversed = !fractal.design_lines[i].reversed;
-                }
-            }
-        }
-
-        design_lines_to_global_design_vectors(
-            &fractal.design_lines[..fractal.design_line_count + 1],
-            to_screen,
-        )
+        design_lines_to_global_design_vectors(&fractal.design_lines, to_screen)
     }
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredDesignLine]) {
         let fractal = &self.fractals[self.fractal_index];
+        let hovered_line_index = match self.hovered_line {
+            Some(hovered_line) => hovered_line,
+            None => design_vectors.len() + 1, // so it will never match the index
+        };
+        let highlight_color =
+            Color32::from_hex("#0FFF50").expect("Expected hex neon green to be parsed correctly");
         design_vectors.iter().enumerate().for_each(|(i, vec)| {
-            let (width, color) = if i == 0 {
+            let (width, color) = if i == hovered_line_index {
+                (fractal.start_line_width, highlight_color)
+            } else if i == 0 {
                 (fractal.start_line_width * 1.5, Color32::RED)
             } else {
                 (fractal.start_line_width, Color32::ORANGE)
@@ -291,7 +196,6 @@ impl FractalApp {
 
     fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredDesignLine]) {
         let fractal = &self.fractals[self.fractal_index];
-
         debug_assert!(
             fractal.depth
                 <= max_depth_with_branches(
@@ -416,7 +320,7 @@ impl eframe::App for FractalApp {
         fractal.depth = fractal.depth.at_most(max_depth_with_branches(
             // TODO move this to end of design. Add it to paint_fractal as a dbg assert
             MAX_PAINTED_LINE_COUNT,
-            fractal.design_line_count,
+            fractal.design_lines.len() - 1,
             fractal.mirror,
             fractal.replace_line,
         ));
@@ -427,24 +331,25 @@ impl eframe::App for FractalApp {
         );
 
         let design_vectors = self.design(ui, &painter);
+
         if self.show_design_only {
             self.paint_design(&painter, &design_vectors);
         } else {
             self.paint_fractal(&painter, &design_vectors);
         }
 
-        // if let Some(line) = self.hovered_design_line {
-        //     paint_directed_line_segment(&painter, dvec, width, color);
-        // }
-
         // Make sure we allocate what we used (everything)
         ui.expand_to_include_rect(painter.clip_rect());
 
+        let lines_style = self.fractals[self.fractal_index].lines_style;
         Frame::popup(ui.style())
             .stroke(Stroke::NONE)
             .show(ui, |ui| {
                 ui.set_max_width(270.0);
                 CollapsingHeader::new("Settings").show(ui, |ui| self.options_ui(ui));
             });
+        if lines_style != self.fractals[self.fractal_index].lines_style {
+            handle_line_style_change(self);
+        }
     }
 }
