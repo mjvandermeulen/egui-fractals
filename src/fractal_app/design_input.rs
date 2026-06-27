@@ -1,4 +1,4 @@
-use egui::{NumExt as _, Rect, emath::RectTransform};
+use egui::{NumExt as _, Rect, Response, emath::RectTransform};
 
 // TODO!!: change to super::
 use crate::{
@@ -35,9 +35,9 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
                             fractal.depth = max_depth;
                         } else if number == 8 {
                             // NOTE: max_depth could be < 8, so you can't clamp(8, max_depth);
-                            fractal.depth = (max_depth / 2).at_least(8).clamp(0, max_depth);
+                            fractal.depth = (max_depth / 2).at_least(8).at_most(max_depth);
                         } else {
-                            fractal.depth = number.clamp(0, max_depth);
+                            fractal.depth = number.at_most(max_depth);
                         }
                     }
                 }
@@ -142,38 +142,51 @@ pub fn handle_mouse_input(
                 }
             }
         });
-        if let Some(hover_line_index) = fractal_app.hovered_line {
-            fractal_app.hovered_line = Some(hover_line_index);
+        handle_hovered_line_mouse_input(fractal_app, &click_and_drag_response, from_screen);
+    }
+}
 
-            if click_and_drag_response.is_pointer_button_down_on() {
-                // is_pointer_down vs dragged: see tool tip on `dragged`. We don't want a delay.
-                if fractal_app.dragged_line_end_point.is_none() // this has to be the case, see above logic
+pub fn handle_hovered_line_mouse_input(
+    fractal_app: &mut FractalApp,
+    click_and_drag_response: &Response,
+    from_screen: RectTransform,
+) {
+    // LEARN let ... else
+    //   always needs a return
+    //   avoid heavy indentation by returning instead of skipping over an indented block
+    let Some(hover_line_index) = fractal_app.hovered_line else {
+        return;
+    };
+
+    let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
+
+    fractal_app.hovered_line = Some(hover_line_index);
+
+    if click_and_drag_response.is_pointer_button_down_on() {
+        // is_pointer_down vs dragged: see tool tip on `dragged`. We don't want a delay.
+        if fractal_app.dragged_line_end_point.is_none() // this has to be the case, see above logic
                 && let Some(screenpos) = click_and_drag_response.interact_pointer_pos()
-                {
-                    let local_pos = from_screen * screenpos; // NOTE: this should be the same as hover_pos...
-                    if let Some((handle, _)) = closest_line_handle(
-                        local_pos,
-                        &fractal.design_lines[hover_line_index],
-                        f32::MAX,
-                    ) {
-                        fractal_app.dragged_line_end_point = Some([hover_line_index, handle]);
-                    }
-                }
-            } else if click_and_drag_response.double_clicked() {
-                if fractal_app.trash_line_key_down {
-                    if hover_line_index != 0 {
-                        fractal.design_lines.remove(hover_line_index);
-                        if fractal.lines_style == LinesStyle::Loop {
-                            make_loop(fractal_app);
-                        }
-                    } else {
-                        log::info!("can't remove the base line (index == 0)");
-                    }
-                } else {
-                    let design_line = &mut fractal.design_lines[hover_line_index];
-                    design_line.reversed = !design_line.reversed;
-                }
+        {
+            let local_pos = from_screen * screenpos; // NOTE: this is the same as hover_pos is most most situations
+            if let Some((handle, _)) =
+                closest_line_handle(local_pos, &fractal.design_lines[hover_line_index], f32::MAX)
+            {
+                fractal_app.dragged_line_end_point = Some([hover_line_index, handle]);
             }
+        }
+    } else if click_and_drag_response.double_clicked() {
+        if fractal_app.trash_line_key_down {
+            if hover_line_index != 0 {
+                fractal.design_lines.remove(hover_line_index);
+                if fractal.lines_style == LinesStyle::Loop {
+                    make_loop(fractal_app);
+                }
+            } else {
+                log::info!("can't remove the base line (index == 0)");
+            }
+        } else {
+            let design_line = &mut fractal.design_lines[hover_line_index];
+            design_line.reversed = !design_line.reversed;
         }
     }
 }
