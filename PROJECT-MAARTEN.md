@@ -29,6 +29,8 @@
 ## LATER
 
 - [x] add branches by drawing
+- [ ] show design line count
+- [ ] offer to delete the shortest design line
 
 ## MUCH LATER
 

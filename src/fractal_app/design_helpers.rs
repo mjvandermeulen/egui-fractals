@@ -161,30 +161,19 @@ pub fn draw_new_line(
     cd_response: &Response,
     hover_pos: Pos2,
 ) -> bool {
-    if !fractal_app.new_line_key_down && fractal_app.new_line.is_none() {
-        fractal_app.new_line = None;
+    if !fractal_app.new_line_key_down {
         return false;
     }
     ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
-    match fractal_app.new_line.as_mut() {
-        None => {
-            if cd_response.is_pointer_button_down_on() {
-                fractal_app.new_line = Some(DesignLine {
-                    line: [hover_pos, hover_pos],
-                    reversed: false,
-                });
-            }
-        }
-        Some(nl) => {
-            if cd_response.is_pointer_button_down_on() {
-                nl.line[1] = hover_pos;
-            } else {
-                fractal_app.fractals[fractal_app.fractal_index]
-                    .design_lines
-                    .push(*nl);
-                fractal_app.new_line = None;
-            }
-        }
+    if cd_response.is_pointer_button_down_on() {
+        let new_line = DesignLine {
+            line: [hover_pos, hover_pos], // TODO change depending on tree or loop
+            reversed: false,
+        };
+        let design_lines = &mut fractal_app.fractals[fractal_app.fractal_index].design_lines;
+        let new_line_index = design_lines.len();
+        design_lines.push(new_line);
+        fractal_app.dragged_line_end_point = Some([new_line_index, 1]);
     }
     true
 }

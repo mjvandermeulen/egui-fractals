@@ -7,11 +7,11 @@ mod tools;
 
 use design_helpers::{design_lines_to_global_design_vectors, paint_directed_line_segment};
 use egui::{
+    Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
     emath::{self},
     pos2,
     widgets::Slider,
-    Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
 };
 use paint_fractal_helpers::line_color;
 use structs::{Fractal, LineTransform, LinesStyle, Node, VectoredDesignLine};
@@ -40,8 +40,6 @@ pub struct FractalApp {
     #[serde(skip)]
     show_design_only: bool,
     #[serde(skip)]
-    new_line: Option<DesignLine>,
-    #[serde(skip)]
     new_line_key_down: bool,
     #[serde(skip)]
     trash_line_key_down: bool,
@@ -58,7 +56,6 @@ impl Default for FractalApp {
             show_design_only: false,
             fine_tune: false,
             dragged_line_end_point: None,
-            new_line: None,
             new_line_key_down: false,
             trash_line_key_down: false,
             hovered_line: None,
@@ -166,19 +163,15 @@ impl FractalApp {
 
         handle_mouse_input(ui, self, to_screen, painter.clip_rect());
         let fractal = &mut self.fractals[self.fractal_index]; // LEARN: moving out of a mut reference by taking ownership (again) see NOTE above.
-        let mut current_dls = fractal.design_lines.clone();
-        if let Some(new_line) = self.new_line {
-            current_dls.push(new_line);
-        }
 
         fractal.depth = fractal.depth.at_most(max_depth_with_branches(
             MAX_PAINTED_LINE_COUNT,
-            current_dls.len() - 1,
+            fractal.design_lines.len() - 1,
             fractal.mirror,
             fractal.replace_line,
         ));
 
-        design_lines_to_global_design_vectors(&current_dls, to_screen)
+        design_lines_to_global_design_vectors(&fractal.design_lines, to_screen)
     }
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredDesignLine]) {
