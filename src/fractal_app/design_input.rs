@@ -5,7 +5,8 @@ use crate::{
     FractalApp,
     fractal_app::{
         design_helpers::{
-            closest_line, closest_line_handle, continue_dragging_line_end, draw_new_line, make_loop,
+            closest_line, closest_line_handle, continue_dragging_line_end, make_loop,
+            start_new_line,
         },
         structs::LinesStyle,
         tools::max_depth_with_branches,
@@ -16,7 +17,8 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
     // https://github.com/emilk/egui/discussions/1464 -> if. fine tuned with gemini. Maarten.
     if ui.ctx().memory(|mem| mem.focused()).is_none() {
-        // TODO: turn max depth into self.max_depth and calc right away
+        // TODO!!!: turn max depth into self.max_depth and calc right away
+        // NOPE: only calc max_depth once: right after the design phase
         let max_depth = max_depth_with_branches(
             super::MAX_PAINTED_LINE_COUNT,
             fractal.design_lines.len() - 1,
@@ -73,6 +75,9 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
 
     // t (trash line)
     fractal_app.trash_line_key_down = ui.input(|i| i.key_down(egui::Key::T));
+    if fractal_app.trash_line_key_down {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
+    }
 
     // l (log a fractal dump)
     if ui.input(|i| i.key_down(egui::Key::L)) {
@@ -88,13 +93,8 @@ pub fn handle_mouse_input(
     to_screen: RectTransform,
     rect: Rect,
 ) {
-    if fractal_app.trash_line_key_down {
-        ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
-    }
-
     let from_screen = to_screen.inverse();
     let id = ui.make_persistent_id("design_painter_interaction");
-    let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
     let click_and_drag_response = ui.interact(rect, id, egui::Sense::click_and_drag());
 
     // check if dragging continues first
@@ -119,8 +119,12 @@ pub fn handle_mouse_input(
         && let Some(global_hover_pos) = hover_response.hover_pos()
     {
         let hover_pos = from_screen * global_hover_pos;
-        fractal_app.hovered_line = closest_line(hover_pos, &fractal.design_lines, 0.1);
-        if draw_new_line(ui, fractal_app, &click_and_drag_response, hover_pos) {
+        fractal_app.hovered_line = closest_line(
+            hover_pos,
+            &fractal_app.fractals[fractal_app.fractal_index].design_lines,
+            0.1,
+        );
+        if start_new_line(ui, fractal_app, &click_and_drag_response, hover_pos) {
             return;
         }
 

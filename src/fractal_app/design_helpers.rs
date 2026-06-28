@@ -154,7 +154,7 @@ pub fn continue_dragging_line_end(
     }
 }
 
-pub fn draw_new_line(
+pub fn start_new_line(
     // draw new line depending on LineStyle TODO!!!!!
     ui: &egui::Ui,
     fractal_app: &mut FractalApp,
