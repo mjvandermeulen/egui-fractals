@@ -267,8 +267,12 @@ impl FractalApp {
             // iterate over stored parent nodes
             //  create a new node per transformation and paint the line in it
             //  if we're not at the max depth, store the new node for the next iteration
-            for parent_node in &nodes {
-                for &transform in &transformations {
+
+            // the nesting of the node loop inside the transformations loop is purely for speed
+            //   it is (just) noticibly faster with a 1 branch depth 17 mirrorred tree
+            // Feel free to read it the other way around.
+            for &transform in &transformations {
+                for parent_node in &nodes {
                     let paint_a = parent_node.pos + transform.base_rot * parent_node.vec;
                     let paint_vec = transform.rot * parent_node.vec;
                     let paint_b = paint_a + paint_vec;
