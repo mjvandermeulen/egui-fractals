@@ -1,4 +1,4 @@
-use egui::{NumExt as _, Rect, Response, emath::RectTransform};
+use egui::{NumExt as _, Pos2, Rect, Response, emath::RectTransform};
 
 // TODO!!: change to super::
 use crate::{
@@ -95,68 +95,63 @@ pub fn handle_mouse_input(
 ) {
     let from_screen = to_screen.inverse();
     let id = ui.make_persistent_id("design_painter_interaction");
-    let click_and_drag_response = ui.interact(rect, id, egui::Sense::click_and_drag());
+    let cd_response = ui.interact(rect, id, egui::Sense::click_and_drag());
 
     // check if dragging continues first
     if let Some([line, end]) = fractal_app.dragged_line_end_point
-        && click_and_drag_response.is_pointer_button_down_on()
+        && cd_response.is_pointer_button_down_on()
     {
-        continue_dragging_line_end(
-            fractal_app,
-            from_screen,
-            to_screen,
-            &click_and_drag_response,
-            line,
-            end,
-        );
+        continue_dragging_line_end(fractal_app, from_screen, to_screen, &cd_response, line, end);
         return;
     }
 
     fractal_app.dragged_line_end_point = None;
 
-    let hover_response = ui.interact(rect, id, egui::Sense::hover());
-    if hover_response.hovered()
-        && let Some(global_hover_pos) = hover_response.hover_pos()
-    {
-        let hover_pos = from_screen * global_hover_pos;
-        fractal_app.hovered_line = closest_line(
-            hover_pos,
-            &fractal_app.fractals[fractal_app.fractal_index].design_lines,
-            0.1,
-        );
-        if start_new_line(ui, fractal_app, &click_and_drag_response, hover_pos) {
+    let hov_response = ui.interact(rect, id, egui::Sense::hover());
+    if !hov_response.hovered() {
+        return;
+    }
+    let Some(global_hover_pos) = hov_response.hover_pos() else {
+        return;
+    };
+
+    let hover_pos = from_screen * global_hover_pos;
+
+    if start_new_line(ui, fractal_app, &cd_response, hover_pos) {
+        return;
+    }
+
+    let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
+    ui.input(|input| {
+        let zoom_delta = input.zoom_delta();
+        if zoom_delta != 1.0 {
+            fractal.zoom *= zoom_delta;
             return;
         }
-
-        let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
-        ui.input(|input| {
-            let zoom_delta = input.zoom_delta();
-            if zoom_delta != 1.0 {
-                fractal.zoom *= zoom_delta;
-                // TODO: turn off fractal_app.hovered_line OR turn off the return!!!!!
+        for event in &input.events {
+            if let egui::Event::MouseWheel { delta, .. } = event {
+                fractal.center += from_screen.scale().x * (-1.0 * *delta);
                 return;
             }
-            for event in &input.events {
-                if let egui::Event::MouseWheel { delta, .. } = event {
-                    fractal.center += from_screen.scale().x * (-1.0 * *delta);
-                    // TODO: turn off fractal_app.hovered_line? see note above
-                    return;
-                }
-            }
-        });
-        handle_hovered_line_mouse_input(fractal_app, &click_and_drag_response, from_screen);
-    }
+        }
+    });
+    handle_hovered_line_mouse_input(fractal_app, hover_pos, &cd_response, from_screen);
 }
 
 pub fn handle_hovered_line_mouse_input(
     fractal_app: &mut FractalApp,
+    local_hover_pos: Pos2,
     click_and_drag_response: &Response,
     from_screen: RectTransform,
 ) {
     // LEARN let ... else
     //   always needs a return
     //   avoid heavy indentation by returning instead of skipping over an indented block
-    let Some(hover_line_index) = fractal_app.hovered_line else {
+    let Some(hover_line_index) = closest_line(
+        local_hover_pos,
+        &fractal_app.fractals[fractal_app.fractal_index].design_lines,
+        0.1,
+    ) else {
         return;
     };
 
