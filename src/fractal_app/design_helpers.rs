@@ -1,6 +1,7 @@
-use super::structs::VectoredDesignLine;
+use super::structs_and_enums::VectoredDesignLine;
 use super::{DesignLine, LinesStyle};
 use crate::FractalApp;
+use crate::fractal_app::structs_and_enums::LineHandle;
 use egui::Response;
 use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
 
@@ -40,6 +41,13 @@ pub fn closest_line_handle(
     }
     result
 }
+pub fn hovered_line_handle(t: f32) -> LineHandle {
+    match t {
+        0.0..=0.25 => LineHandle::SingleHandle(0),
+        0.25..=0.75 => LineHandle::DoubleHandle,
+        _ => LineHandle::SingleHandle(1),
+    }
+}
 
 pub fn closest_handle(
     local_pos: Pos2,
@@ -68,13 +76,18 @@ pub fn design_lines_to_global_design_vectors(
 }
 
 // total google AI work.
-pub fn distance_to_line(p: Pos2, [a, b]: [Pos2; 2]) -> f32 {
+// calculates the distance to a line
+// returns:
+//   - distance
+//   - ratio of where on the line the closest point on the segment is between a and b
+//       e.g.: a: 0.0, b: 1.0  middle: 0.5
+fn distance_to_line(p: Pos2, [a, b]: [Pos2; 2]) -> (f32, f32) {
     let v = b - a; // Segment vector
     let u = p - a; // Vector to point
 
     let v_len_sq = v.length_sq();
     if v_len_sq == 0.0 {
-        return p.distance(a); // Segment is a single point
+        return (p.distance(a), 0.5); // Segment is a single point
     }
 
     // Project vector u onto v to get parameter t
@@ -86,18 +99,22 @@ pub fn distance_to_line(p: Pos2, [a, b]: [Pos2; 2]) -> f32 {
     // Calculate closest point coordinates
     let closest_point = a + v * t_clamped;
 
-    // Return Euclidean distance
-    p.distance(closest_point)
+    // Return Euclidean distance and t
+    (p.distance(closest_point), t)
 }
 
-pub fn closest_line(local_pos: Pos2, design_lines: &[DesignLine], threshold: f32) -> Option<usize> {
+pub fn closest_line(
+    local_pos: Pos2,
+    design_lines: &[DesignLine],
+    threshold: f32,
+) -> Option<(usize, f32)> {
     let mut min: f32 = threshold;
-    let mut nearest: Option<usize> = None;
+    let mut nearest: Option<(usize, f32)> = None;
     for (line_index, design_line) in design_lines.iter().enumerate() {
-        let d = distance_to_line(local_pos, design_line.line);
+        let (d, t) = distance_to_line(local_pos, design_line.line);
         if d <= min {
             min = d;
-            nearest = Some(line_index);
+            nearest = Some((line_index, t));
         }
     }
     nearest
@@ -118,39 +135,70 @@ pub fn paint_directed_line_segment(
     );
 }
 
-pub fn continue_dragging_line_end(
+pub fn continue_dragging_line_handle(
     fractal_app: &mut FractalApp,
     from_screen: RectTransform,
     to_screen: RectTransform,
     click_and_drag_response: &Response,
-    mut line: usize,
-    end: usize,
+    line: usize,
+    handle: &LineHandle,
 ) {
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
 
     let tuning_ratio = if fractal_app.fine_tune { 0.02 } else { 1.0 };
-    let new_point = from_screen
-        * (to_screen * fractal.design_lines[line].line[end]
-            + tuning_ratio * click_and_drag_response.drag_delta());
-    if fractal.lines_style == LinesStyle::Loop {
-        if end == 0 {
-            // move the previous line tip (index == 1)
-            line = (line + fractal.design_lines.len() - 1) % (fractal.design_lines.len());
+    let target_handles: Vec<(usize, usize, Pos2)> = match handle {
+        LineHandle::SingleHandle(end_index) => {
+            vec![(
+                line,
+                *end_index,
+                from_screen
+                    * (to_screen * fractal.design_lines[line].line[*end_index]
+                        + tuning_ratio * click_and_drag_response.drag_delta()),
+            )]
         }
-        fractal.design_lines[line].line[1] = new_point;
-        let next_line_index = (line + 1) % (fractal.design_lines.len());
-        fractal.design_lines[next_line_index].line[0] = new_point;
-    } else if fractal.lines_style == LinesStyle::Tree {
-        fractal.design_lines[line].line[end] = new_point;
-        if line == 0 && end == 1 {
-            fractal
-                .design_lines
-                .iter_mut()
-                .skip(1)
-                .for_each(|d_line| d_line.line[0] = new_point);
+        LineHandle::DoubleHandle => {
+            let mut handles = vec![];
+            for end_index in 0..=1 {
+                handles.push((
+                    line,
+                    end_index,
+                    from_screen
+                        * (to_screen * fractal.design_lines[line].line[end_index]
+                            + tuning_ratio * click_and_drag_response.drag_delta()),
+                ));
+            }
+            handles
         }
-    } else {
-        fractal.design_lines[line].line[end] = new_point;
+    };
+    log::info!("target handles: {target_handles:#?}");
+    for (mut line_index, handle_index, new_pos) in target_handles {
+        match fractal.lines_style {
+            LinesStyle::Loop => {
+                if handle_index == 0 {
+                    // move the previous line tip (index == 1)
+                    line_index = (line_index + fractal.design_lines.len() - 1)
+                        % (fractal.design_lines.len());
+                }
+                fractal.design_lines[line_index].line[1] = new_pos;
+                let next_line_index = (line_index + 1) % (fractal.design_lines.len());
+                fractal.design_lines[next_line_index].line[0] = new_pos;
+            }
+            LinesStyle::Tree => {
+                // BUG: tree does not stay connected
+                fractal.design_lines[line_index].line[handle_index] = new_pos;
+                if line_index == 0 && handle_index == 1 {
+                    fractal
+                        .design_lines
+                        .iter_mut()
+                        .skip(1)
+                        .for_each(|d_line| d_line.line[0] = new_pos);
+                }
+            }
+            _ => {
+                log::info!("moving line {line_index} handle {handle_index}");
+                fractal.design_lines[line_index].line[handle_index] = new_pos;
+            }
+        }
     }
 }
 
@@ -173,7 +221,7 @@ pub fn start_new_line(
         let design_lines = &mut fractal_app.fractals[fractal_app.fractal_index].design_lines;
         let new_line_index = design_lines.len();
         design_lines.push(new_line);
-        fractal_app.dragged_line_end_point = Some([new_line_index, 1]);
+        fractal_app.dragged_line = Some((new_line_index, LineHandle::SingleHandle(1)));
     }
     true
 }

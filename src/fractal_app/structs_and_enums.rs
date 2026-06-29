@@ -8,6 +8,12 @@ pub enum LinesStyle {
     Tree,
     Loop,
 }
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub enum LineHandle {
+    SingleHandle(usize),
+    DoubleHandle, // or Both...
+}
+
 #[derive(PartialEq, Eq, Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
 pub struct DesignLine {
     pub line: [Pos2; 2],

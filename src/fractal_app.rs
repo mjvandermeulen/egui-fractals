@@ -2,7 +2,7 @@ mod design_helpers;
 mod design_input;
 mod fractals;
 mod paint_fractal_helpers;
-mod structs;
+mod structs_and_enums;
 mod tools;
 
 use design_helpers::{design_lines_to_global_design_vectors, paint_directed_line_segment};
@@ -14,14 +14,14 @@ use egui::{
     widgets::Slider,
 };
 use paint_fractal_helpers::line_color;
-use structs::{Fractal, LineTransform, LinesStyle, Node, VectoredDesignLine};
+use structs_and_enums::{Fractal, LineTransform, LinesStyle, Node, VectoredDesignLine};
 use tools::max_depth_with_branches;
 
 use crate::fractal_app::{
     design_helpers::handle_line_style_change,
     design_input::{handle_keyboard_input, handle_mouse_input},
     fractals::fractals,
-    structs::DesignLine,
+    structs_and_enums::{DesignLine, LineHandle},
 };
 
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
@@ -36,7 +36,7 @@ pub struct FractalApp {
     #[serde(skip)]
     fine_tune: bool, // turn into f32 for normal 1.0, ten times (Alt) 10.0 and 100 times (Ctrl) 100.0
     #[serde(skip)]
-    dragged_line_end_point: Option<[usize; 2]>, // Add option for incorrect drag. Now it catches an endpoint when dragging over it, after starting in the middle of nowhere :)
+    dragged_line: Option<(usize, LineHandle)>, // Add option for incorrect drag. Now it catches an endpoint when dragging over it, after starting in the middle of nowhere :)
     #[serde(skip)]
     show_design_only: bool,
     #[serde(skip)]
@@ -45,6 +45,8 @@ pub struct FractalApp {
     trash_line_key_down: bool,
     #[serde(skip)]
     hovered_line: Option<usize>, // for coloring the hovered line neon green.
+                                 // BUG: line is green way too long, but not responsive
+                                 // NOTE: when dragging over a non green line, it will "pick up" the line
 }
 
 impl Default for FractalApp {
@@ -55,7 +57,7 @@ impl Default for FractalApp {
             line_count: 0,
             show_design_only: false,
             fine_tune: false,
-            dragged_line_end_point: None,
+            dragged_line: None,
             new_line_key_down: false,
             trash_line_key_down: false,
             hovered_line: None,

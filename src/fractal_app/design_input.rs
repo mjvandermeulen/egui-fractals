@@ -5,10 +5,10 @@ use crate::{
     FractalApp,
     fractal_app::{
         design_helpers::{
-            closest_line, closest_line_handle, continue_dragging_line_end, make_loop,
+            closest_line, closest_line_handle, continue_dragging_line_handle, make_loop,
             start_new_line,
         },
-        structs::LinesStyle,
+        structs_and_enums::{LineHandle, LinesStyle},
         tools::max_depth_with_branches,
     },
 };
@@ -98,14 +98,21 @@ pub fn handle_mouse_input(
     let cd_response = ui.interact(rect, id, egui::Sense::click_and_drag());
 
     // check if dragging continues first
-    if let Some([line, end]) = fractal_app.dragged_line_end_point
+    if let Some((line, handle)) = fractal_app.dragged_line
         && cd_response.is_pointer_button_down_on()
     {
-        continue_dragging_line_end(fractal_app, from_screen, to_screen, &cd_response, line, end);
+        continue_dragging_line_handle(
+            fractal_app,
+            from_screen,
+            to_screen,
+            &cd_response,
+            line,
+            &handle,
+        );
         return;
     }
 
-    fractal_app.dragged_line_end_point = None;
+    fractal_app.dragged_line = None;
 
     let hov_response = ui.interact(rect, id, egui::Sense::hover());
     if !hov_response.hovered() {
@@ -147,7 +154,7 @@ pub fn handle_hovered_line_mouse_input(
     // LEARN let ... else
     //   always needs a return
     //   avoid heavy indentation by returning instead of skipping over an indented block
-    let Some(hover_line_index) = closest_line(
+    let Some((hover_line_index, t)) = closest_line(
         local_hover_pos,
         &fractal_app.fractals[fractal_app.fractal_index].design_lines,
         0.1,
@@ -161,14 +168,14 @@ pub fn handle_hovered_line_mouse_input(
 
     if click_and_drag_response.is_pointer_button_down_on() {
         // is_pointer_down vs dragged: see tool tip on `dragged`. We don't want a delay.
-        if fractal_app.dragged_line_end_point.is_none() // this has to be the case, see above logic
+        if fractal_app.dragged_line.is_none() // this has to be the case, see above logic
                 && let Some(screenpos) = click_and_drag_response.interact_pointer_pos()
         {
-            let local_pos = from_screen * screenpos; // NOTE: this is the same as hover_pos is most most situations
+            let local_pos = from_screen * screenpos; // NOTE: this is the same as hover_pos in most most situations
             if let Some((handle, _)) =
                 closest_line_handle(local_pos, &fractal.design_lines[hover_line_index], f32::MAX)
             {
-                fractal_app.dragged_line_end_point = Some([hover_line_index, handle]);
+                fractal_app.dragged_line = Some((hover_line_index, LineHandle::DoubleHandle)); // HACK!!!!! always both handlesFOR NOW
             }
         }
     } else if click_and_drag_response.double_clicked() {
