@@ -171,7 +171,7 @@ pub fn continue_dragging_line_handle(
         }
     };
     log::info!("target handles: {target_handles:#?}");
-    for (mut line_index, handle_index, new_pos) in target_handles {
+    for (mut line_index, mut handle_index, new_pos) in target_handles {
         match fractal.lines_style {
             LinesStyle::Loop => {
                 if handle_index == 0 {
@@ -185,6 +185,16 @@ pub fn continue_dragging_line_handle(
             }
             LinesStyle::Tree => {
                 // BUG: tree does not stay connected
+                // NOTE: closest handle used to have this code:
+                //       if end_index == 0
+                //     && ((*lines_style == LinesStyle::Tree && line_index != 0)
+                //         || *lines_style == LinesStyle::Loop)
+                // {
+                //     continue;
+                if line_index != 0 && handle_index == 0 {
+                    line_index = 0;
+                    handle_index = 1;
+                }
                 fractal.design_lines[line_index].line[handle_index] = new_pos;
                 if line_index == 0 && handle_index == 1 {
                     fractal
