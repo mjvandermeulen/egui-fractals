@@ -5,7 +5,7 @@ use crate::{
     FractalApp,
     fractal_app::{
         design_helpers::{
-            closest_line, closest_line_handle, continue_dragging_line_handle, make_loop,
+            closest_line, continue_dragging_line_handle, hovered_line_handle, make_loop,
             start_new_line,
         },
         structs_and_enums::{LineHandle, LinesStyle},
@@ -142,14 +142,13 @@ pub fn handle_mouse_input(
             }
         }
     });
-    handle_hovered_line_mouse_input(fractal_app, hover_pos, &cd_response, from_screen);
+    handle_hovered_line_mouse_input(fractal_app, hover_pos, &cd_response);
 }
 
 pub fn handle_hovered_line_mouse_input(
     fractal_app: &mut FractalApp,
     local_hover_pos: Pos2,
     click_and_drag_response: &Response,
-    from_screen: RectTransform,
 ) {
     // LEARN let ... else
     //   always needs a return
@@ -168,15 +167,11 @@ pub fn handle_hovered_line_mouse_input(
 
     if click_and_drag_response.is_pointer_button_down_on() {
         // is_pointer_down vs dragged: see tool tip on `dragged`. We don't want a delay.
-        if fractal_app.dragged_line.is_none() // this has to be the case, see above logic
-                && let Some(screenpos) = click_and_drag_response.interact_pointer_pos()
+        if fractal_app.dragged_line.is_none()
+        // this has to be the case, see above logic
+        // && let Some(screenpos) = click_and_drag_response.interact_pointer_pos() CLEAN
         {
-            let local_pos = from_screen * screenpos; // NOTE: this is the same as hover_pos in most most situations
-            if let Some((handle, _)) =
-                closest_line_handle(local_pos, &fractal.design_lines[hover_line_index], f32::MAX)
-            {
-                fractal_app.dragged_line = Some((hover_line_index, LineHandle::DoubleHandle)); // HACK!!!!! always both handlesFOR NOW
-            }
+            fractal_app.dragged_line = Some((hover_line_index, hovered_line_handle(t)));
         }
     } else if click_and_drag_response.double_clicked() {
         if fractal_app.trash_line_key_down {

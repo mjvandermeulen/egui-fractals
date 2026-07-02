@@ -1,7 +1,6 @@
 use super::structs_and_enums::VectoredDesignLine;
-use super::{DesignLine, LinesStyle};
-use crate::FractalApp;
-use crate::fractal_app::structs_and_enums::LineHandle;
+use super::{DesignLine, FractalApp, LineHandle, LinesStyle};
+
 use egui::Response;
 use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
 
@@ -44,7 +43,7 @@ pub fn closest_line_handle(
 pub fn hovered_line_handle(t: f32) -> LineHandle {
     match t {
         0.0..=0.25 => LineHandle::SingleHandle(0),
-        0.25..=0.75 => LineHandle::DoubleHandle,
+        0.25..0.75 => LineHandle::DoubleHandle,
         _ => LineHandle::SingleHandle(1),
     }
 }
@@ -170,7 +169,6 @@ pub fn continue_dragging_line_handle(
             handles
         }
     };
-    log::info!("target handles: {target_handles:#?}");
     for (mut line_index, mut handle_index, new_pos) in target_handles {
         match fractal.lines_style {
             LinesStyle::Loop => {
@@ -184,13 +182,6 @@ pub fn continue_dragging_line_handle(
                 fractal.design_lines[next_line_index].line[0] = new_pos;
             }
             LinesStyle::Tree => {
-                // BUG: tree does not stay connected
-                // NOTE: closest handle used to have this code:
-                //       if end_index == 0
-                //     && ((*lines_style == LinesStyle::Tree && line_index != 0)
-                //         || *lines_style == LinesStyle::Loop)
-                // {
-                //     continue;
                 if line_index != 0 && handle_index == 0 {
                     line_index = 0;
                     handle_index = 1;
@@ -205,7 +196,6 @@ pub fn continue_dragging_line_handle(
                 }
             }
             _ => {
-                log::info!("moving line {line_index} handle {handle_index}");
                 fractal.design_lines[line_index].line[handle_index] = new_pos;
             }
         }
