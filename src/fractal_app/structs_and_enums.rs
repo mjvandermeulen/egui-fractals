@@ -9,9 +9,9 @@ pub enum LinesStyle {
     Loop,
 }
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
-pub enum LineHandle {
+pub enum LineHandles {
     SingleHandle(usize),
-    DoubleHandle, // or Both...
+    BothHandles, // or Both...
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]

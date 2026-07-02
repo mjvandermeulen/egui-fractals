@@ -8,7 +8,7 @@ use crate::{
             closest_line, continue_dragging_line_handle, hovered_line_handle, make_loop,
             start_new_line,
         },
-        structs_and_enums::{LineHandle, LinesStyle},
+        structs_and_enums::{LineHandles, LinesStyle},
         tools::max_depth_with_branches,
     },
 };
@@ -98,7 +98,7 @@ pub fn handle_mouse_input(
     let cd_response = ui.interact(rect, id, egui::Sense::click_and_drag());
 
     // check if dragging continues first
-    if let Some((line, handle)) = fractal_app.dragged_line
+    if let Some((line, handle)) = fractal_app.dragged_handles
         && cd_response.is_pointer_button_down_on()
     {
         continue_dragging_line_handle(
@@ -112,7 +112,7 @@ pub fn handle_mouse_input(
         return;
     }
 
-    fractal_app.dragged_line = None;
+    fractal_app.dragged_handles = None;
 
     let hov_response = ui.interact(rect, id, egui::Sense::hover());
     if !hov_response.hovered() {
@@ -167,11 +167,11 @@ pub fn handle_hovered_line_mouse_input(
 
     if click_and_drag_response.is_pointer_button_down_on() {
         // is_pointer_down vs dragged: see tool tip on `dragged`. We don't want a delay.
-        if fractal_app.dragged_line.is_none()
+        if fractal_app.dragged_handles.is_none()
         // this has to be the case, see above logic
         // && let Some(screenpos) = click_and_drag_response.interact_pointer_pos() CLEAN
         {
-            fractal_app.dragged_line = Some((hover_line_index, hovered_line_handle(t)));
+            fractal_app.dragged_handles = Some((hover_line_index, hovered_line_handle(t)));
         }
     } else if click_and_drag_response.double_clicked() {
         if fractal_app.trash_line_key_down {

@@ -1,5 +1,5 @@
 use super::structs_and_enums::VectoredDesignLine;
-use super::{DesignLine, FractalApp, LineHandle, LinesStyle};
+use super::{DesignLine, FractalApp, LineHandles, LinesStyle};
 
 use egui::Response;
 use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
@@ -40,11 +40,11 @@ pub fn closest_line_handle(
     }
     result
 }
-pub fn hovered_line_handle(t: f32) -> LineHandle {
+pub fn hovered_line_handle(t: f32) -> LineHandles {
     match t {
-        0.0..=0.25 => LineHandle::SingleHandle(0),
-        0.25..0.75 => LineHandle::DoubleHandle,
-        _ => LineHandle::SingleHandle(1),
+        0.0..=0.25 => LineHandles::SingleHandle(0),
+        0.25..0.75 => LineHandles::BothHandles,
+        _ => LineHandles::SingleHandle(1),
     }
 }
 
@@ -140,13 +140,13 @@ pub fn continue_dragging_line_handle(
     to_screen: RectTransform,
     click_and_drag_response: &Response,
     line: usize,
-    handle: &LineHandle,
+    handles: &LineHandles,
 ) {
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
 
     let tuning_ratio = if fractal_app.fine_tune { 0.02 } else { 1.0 };
-    let target_handles: Vec<(usize, usize, Pos2)> = match handle {
-        LineHandle::SingleHandle(end_index) => {
+    let target_handles: Vec<(usize, usize, Pos2)> = match handles {
+        LineHandles::SingleHandle(end_index) => {
             vec![(
                 line,
                 *end_index,
@@ -155,7 +155,7 @@ pub fn continue_dragging_line_handle(
                         + tuning_ratio * click_and_drag_response.drag_delta()),
             )]
         }
-        LineHandle::DoubleHandle => {
+        LineHandles::BothHandles => {
             let mut handles = vec![];
             for end_index in 0..=1 {
                 handles.push((
@@ -221,7 +221,7 @@ pub fn start_new_line(
         let design_lines = &mut fractal_app.fractals[fractal_app.fractal_index].design_lines;
         let new_line_index = design_lines.len();
         design_lines.push(new_line);
-        fractal_app.dragged_line = Some((new_line_index, LineHandle::SingleHandle(1)));
+        fractal_app.dragged_handles = Some((new_line_index, LineHandles::SingleHandle(1)));
     }
     true
 }
@@ -240,21 +240,22 @@ pub fn make_loop(fractal_app: &mut FractalApp) {
                 log::warn!("A closest line should always be found here");
                 break;
             }
-            Some([index, handle]) => {
-                let mut dl = remaining_lines.remove(index);
-                if handle == 1 {
+            Some([line_index, handle_index]) => {
+                let mut dl = remaining_lines.remove(line_index);
+                if handle_index == 1 {
                     dl.line.swap(0, 1);
                     dl.reversed = !dl.reversed;
                 }
                 dl.line[0] = current_pos;
-                current_pos = dl.line[1];
                 new_dls.push(dl);
+
+                current_pos = dl.line[1];
             }
         }
     }
     let new_len = new_dls.len();
     if new_len > 1 && new_dls[new_len - 1].line[0] == base.line[0] {
-        // the last line would disappear
+        // the last line would disappear NOTE: is it possible that other lines would disappear too? TODO!!!
         new_dls[new_len - 2].line[1] = new_dls[new_len - 1].line[1];
         new_dls[new_len - 1].line[0] = new_dls[new_len - 1].line[1];
     }
