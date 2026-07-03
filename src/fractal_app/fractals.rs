@@ -1,6 +1,6 @@
 use egui::pos2;
 
-use crate::fractal_app::structs::{DesignLine, Fractal, LinesStyle};
+use crate::fractal_app::structs_and_enums::{DesignLine, Fractal, LinesStyle};
 
 pub fn fractals() -> Vec<Fractal> {
     vec![
