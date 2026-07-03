@@ -214,13 +214,28 @@ pub fn start_new_line(
     }
     ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
     if cd_response.is_pointer_button_down_on() {
+        let fractal = &fractal_app.fractals[fractal_app.fractal_index];
+        let mut start_pos = hover_pos;
+        let mut new_line_index = fractal.design_lines.len();
+        match fractal.lines_style {
+            LinesStyle::Free => {}
+            LinesStyle::Tree => {
+                start_pos = fractal.design_lines[0].line[1];
+            }
+            LinesStyle::Loop => {
+                // find closest handle
+                // switch to the "end" handle of the previous line, if the start of a line is chosen
+                // don't push a new line, but insert it!
+                start_pos = fractal.design_lines[0].line[1]; // HACK TODO!!!!!
+                new_line_index = 1; // HACK TODO!!!!!
+            }
+        }
         let new_line = DesignLine {
-            line: [hover_pos, hover_pos], // TODO change depending on tree or loop
+            line: [start_pos, hover_pos],
             reversed: false,
         };
         let design_lines = &mut fractal_app.fractals[fractal_app.fractal_index].design_lines;
-        let new_line_index = design_lines.len();
-        design_lines.push(new_line);
+        design_lines.insert(new_line_index, new_line);
         fractal_app.dragged_handles = Some((new_line_index, LineHandles::SingleHandle(1)));
     }
     true
