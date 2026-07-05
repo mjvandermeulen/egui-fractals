@@ -45,7 +45,6 @@ pub struct FractalApp {
     trash_line_key_down: bool,
     #[serde(skip)]
     hovered_line: Option<usize>, // for coloring the hovered line neon green.
-                                 // BUG: line is green way too long, but not responsive
                                  // NOTE: when dragging over a non green line, it will "pick up" the line
                                  // TODO: include LineHandles in the hovered_line.
 }
