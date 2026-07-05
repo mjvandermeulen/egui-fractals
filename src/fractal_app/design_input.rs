@@ -124,7 +124,9 @@ pub fn handle_mouse_input(
 
     let hover_pos = from_screen * global_hover_pos;
 
-    if start_new_line(ui, fractal_app, &cd_response, hover_pos) {
+    // CLEAN.  This is ugly. AI suggests to return an enum. ? "StartedNewLine", "NothingStarted".
+    if fractal_app.new_line_key_down {
+        start_new_line(ui, fractal_app, &cd_response, from_screen);
         return;
     }
 
@@ -157,7 +159,9 @@ pub fn handle_hovered_line_mouse_input(
         local_hover_pos,
         &fractal_app.fractals[fractal_app.fractal_index].design_lines,
         0.1,
+        0,
     ) else {
+        fractal_app.hovered_line = None;
         return;
     };
 

@@ -48,15 +48,11 @@ pub fn hovered_line_handle(t: f32) -> LineHandles {
     }
 }
 
-pub fn closest_handle(
-    local_pos: Pos2,
-    dlines: &[DesignLine],
-    threshold: f32,
-) -> Option<[usize; 2]> {
+pub fn closest_handle(pos: Pos2, dlines: &[DesignLine], threshold: f32) -> Option<[usize; 2]> {
     let mut min = threshold;
     let mut nearest_handle: Option<[usize; 2]> = None;
     for (i, dl) in dlines.iter().enumerate() {
-        if let Some((closest, dist)) = closest_line_handle(local_pos, dl, min) {
+        if let Some((closest, dist)) = closest_line_handle(pos, dl, min) {
             min = dist;
             nearest_handle = Some([i, closest]);
         }
@@ -106,10 +102,11 @@ pub fn closest_line(
     local_pos: Pos2,
     design_lines: &[DesignLine],
     threshold: f32,
+    skip: usize, // e.g.: To skip the iterator, set skip to 1.
 ) -> Option<(usize, f32)> {
     let mut min: f32 = threshold;
     let mut nearest: Option<(usize, f32)> = None;
-    for (line_index, design_line) in design_lines.iter().enumerate() {
+    for (line_index, design_line) in design_lines.iter().enumerate().skip(skip) {
         let (d, t) = distance_to_line(local_pos, design_line.line);
         if d <= min {
             min = d;
@@ -203,27 +200,42 @@ pub fn continue_dragging_line_handle(
 }
 
 pub fn start_new_line(
-    // draw new line depending on LineStyle TODO!!!!!
     ui: &egui::Ui,
     fractal_app: &mut FractalApp,
     cd_response: &Response,
-    hover_pos: Pos2,
-) -> bool {
-    if !fractal_app.new_line_key_down {
-        return false;
-    }
+    from_screen: RectTransform,
+) {
     ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
     if cd_response.is_pointer_button_down_on() {
+        let Some(screenpos) = cd_response.interact_pointer_pos() else {
+            return;
+        };
+        let pos = from_screen * screenpos; // TODO!!!! rename
+        let fractal = &fractal_app.fractals[fractal_app.fractal_index];
+        let mut start_pos = pos;
+        let mut new_line_index = fractal.design_lines.len();
+        match fractal.lines_style {
+            LinesStyle::Free => {}
+            LinesStyle::Tree => {
+                start_pos = fractal.design_lines[0].line[1];
+            }
+            LinesStyle::Loop => {
+                let Some((line_index, _)) = closest_line(pos, &fractal.design_lines, f32::MAX, 1)
+                else {
+                    return;
+                };
+                new_line_index = line_index;
+                start_pos = fractal.design_lines[line_index].line[0];
+            }
+        }
         let new_line = DesignLine {
-            line: [hover_pos, hover_pos], // TODO change depending on tree or loop
+            line: [start_pos, pos],
             reversed: false,
         };
         let design_lines = &mut fractal_app.fractals[fractal_app.fractal_index].design_lines;
-        let new_line_index = design_lines.len();
-        design_lines.push(new_line);
+        design_lines.insert(new_line_index, new_line);
         fractal_app.dragged_handles = Some((new_line_index, LineHandles::SingleHandle(1)));
     }
-    true
 }
 
 pub fn make_loop(fractal_app: &mut FractalApp) {
