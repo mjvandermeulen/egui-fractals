@@ -1,4 +1,5 @@
 use egui::{Pos2, Vec2, emath::RectTransform};
+use std::fmt;
 
 // Fractal struct
 
@@ -19,7 +20,7 @@ pub struct DesignLine {
     pub line: [Pos2; 2],
     pub reversed: bool,
 }
-#[derive(PartialEq, Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Fractal {
     pub name: String,
     pub mirror: bool,
@@ -32,6 +33,51 @@ pub struct Fractal {
     pub start_line_width: f32,
     pub fixed_final_line_width: f32,
     pub depth: usize,
+}
+
+impl fmt::Debug for Fractal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // // Check if the user ran print via pretty-printed macro format "{:#?}"
+        // if f.alternate() {
+        write!(
+            f,
+            "name: {:?}.to_owned(),\n\
+                mirror: {},\n\
+                rainbow: {},\n\
+                design_lines: vec![\n",
+            self.name, self.mirror, self.rainbow
+        )?;
+
+        // Format each individual DesignLine vector entry manually
+        for dl in &self.design_lines {
+            writeln!(
+                f,
+                "    DesignLine {{ line: [pos2({:.1}, {:.1}), pos2({:.1}, {:.1})], reversed: {}, }},",
+                dl.line[0].x, dl.line[0].y, dl.line[1].x, dl.line[1].y, dl.reversed
+            )?;
+        }
+
+        write!(
+            f,
+            "],\n\
+                replace_line: {},\n\
+                lines_style: LinesStyle::{:?},\n\
+                zoom: {},\n\
+                center: pos2({:.1}, {:.1}),\n\
+                start_line_width: {},\n\
+                fixed_final_line_width: {},\n\
+                depth: {},",
+            self.replace_line,
+            self.lines_style,
+            self.zoom,
+            self.center.x,
+            self.center.y,
+            self.start_line_width,
+            self.fixed_final_line_width,
+            self.depth
+        )
+        // } else {
+    }
 }
 
 // design structs
