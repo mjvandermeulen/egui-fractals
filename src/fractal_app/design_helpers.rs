@@ -95,7 +95,7 @@ fn distance_to_line(p: Pos2, [a, b]: [Pos2; 2]) -> (f32, f32) {
     let closest_point = a + v * t_clamped;
 
     // Return Euclidean distance and t
-    (p.distance(closest_point), t)
+    (p.distance(closest_point), t_clamped)
 }
 
 pub fn closest_line(
