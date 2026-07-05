@@ -45,7 +45,6 @@ pub struct FractalApp {
     trash_line_key_down: bool,
     #[serde(skip)]
     hovered_line: Option<usize>, // for coloring the hovered line neon green.
-                                 // BUG: line is green way too long, but not responsive
                                  // NOTE: when dragging over a non green line, it will "pick up" the line
                                  // TODO: include LineHandles in the hovered_line.
 }
@@ -179,14 +178,11 @@ impl FractalApp {
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredDesignLine]) {
         let fractal = &self.fractals[self.fractal_index];
-        let hovered_line_index = match self.hovered_line {
-            Some(hovered_line) => hovered_line,
-            None => design_vectors.len() + 1, // so it will never match the index
-        };
         let highlight_color =
             Color32::from_hex("#0FFF50").expect("Expected hex neon green to be parsed correctly");
         design_vectors.iter().enumerate().for_each(|(i, vec)| {
-            let (width, color) = if i == hovered_line_index {
+            // LEARN below. This is sooo nice
+            let (width, color) = if Some(i) == self.hovered_line {
                 (fractal.start_line_width, highlight_color)
             } else if i == 0 {
                 (fractal.start_line_width * 1.5, Color32::RED)
