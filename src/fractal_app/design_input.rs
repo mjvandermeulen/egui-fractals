@@ -81,7 +81,7 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
 
     // l (log a fractal dump)
     if ui.input(|i| i.key_down(egui::Key::L)) {
-        log::info!("Log a dump of the current fractal: {fractal:#?}",);
+        log::info!("Logging a dump of the current fractal:\n\n {fractal:#?}",);
     }
 
     fractal_app.fine_tune = ui.input(|i| i.modifiers.ctrl);

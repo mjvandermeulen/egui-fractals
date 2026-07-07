@@ -1,21 +1,15 @@
 # TODO
 
-## SUPER NOW
-
 ## NOW
 
-- [ ] reset Zoom button
-- [ ] fractals. START ALL WITH ONLY DEPTH = 1. NO SPOILER
-    - [ ] twig
-    - [ ] tree
-    - [ ] leaf (not mirrored, 2 branches)
-    - [ ] snowflake
-    - [ ] squares
-- [ ] on free/tree/loop switch: update design_lines
-- [ ] fine tune:
-    - [ ] Alt: 10 times
-    - [ ] Ctrl: 100 times
-- [ ] hover to select line, then drag or flip that line
+### Animation quick small
+
+- [ ] add scaling: ratio.pow(progress)
+- [ ] add animation length slider
+
+### Animation bigger
+
+- [ ] ....
 
 ## FIX
 
@@ -28,6 +22,18 @@
 
 ## LATER
 
+- [x] reset Zoom button
+- [ ] fractals. START ALL WITH ONLY DEPTH = 1. NO SPOILER
+    - [ ] twig
+    - [ ] tree
+    - [ ] leaf (not mirrored, 2 branches)
+    - [ ] snowflake
+    - [ ] squares
+- [ ] on free/tree/loop switch: update design_lines
+- [ ] fine tune:
+    - [ ] Alt: 10 times
+    - [ ] Ctrl: 100 times
+- [ ] hover to select line, then drag or flip that line
 - [x] add branches by drawing
 - [ ] show design line count
 - [ ] offer to delete the shortest design line

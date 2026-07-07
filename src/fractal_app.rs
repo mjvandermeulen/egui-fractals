@@ -149,6 +149,7 @@ impl FractalApp {
 
         egui::reset_button(ui, self, "Full Reset"); // NOTE: will not looked disabled, because of self.line_count
 
+        // ---------------------------------------------------------------------
         ui.separator();
 
         let animate_text = if self.animation_start.is_some() {
@@ -157,9 +158,9 @@ impl FractalApp {
             "Start Animation"
         };
         if ui.add_enabled(true, Button::new(animate_text)).on_hover_text(if self.animation_start.is_some() {
-            "Stop animating the fractal. Press space to pause/resume. Press R to reset animation."
+            "Stop animating the fractal. TODO!!!!! Press space to pause/resume. Press R to reset animation."
         } else {
-            "Start animating the fractal. Press space to pause/resume. Press R to reset animation."
+            "Start animating the fractal. TODO!!!!! Press space to pause/resume. Press R to reset animation."
         }).clicked(){
             self.animation_start = if self.animation_start.is_some() {
                 None
@@ -172,6 +173,9 @@ impl FractalApp {
         //     Slider::new(&mut fractal.animation.length, 0.5..=30.0)
         //         .text("Animation length (seconds)"),
         // );
+
+        // ---------------------------------------------------------------------
+        ui.separator();
 
         ui.add(egui::github_link_file!(
             "https://github.com/mjvandermeulen/egui-fractals/blob/main/",
@@ -207,26 +211,15 @@ impl FractalApp {
             fractal.replace_line,
         ));
 
-        let final_design_lines = if let Some(start) = self.animation_start {
-            log::info!(
-                "elapsed since beginning of animation: {:?}",
-                self.animation_start
-                    .map(|start| start.elapsed().as_millis()) // use a closure to map the Option<Instant> to Option<u128> of elapsed milliseconds
-            );
-            if let Some(animation) = &fractal.animation {
-                let progress =
-                    animation::animation_tools::animation_progress(start, animation.length);
-                let angle = // HARDCODED: 2PI is a full rotation
+        let final_design_lines = if let Some(start) = self.animation_start
+            && let Some(animation) = &fractal.animation
+        {
+            let progress = animation::animation_tools::animation_progress(start, animation.length);
+            let angle = // HARDCODED: 2PI is a full rotation
                 progress * std::f32::consts::TAU / 4.0; // TAU is 2PI
-                log::info!("progress = {}, angle = {}", progress, angle);
 
-                &rotate_design_lines(&fractal.design_lines, Pos2::new(-1.0, 0.0), angle)
-            } else {
-                log::info!("no animation struct. Using original design lines.");
-                &fractal.design_lines
-            }
+            &rotate_design_lines(&fractal.design_lines, Pos2::new(-1.0, 0.0), angle)
         } else {
-            log::info!("No animation. Using original design lines.");
             &fractal.design_lines
         };
         design_lines_to_global_design_vectors(final_design_lines, to_screen)
@@ -375,11 +368,6 @@ impl eframe::App for FractalApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         if self.animation_start.is_some() {
             ui.ctx().request_repaint();
-            // log::info!(
-            //     "elapsed since beginning of animation: {:?}",
-            //     self.animation_start
-            //         .map(|start| start.elapsed().as_millis()) // use a closure to map the Option<Instant> to Option<u128> of elapsed milliseconds
-            // );
         }
         let fractal = &mut self.fractals[self.fractal_index];
 
