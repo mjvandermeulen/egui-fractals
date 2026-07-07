@@ -6,6 +6,7 @@
 
 - [ ] add scaling: ratio.pow(progress)
 - [ ] add animation length slider
+- [ ] always have a default animation: no Option needed!
 
 ### Animation bigger
 

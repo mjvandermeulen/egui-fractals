@@ -21,7 +21,7 @@ use structs_and_enums::{Fractal, LineTransform, LinesStyle, Node, VectoredDesign
 use tools::max_depth_with_branches;
 
 use crate::fractal_app::{
-    animation::rotate_design_lines,
+    animation::scale_and_rotate_design_lines,
     design_helpers::handle_line_style_change,
     design_input::{handle_keyboard_input, handle_mouse_input},
     fractals::fractals,
@@ -215,10 +215,17 @@ impl FractalApp {
             && let Some(animation) = &fractal.animation
         {
             let progress = animation::animation_tools::animation_progress(start, animation.length);
-            let angle = // HARDCODED: 2PI is a full rotation
-                progress * std::f32::consts::TAU / 4.0; // TAU is 2PI
+            let cycle_angle = // HARDCODED: 2PI is a full rotation
+                std::f32::consts::PI / 4.0;
+            let cycle_scale = 1.0 / (0.5 * (2.0_f32).sqrt());
 
-            &rotate_design_lines(&fractal.design_lines, Pos2::new(-1.0, 0.0), angle)
+            &scale_and_rotate_design_lines(
+                &fractal.design_lines,
+                Pos2::new(-1.0, 0.0),
+                cycle_angle,
+                cycle_scale,
+                progress,
+            )
         } else {
             &fractal.design_lines
         };

@@ -27,7 +27,7 @@ pub fn fractals() -> Vec<Fractal> {
             depth: 9,
             animation: Some(
                 crate::fractal_app::animation::animation_structs_and_enums::Animation {
-                    length: 5.0,
+                    length: 1.5,
                 },
             ),
         },
