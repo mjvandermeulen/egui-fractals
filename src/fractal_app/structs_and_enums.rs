@@ -1,3 +1,4 @@
+use super::animation::animation_structs_and_enums::Animation;
 use egui::{Pos2, Vec2, emath::RectTransform};
 
 // Fractal struct
@@ -32,6 +33,7 @@ pub struct Fractal {
     pub start_line_width: f32,
     pub fixed_final_line_width: f32,
     pub depth: usize,
+    pub animation: Option<Animation>,
 }
 
 // design structs

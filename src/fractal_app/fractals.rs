@@ -25,6 +25,11 @@ pub fn fractals() -> Vec<Fractal> {
             start_line_width: 2.5, // TODO strangely global screen coords width... prob OK. Has to be visible
             fixed_final_line_width: 1.0,
             depth: 9,
+            animation: Some(
+                crate::fractal_app::animation::animation_structs_and_enums::Animation {
+                    length: 5.0,
+                },
+            ),
         },
         Fractal {
             name: "Squares".to_owned(),
@@ -51,6 +56,7 @@ pub fn fractals() -> Vec<Fractal> {
             start_line_width: 6.0,
             fixed_final_line_width: 1.0,
             depth: 14,
+            animation: None,
         },
     ]
 }

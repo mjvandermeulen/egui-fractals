@@ -1,9 +1,12 @@
+mod animation;
 mod design_helpers;
 mod design_input;
 mod fractals;
 mod paint_fractal_helpers;
 mod structs_and_enums;
 mod tools;
+
+use std::time::Instant;
 
 use design_helpers::{design_lines_to_global_design_vectors, paint_directed_line_segment};
 use egui::{
@@ -18,6 +21,7 @@ use structs_and_enums::{Fractal, LineTransform, LinesStyle, Node, VectoredDesign
 use tools::max_depth_with_branches;
 
 use crate::fractal_app::{
+    animation::rotate_design_lines,
     design_helpers::handle_line_style_change,
     design_input::{handle_keyboard_input, handle_mouse_input},
     fractals::fractals,
@@ -45,8 +49,10 @@ pub struct FractalApp {
     trash_line_key_down: bool,
     #[serde(skip)]
     hovered_line: Option<usize>, // for coloring the hovered line neon green.
-                                 // NOTE: when dragging over a non green line, it will "pick up" the line
-                                 // TODO: include LineHandles in the hovered_line.
+    // NOTE: when dragging over a non green line, it will "pick up" the line
+    // TODO: include LineHandles in the hovered_line.
+    #[serde(skip)]
+    animation_start: Option<Instant>,
 }
 
 impl Default for FractalApp {
@@ -61,6 +67,7 @@ impl Default for FractalApp {
             new_line_key_down: false,
             trash_line_key_down: false,
             hovered_line: None,
+            animation_start: None,
         }
     }
 }
@@ -96,6 +103,7 @@ impl FractalApp {
                 *fractal != Self::default().fractals[self.fractal_index],
                 Button::new(format!("Reset {}", fractal.name)),
             )
+            .on_hover_text(format!("Reset only the {} fractal", fractal.name))
             .clicked()
         {
             *fractal = Self::default().fractals[self.fractal_index].clone();
@@ -106,6 +114,7 @@ impl FractalApp {
                     || fractal.center != Self::default().fractals[self.fractal_index].center, // TODO!! and scroll
                 Button::new("Reset Zoom"),
             )
+            .on_hover_text("Reset the zoom level and center position")
             .clicked()
         {
             fractal.zoom = Self::default().fractals[self.fractal_index].zoom;
@@ -140,6 +149,30 @@ impl FractalApp {
 
         egui::reset_button(ui, self, "Full Reset"); // NOTE: will not looked disabled, because of self.line_count
 
+        ui.separator();
+
+        let animate_text = if self.animation_start.is_some() {
+            "Stop Animation"
+        } else {
+            "Start Animation"
+        };
+        if ui.add_enabled(true, Button::new(animate_text)).on_hover_text(if self.animation_start.is_some() {
+            "Stop animating the fractal. Press space to pause/resume. Press R to reset animation."
+        } else {
+            "Start animating the fractal. Press space to pause/resume. Press R to reset animation."
+        }).clicked(){
+            self.animation_start = if self.animation_start.is_some() {
+                None
+            } else {
+                Some(Instant::now())
+            };
+        }
+        // if let Some(animation) = &mut fractal.animation { LEFT OFF HERE
+        // ui.add(
+        //     Slider::new(&mut fractal.animation.length, 0.5..=30.0)
+        //         .text("Animation length (seconds)"),
+        // );
+
         ui.add(egui::github_link_file!(
             "https://github.com/mjvandermeulen/egui-fractals/blob/main/",
             "Source code."
@@ -150,6 +183,7 @@ impl FractalApp {
         );
     }
 
+    // TODO!!!! ugly: the design and animation are both in here.
     fn design(&mut self, ui: &Ui, painter: &Painter) -> Vec<VectoredDesignLine> {
         handle_keyboard_input(ui, self);
 
@@ -173,7 +207,29 @@ impl FractalApp {
             fractal.replace_line,
         ));
 
-        design_lines_to_global_design_vectors(&fractal.design_lines, to_screen)
+        let final_design_lines = if let Some(start) = self.animation_start {
+            log::info!(
+                "elapsed since beginning of animation: {:?}",
+                self.animation_start
+                    .map(|start| start.elapsed().as_millis()) // use a closure to map the Option<Instant> to Option<u128> of elapsed milliseconds
+            );
+            if let Some(animation) = &fractal.animation {
+                let progress =
+                    animation::animation_tools::animation_progress(start, animation.length);
+                let angle = // HARDCODED: 2PI is a full rotation
+                progress * std::f32::consts::TAU / 4.0; // TAU is 2PI
+                log::info!("progress = {}, angle = {}", progress, angle);
+
+                &rotate_design_lines(&fractal.design_lines, Pos2::new(-1.0, 0.0), angle)
+            } else {
+                log::info!("no animation struct. Using original design lines.");
+                &fractal.design_lines
+            }
+        } else {
+            log::info!("No animation. Using original design lines.");
+            &fractal.design_lines
+        };
+        design_lines_to_global_design_vectors(final_design_lines, to_screen)
     }
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredDesignLine]) {
@@ -300,7 +356,6 @@ impl FractalApp {
             std::mem::swap(&mut nodes, &mut new_nodes);
         }
         self.line_count = shapes.len();
-        // log::info!("self.depth = {}", self.depth);
         painter.extend(shapes);
     }
 }
@@ -318,6 +373,14 @@ impl eframe::App for FractalApp {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        if self.animation_start.is_some() {
+            ui.ctx().request_repaint();
+            // log::info!(
+            //     "elapsed since beginning of animation: {:?}",
+            //     self.animation_start
+            //         .map(|start| start.elapsed().as_millis()) // use a closure to map the Option<Instant> to Option<u128> of elapsed milliseconds
+            // );
+        }
         let fractal = &mut self.fractals[self.fractal_index];
 
         fractal.depth = fractal.depth.at_most(max_depth_with_branches(
