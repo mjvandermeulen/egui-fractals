@@ -4,7 +4,16 @@
 
 ### Animation quick small
 
-- [ ] add scaling: ratio.pow(progress)
+- [x] add scaling: ratio.pow(progress)
+- [ ] refactor BIG: width always ratio of length. Otherwise animation is wrong: when scaling endpoints the length of the line changes!
+- [ ] refactor: don't translate design point, but the global design vectors.
+
+```mermaid
+graph TD
+    A[Design Points TODO!!!!! update] --> B[Global Design Vectors]
+    B -->|possible animation| C[Global Blueprint]
+```
+
 - [ ] add animation length slider
 - [ ] always have a default animation: no Option needed!
 
@@ -89,10 +98,18 @@ What if you start the first gen branches with thickness 1?
 
 # FIX HANGING ON START:
 
-```
+````
+
 cd /Users/mjvandermeulen/Library/Application Support/egui-demo-app
 ls
 app.ron
+
 ```
 
 remove the app.ron file.
+```
+
+```
+
+```
+````

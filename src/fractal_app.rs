@@ -8,7 +8,7 @@ mod tools;
 
 use std::time::Instant;
 
-use design_helpers::{design_lines_to_global_design_vectors, paint_directed_line_segment};
+use design_helpers::{paint_directed_line_segment, reversible_lines_to_global_line_vectors};
 use egui::{
     Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
@@ -17,7 +17,7 @@ use egui::{
     widgets::Slider,
 };
 use paint_fractal_helpers::line_color;
-use structs_and_enums::{Fractal, LineTransform, LinesStyle, Node, VectoredDesignLine};
+use structs_and_enums::{Fractal, LineTransform, LinesStyle, Node, VectoredLine};
 use tools::max_depth_with_branches;
 
 use crate::fractal_app::{
@@ -25,7 +25,7 @@ use crate::fractal_app::{
     design_helpers::handle_line_style_change,
     design_input::{handle_keyboard_input, handle_mouse_input},
     fractals::fractals,
-    structs_and_enums::{DesignLine, LineHandles},
+    structs_and_enums::{LineHandles, ReversibleLine},
 };
 
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
@@ -143,7 +143,7 @@ impl FractalApp {
                     .text("Final line width"),
             )
         } else {
-            ui.add(Slider::new(&mut fractal.start_line_width, 0.0..=7.0).text("Start line width"))
+            ui.add(Slider::new(&mut fractal.line_width, 0.0..=7.0).text("Start line width"))
         };
         ui.add(Slider::new(&mut fractal.depth, 0..=max_depth).text("depth"));
 
@@ -188,7 +188,7 @@ impl FractalApp {
     }
 
     // TODO!!!! ugly: the design and animation are both in here.
-    fn design(&mut self, ui: &Ui, painter: &Painter) -> Vec<VectoredDesignLine> {
+    fn design(&mut self, ui: &Ui, painter: &Painter) -> Vec<VectoredLine> {
         handle_keyboard_input(ui, self);
 
         let fractal = &mut self.fractals[self.fractal_index];
@@ -199,7 +199,7 @@ impl FractalApp {
             ),
             painter.clip_rect(),
         );
-        // NOTE: The line above is the last time fractal is used and the compiler "releases" the 1 mut ref only requirement.
+        // LEARN: The line above is the last time fractal is used and the compiler "releases" the 1 mut ref only requirement.
 
         handle_mouse_input(ui, self, to_screen, painter.clip_rect());
         let fractal = &mut self.fractals[self.fractal_index]; // LEARN: moving out of a mut reference by taking ownership (again) see NOTE above.
@@ -211,11 +211,11 @@ impl FractalApp {
             fractal.replace_line,
         ));
 
-        let final_design_lines = if let Some(start) = self.animation_start
+        let blueprint_lines = if let Some(start) = self.animation_start
             && let Some(animation) = &fractal.animation
         {
             let progress = animation::animation_tools::animation_progress(start, animation.length);
-            let cycle_angle = // HARDCODED: 2PI is a full rotation
+            let cycle_angle = // HARDCODED:
                 std::f32::consts::PI / 4.0;
             let cycle_scale = 1.0 / (0.5 * (2.0_f32).sqrt());
 
@@ -229,27 +229,27 @@ impl FractalApp {
         } else {
             &fractal.design_lines
         };
-        design_lines_to_global_design_vectors(final_design_lines, to_screen)
+        reversible_lines_to_global_line_vectors(blueprint_lines, to_screen)
     }
 
-    fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredDesignLine]) {
+    fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredLine]) {
         let fractal = &self.fractals[self.fractal_index];
         let highlight_color =
             Color32::from_hex("#0FFF50").expect("Expected hex neon green to be parsed correctly");
         design_vectors.iter().enumerate().for_each(|(i, vec)| {
             // LEARN below. This is sooo nice
             let (width, color) = if Some(i) == self.hovered_line {
-                (fractal.start_line_width, highlight_color)
+                (fractal.line_width, highlight_color)
             } else if i == 0 {
-                (fractal.start_line_width * 1.5, Color32::RED)
+                (fractal.line_width * 1.5, Color32::RED)
             } else {
-                (fractal.start_line_width, Color32::ORANGE)
+                (fractal.line_width, Color32::ORANGE)
             };
             paint_directed_line_segment(painter, vec, width, color);
         });
     }
 
-    fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredDesignLine]) {
+    fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredLine]) {
         let fractal = &self.fractals[self.fractal_index];
         debug_assert!(
             fractal.depth
@@ -293,7 +293,7 @@ impl FractalApp {
         let base_line_width = if fractal.replace_line {
             fractal.fixed_final_line_width
         } else {
-            fractal.start_line_width
+            fractal.line_width
         };
         if !fractal.replace_line || fractal.depth == 0 {
             paint_line(
@@ -305,6 +305,7 @@ impl FractalApp {
 
         // CORE paint_fractal loop:
         let base_length = base.vec.length();
+        log::info!("base length: {base_length}");
         let mut nodes = vec![Node {
             pos: base.pos,
             vec: base.vec,
@@ -344,7 +345,7 @@ impl FractalApp {
                         paint_line(
                             [paint_a, paint_b],
                             color,
-                            (painted_node.vec.length() / base_length) * fractal.start_line_width,
+                            (painted_node.vec.length() / base_length) * fractal.line_width,
                         );
                     }
                     if depth < fractal.depth {
@@ -390,6 +391,12 @@ impl eframe::App for FractalApp {
             ui.layer_id(),
             ui.available_rect_before_wrap(),
         );
+
+        // LEFT OFF HERE:
+        // - Let design update self.design in place
+        // - the call animate, if needed! -> blueprint_lines = scale_and_rotate_design_lines(...)
+        // - turn bluepint_lines into global line vectors
+        // - paint design or paint fractal
 
         let design_vectors = self.design(ui, &painter);
 

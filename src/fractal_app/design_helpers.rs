@@ -1,5 +1,5 @@
-use super::structs_and_enums::VectoredDesignLine;
-use super::{DesignLine, FractalApp, LineHandles, LinesStyle};
+use super::structs_and_enums::VectoredLine;
+use super::{FractalApp, LineHandles, LinesStyle, ReversibleLine};
 
 use egui::Response;
 use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
@@ -26,7 +26,7 @@ use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
 
 pub fn closest_line_handle(
     local_pos: Pos2,
-    dl: &DesignLine,
+    dl: &ReversibleLine,
     threshold: f32,
 ) -> Option<(usize, f32)> {
     let mut min = threshold;
@@ -48,7 +48,7 @@ pub fn hovered_line_handle(t: f32) -> LineHandles {
     }
 }
 
-pub fn closest_handle(pos: Pos2, dlines: &[DesignLine], threshold: f32) -> Option<[usize; 2]> {
+pub fn closest_handle(pos: Pos2, dlines: &[ReversibleLine], threshold: f32) -> Option<[usize; 2]> {
     let mut min = threshold;
     let mut nearest_handle: Option<[usize; 2]> = None;
     for (i, dl) in dlines.iter().enumerate() {
@@ -60,13 +60,13 @@ pub fn closest_handle(pos: Pos2, dlines: &[DesignLine], threshold: f32) -> Optio
     nearest_handle
 }
 
-pub fn design_lines_to_global_design_vectors(
-    local_canvas_lines: &[DesignLine],
+pub fn reversible_lines_to_global_line_vectors(
+    local_canvas_lines: &[ReversibleLine],
     to_screen: RectTransform,
-) -> Vec<VectoredDesignLine> {
+) -> Vec<VectoredLine> {
     local_canvas_lines
         .iter()
-        .map(|design_line| VectoredDesignLine::from_design_line(*design_line, to_screen))
+        .map(|design_line| VectoredLine::from_design_line(*design_line, to_screen))
         .collect()
 }
 
@@ -100,7 +100,7 @@ fn distance_to_line(p: Pos2, [a, b]: [Pos2; 2]) -> (f32, f32) {
 
 pub fn closest_line(
     local_pos: Pos2,
-    design_lines: &[DesignLine],
+    design_lines: &[ReversibleLine],
     threshold: f32,
     skip: usize, // e.g.: To skip the iterator, set skip to 1.
 ) -> Option<(usize, f32)> {
@@ -118,7 +118,7 @@ pub fn closest_line(
 
 pub fn paint_directed_line_segment(
     painter: &Painter,
-    dvec: &VectoredDesignLine,
+    dvec: &VectoredLine,
     width: f32,
     color: Color32,
 ) {
@@ -228,7 +228,7 @@ pub fn start_new_line(
                 start_pos = fractal.design_lines[line_index].line[0];
             }
         }
-        let new_line = DesignLine {
+        let new_line = ReversibleLine {
             line: [start_pos, pos],
             reversed: false,
         };
@@ -242,7 +242,7 @@ pub fn make_loop(fractal_app: &mut FractalApp) {
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
     let base = fractal.design_lines[0];
     let mut remaining_lines = fractal.design_lines.split_off(1);
-    let mut new_dls: Vec<DesignLine> = Vec::with_capacity(remaining_lines.len());
+    let mut new_dls: Vec<ReversibleLine> = Vec::with_capacity(remaining_lines.len());
 
     let mut current_pos = base.line[1];
     while !remaining_lines.is_empty() {

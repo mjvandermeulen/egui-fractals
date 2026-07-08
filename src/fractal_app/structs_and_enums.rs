@@ -16,7 +16,7 @@ pub enum LineHandles {
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
-pub struct DesignLine {
+pub struct ReversibleLine {
     pub line: [Pos2; 2],
     pub reversed: bool,
 }
@@ -25,12 +25,12 @@ pub struct Fractal {
     pub name: String,
     pub mirror: bool,
     pub rainbow: bool,
-    pub design_lines: Vec<DesignLine>,
+    pub design_lines: Vec<ReversibleLine>,
     pub replace_line: bool,
     pub lines_style: LinesStyle,
     pub zoom: f32,
     pub center: Pos2,
-    pub start_line_width: f32,
+    pub line_width: f32,
     pub fixed_final_line_width: f32,
     pub depth: usize,
     pub animation: Option<Animation>,
@@ -39,14 +39,15 @@ pub struct Fractal {
 // design structs
 
 #[derive(Clone, Copy)]
-pub struct VectoredDesignLine {
+pub struct VectoredLine {
     pub pos: Pos2,
     pub vec: Vec2,
 }
 
-impl VectoredDesignLine {
+impl VectoredLine {
     pub fn from_design_line(
-        DesignLine { line, reversed }: DesignLine,
+        // TODO!!!!!!! RENAME
+        ReversibleLine { line, reversed }: ReversibleLine,
         to_screen: RectTransform,
     ) -> Self {
         let (start, end) = if reversed {
@@ -79,8 +80,8 @@ pub struct LineTransform {
 
 impl LineTransform {
     pub fn from_design_vector(
-        base: &VectoredDesignLine,
-        design_line: VectoredDesignLine,
+        base: &VectoredLine,
+        design_line: VectoredLine,
         mirrored: bool,
     ) -> Self {
         let base_to_dcl: Vec2 = design_line.pos - base.pos;
