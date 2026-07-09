@@ -66,7 +66,7 @@ pub fn reversible_lines_to_global_line_vectors(
 ) -> Vec<VectoredLine> {
     local_canvas_lines
         .iter()
-        .map(|design_line| VectoredLine::from_design_line(*design_line, to_screen))
+        .map(|design_line| VectoredLine::from_reversible_line(*design_line, to_screen))
         .collect()
 }
 

@@ -30,7 +30,7 @@ pub struct Fractal {
     pub lines_style: LinesStyle,
     pub zoom: f32,
     pub center: Pos2,
-    pub line_width: f32,
+    pub initiator_length_width_ratio: f32,
     pub fixed_final_line_width: f32,
     pub depth: usize,
     pub animation: Option<Animation>,
@@ -45,8 +45,7 @@ pub struct VectoredLine {
 }
 
 impl VectoredLine {
-    pub fn from_design_line(
-        // TODO!!!!!!! RENAME
+    pub fn from_reversible_line(
         ReversibleLine { line, reversed }: ReversibleLine,
         to_screen: RectTransform,
     ) -> Self {

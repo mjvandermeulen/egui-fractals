@@ -22,9 +22,7 @@ pub fn fractals() -> Vec<Fractal> {
             lines_style: LinesStyle::Free,
             zoom: 0.18,
             center: pos2(0.0, -2.5),
-            // TODO!!!!!!! DOING: change to 2.5 width per 1.0 length
-            //it was strangely global screen coords width... prob OK. Has to be visible
-            line_width: 2.5,
+            initiator_length_width_ratio: 50.0,
             fixed_final_line_width: 1.0,
             depth: 9,
             animation: Some(
@@ -55,7 +53,7 @@ pub fn fractals() -> Vec<Fractal> {
             lines_style: LinesStyle::Free,
             zoom: 0.55592126,
             center: pos2(0.5, -0.7),
-            line_width: 6.0,
+            initiator_length_width_ratio: 6.0,
             fixed_final_line_width: 1.0,
             depth: 14,
             animation: None,

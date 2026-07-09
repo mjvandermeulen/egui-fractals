@@ -1,3 +1,12 @@
+# NTOE:
+
+move away from drop box and icloud storage.
+now I often have to
+
+    sudo chown -R mjvandermeulen .
+
+in the root dir of the project
+
 # TODO
 
 ## NOW
