@@ -53,6 +53,7 @@ pub struct FractalApp {
     // TODO: include LineHandles in the hovered_line.
     #[serde(skip)]
     animation_start: Option<Instant>,
+    a_b_c: Option<(Pos2, Pos2, Pos2)>, // for animation. HACK TEMP
 }
 
 impl Default for FractalApp {
@@ -68,6 +69,7 @@ impl Default for FractalApp {
             trash_line_key_down: false,
             hovered_line: None,
             animation_start: None,
+            a_b_c: None,
         }
     }
 }
@@ -388,16 +390,20 @@ impl eframe::App for FractalApp {
                     .distance(fractal.design_lines[0].line[1])
                     / fractal.design_lines[1].line[0].distance(fractal.design_lines[1].line[1]);
                 // HACK, check if there is a generator line. TODO!!!!!
-                let rotation_center = find_point_a_corrected(
-                    fractal.design_lines[1].line[0],
-                    fractal.design_lines[1].line[1],
-                    cycle_angle,
-                    cycle_scale,
-                );
+                let b = fractal.design_lines[0].line[0];
+                let c = fractal.design_lines[1].line[0];
+
+                let rotation_center = find_point_a_corrected(c, b, cycle_angle, 1.0 / cycle_scale);
+                self.a_b_c = Some((
+                    // UGLY HACK, TODO!!!!!
+                    rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)),
+                    b,
+                    c,
+                ));
 
                 &scale_and_rotate_design_lines(
                     &fractal.design_lines,
-                    rotation_center.unwrap_or(fractal.design_lines[0].line[0]), // UGLY HACK, TODO!!!!!
+                    rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO!!!!!
                     cycle_angle,
                     cycle_scale,
                     progress,
@@ -405,6 +411,22 @@ impl eframe::App for FractalApp {
             } else {
                 &fractal.design_lines
             };
+
+            if self.a_b_c.is_some() {
+                let (a, b, c) = self.a_b_c.unwrap();
+                painter.line_segment(
+                    [to_screen * a, to_screen * b],
+                    Stroke::new(2.0, Color32::RED),
+                );
+                // painter.line_segment(
+                //     [to_screen * b, to_screen * c],
+                //     Stroke::new(2.0, Color32::from_rgb(0, 0, 255)),
+                // );
+                painter.line_segment(
+                    [to_screen * a, to_screen * c],
+                    Stroke::new(2.0, Color32::GREEN),
+                );
+            }
 
             let blueprint_global_vectors =
                 reversible_lines_to_global_line_vectors(blueprint_lines, to_screen);
