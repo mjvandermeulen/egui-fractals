@@ -1,6 +1,9 @@
 use egui::pos2;
 
-use crate::fractal_app::structs_and_enums::{Fractal, LinesStyle, ReversibleLine};
+use super::{
+    animation::animation_structs_and_enums::Animation,
+    structs_and_enums::{Fractal, LinesStyle, ReversibleLine},
+};
 
 pub fn fractals() -> Vec<Fractal> {
     vec![
@@ -25,11 +28,7 @@ pub fn fractals() -> Vec<Fractal> {
             initiator_length_width_ratio: 50.0,
             fixed_final_line_width: 1.0,
             depth: 9,
-            animation: Some(
-                crate::fractal_app::animation::animation_structs_and_enums::Animation {
-                    length: 1.5,
-                },
-            ),
+            animation: Animation { length: 1.5 },
         },
         Fractal {
             name: "Squares".to_owned(),
@@ -56,7 +55,7 @@ pub fn fractals() -> Vec<Fractal> {
             initiator_length_width_ratio: 6.0,
             fixed_final_line_width: 1.0,
             depth: 14,
-            animation: None,
+            animation: Animation { length: 1.5 },
         },
     ]
 }

@@ -21,7 +21,7 @@ use structs_and_enums::{Fractal, LineTransform, LinesStyle, Node, VectoredLine};
 use tools::max_depth_with_branches;
 
 use crate::fractal_app::{
-    animation::scale_and_rotate_design_lines,
+    animation::{animation_tools::find_point_a_corrected, scale_and_rotate_design_lines},
     design_helpers::handle_line_style_change,
     design_input::{handle_keyboard_input, handle_mouse_input},
     fractals::fractals,
@@ -378,19 +378,26 @@ impl eframe::App for FractalApp {
 
             self.paint_design(&painter, &design_global_vectors);
         } else {
-            let blueprint_lines = if let Some(start) = self.animation_start
-                && let Some(animation) = &fractal.animation
-            {
-                // TODO!!!!! call and code self.animate
+            let blueprint_lines = if let Some(start) = self.animation_start {
+                // TODO!!!!! call and code self.animate NOTE: it seems easier to use vectors and not lines for the animation.
                 let progress =
-                    animation::animation_tools::animation_progress(start, animation.length);
+                    animation::animation_tools::animation_progress(start, fractal.animation.length);
                 let cycle_angle = // HARDCODED:
-                std::f32::consts::PI / 4.0;
-                let cycle_scale = 1.0 / (0.5 * (2.0_f32).sqrt());
+                - std::f32::consts::PI / 4.0;
+                let cycle_scale = fractal.design_lines[0].line[0]
+                    .distance(fractal.design_lines[0].line[1])
+                    / fractal.design_lines[1].line[0].distance(fractal.design_lines[1].line[1]);
+                // HACK, check if there is a generator line. TODO!!!!!
+                let rotation_center = find_point_a_corrected(
+                    fractal.design_lines[1].line[0],
+                    fractal.design_lines[1].line[1],
+                    cycle_angle,
+                    cycle_scale,
+                );
 
                 &scale_and_rotate_design_lines(
                     &fractal.design_lines,
-                    Pos2::new(1.0, -0.5),
+                    rotation_center.unwrap_or(fractal.design_lines[0].line[0]), // UGLY HACK, TODO!!!!!
                     cycle_angle,
                     cycle_scale,
                     progress,

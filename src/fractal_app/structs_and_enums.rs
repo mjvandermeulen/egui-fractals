@@ -33,7 +33,7 @@ pub struct Fractal {
     pub initiator_length_width_ratio: f32,
     pub fixed_final_line_width: f32,
     pub depth: usize,
-    pub animation: Option<Animation>,
+    pub animation: Animation,
 }
 
 // design structs
