@@ -21,7 +21,7 @@ use structs_and_enums::{Fractal, LineTransform, LinesStyle, Node, VectoredLine};
 use tools::max_depth_with_branches;
 
 use crate::fractal_app::{
-    animation::{animation_tools::find_point_a_corrected, scale_and_rotate_design_lines},
+    animation::{animation_tools::find_animation_rotation_center, scale_and_rotate_design_lines},
     design_helpers::handle_line_style_change,
     design_input::{handle_keyboard_input, handle_mouse_input},
     fractals::fractals,
@@ -365,11 +365,6 @@ impl eframe::App for FractalApp {
             painter.clip_rect(),
         );
 
-        // - Let design update self.design in place
-        // - the call animate, if needed! -> blueprint_lines = scale_and_rotate_design_lines(...)
-        // - turn bluepint_lines into global line vectors
-        // - paint design or paint fractal
-
         self.design(ui, to_screen, &painter);
 
         let fractal = &mut self.fractals[self.fractal_index]; // HACK for now. Change after self.animate is coded.
@@ -380,6 +375,12 @@ impl eframe::App for FractalApp {
 
             self.paint_design(&painter, &design_global_vectors);
         } else {
+            // turn design into global_design_vectors
+            // blue_print_vectors =
+            //    if animation is needed: call pub fn animation_frame
+            //    else global_design_vectors
+            // NOTE: paint a_b_c within animation_frame
+
             let blueprint_lines = if let Some(start) = self.animation_start {
                 // TODO!!!!! call and code self.animate NOTE: it seems easier to use vectors and not lines for the animation.
                 let progress =
@@ -390,10 +391,11 @@ impl eframe::App for FractalApp {
                     .distance(fractal.design_lines[0].line[1])
                     / fractal.design_lines[1].line[0].distance(fractal.design_lines[1].line[1]);
                 // HACK, check if there is a generator line. TODO!!!!!
-                let b = fractal.design_lines[0].line[0];
-                let c = fractal.design_lines[1].line[0];
+                let b = fractal.design_lines[1].line[0];
+                let c = fractal.design_lines[0].line[0];
 
-                let rotation_center = find_point_a_corrected(c, b, cycle_angle, 1.0 / cycle_scale);
+                let rotation_center =
+                    find_animation_rotation_center(b, c, cycle_angle, cycle_scale);
                 self.a_b_c = Some((
                     // UGLY HACK, TODO!!!!!
                     rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)),
@@ -418,10 +420,6 @@ impl eframe::App for FractalApp {
                     [to_screen * a, to_screen * b],
                     Stroke::new(2.0, Color32::RED),
                 );
-                // painter.line_segment(
-                //     [to_screen * b, to_screen * c],
-                //     Stroke::new(2.0, Color32::from_rgb(0, 0, 255)),
-                // );
                 painter.line_segment(
                     [to_screen * a, to_screen * c],
                     Stroke::new(2.0, Color32::GREEN),
