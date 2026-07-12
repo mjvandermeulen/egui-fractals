@@ -119,14 +119,15 @@ pub fn closest_line(
 pub fn paint_directed_line_segment(
     painter: &Painter,
     dvec: &VectoredLine,
-    width: f32,
+    length_width_ratio: f32,
     color: Color32,
 ) {
+    let width = dvec.vec.length() / length_width_ratio;
     let ratio = 0.2;
-    let middle = dvec.pos + (1.0 - ratio) * dvec.vec;
-    painter.line_segment([dvec.pos, middle], Stroke::new(width, color));
+    let color_division_point = dvec.pos + (1.0 - ratio) * dvec.vec;
+    painter.line_segment([dvec.pos, color_division_point], Stroke::new(width, color));
     painter.line_segment(
-        [middle, dvec.pos + dvec.vec],
+        [color_division_point, dvec.pos + dvec.vec],
         Stroke::new(width, Color32::BLACK),
     );
 }

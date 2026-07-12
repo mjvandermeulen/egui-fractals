@@ -234,19 +234,19 @@ impl FractalApp {
     }
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredLine]) {
-        let fractal = &self.fractals[self.fractal_index];
+        let lw_ratio = self.fractals[self.fractal_index].initiator_length_width_ratio;
         let highlight_color =
             Color32::from_hex("#0FFF50").expect("Expected hex neon green to be parsed correctly");
         design_vectors.iter().enumerate().for_each(|(i, vec)| {
-            // LEARN below. This is sooo nice
-            let (width, color) = if Some(i) == self.hovered_line {
-                (fractal.initiator_length_width_ratio, highlight_color)
+            // LEARN `if Some(i) == self.hovered_line` below. This is sooo nice
+            let color = if Some(i) == self.hovered_line {
+                highlight_color
             } else if i == 0 {
-                (fractal.initiator_length_width_ratio * 1.5, Color32::RED)
+                Color32::RED
             } else {
-                (fractal.initiator_length_width_ratio, Color32::ORANGE)
+                Color32::ORANGE
             };
-            paint_directed_line_segment(painter, vec, width, color);
+            paint_directed_line_segment(painter, vec, lw_ratio, color);
         });
     }
 
@@ -279,30 +279,31 @@ impl FractalApp {
             }
         };
 
-        let base = vectored_design_lines[0];
+        let initiator = vectored_design_lines[0];
         let transformations: Vec<LineTransform> = vectored_design_lines[1..]
             .iter()
             .flat_map(|line| {
                 let mut line_transforms: Vec<LineTransform> =
-                    vec![LineTransform::from_design_vector(&base, *line, false)];
+                    vec![LineTransform::from_design_vector(&initiator, *line, false)];
                 if fractal.mirror {
-                    line_transforms.push(LineTransform::from_design_vector(&base, *line, true));
+                    line_transforms
+                        .push(LineTransform::from_design_vector(&initiator, *line, true));
                 }
                 line_transforms
             })
             .collect();
         if !fractal.replace_line || fractal.depth == 0 {
             paint_line(
-                [base.pos, base.pos + base.vec],
+                [initiator.pos, initiator.pos + initiator.vec],
                 line_color(0, fractal.rainbow),
-                base.vec.length() / fractal.initiator_length_width_ratio,
+                initiator.vec.length() / fractal.initiator_length_width_ratio,
             );
         }
 
         // CORE paint_fractal loop:
         let mut nodes = vec![Node {
-            pos: base.pos,
-            vec: base.vec,
+            pos: initiator.pos,
+            vec: initiator.vec,
         }];
 
         let mut new_nodes = Vec::new();
