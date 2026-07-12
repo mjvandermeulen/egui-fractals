@@ -21,7 +21,7 @@ use structs_and_enums::{Fractal, LineTransform, LinesStyle, Node, VectoredLine};
 use tools::max_depth_with_branches;
 
 use crate::fractal_app::{
-    animation::{animation_tools::find_animation_rotation_center, scale_and_rotate_design_lines},
+    animation::{animation_tools::find_animation_rotation_center, scale_and_rotate_vectored_lines},
     design_helpers::handle_line_style_change,
     design_input::{handle_keyboard_input, handle_mouse_input},
     fractals::fractals,
@@ -205,6 +205,34 @@ impl FractalApp {
         ));
     }
 
+    fn animation_frame(
+        &mut self,
+        gdvs: &[VectoredLine], // global design vectors
+        start: Instant,
+    ) -> Vec<VectoredLine> {
+        let progress = animation::animation_tools::animation_progress(
+            start,
+            self.fractals[self.fractal_index].animation.length,
+        );
+        let cycle_angle = gdvs[0].vec.angle() - gdvs[1].vec.angle();
+        let cycle_scale = gdvs[0].vec.length() / gdvs[1].vec.length();
+        // HACK, check if there is a generator line. TODO!!!!!
+
+        let b = gdvs[1].pos;
+        let c = gdvs[0].pos;
+
+        let rotation_center = find_animation_rotation_center(b, c, cycle_angle, cycle_scale);
+        self.a_b_c = Some((rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), b, c));
+
+        scale_and_rotate_vectored_lines(
+            gdvs,
+            rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO!!!!!
+            cycle_angle,
+            cycle_scale,
+            progress,
+        )
+    }
+
     fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredLine]) {
         let fractal = &self.fractals[self.fractal_index];
         let highlight_color =
@@ -368,68 +396,30 @@ impl eframe::App for FractalApp {
         self.design(ui, to_screen, &painter);
 
         let fractal = &mut self.fractals[self.fractal_index]; // HACK for now. Change after self.animate is coded.
-
         if self.show_design_only {
             let design_global_vectors =
                 reversible_lines_to_global_line_vectors(&fractal.design_lines, to_screen);
 
             self.paint_design(&painter, &design_global_vectors);
         } else {
-            // turn design into global_design_vectors
-            // blue_print_vectors =
-            //    if animation is needed: call pub fn animation_frame
-            //    else global_design_vectors
-            // NOTE: paint a_b_c within animation_frame
+            let global_design_vectors: Vec<VectoredLine> =
+                reversible_lines_to_global_line_vectors(&fractal.design_lines, to_screen);
 
-            let blueprint_lines = if let Some(start) = self.animation_start {
-                // TODO!!!!! call and code self.animate NOTE: it seems easier to use vectors and not lines for the animation.
-                let progress =
-                    animation::animation_tools::animation_progress(start, fractal.animation.length);
-                let cycle_angle = // HARDCODED:
-                - std::f32::consts::PI / 4.0;
-                let cycle_scale = fractal.design_lines[0].line[0]
-                    .distance(fractal.design_lines[0].line[1])
-                    / fractal.design_lines[1].line[0].distance(fractal.design_lines[1].line[1]);
-                // HACK, check if there is a generator line. TODO!!!!!
-                let b = fractal.design_lines[1].line[0];
-                let c = fractal.design_lines[0].line[0];
-
-                let rotation_center =
-                    find_animation_rotation_center(b, c, cycle_angle, cycle_scale);
-                self.a_b_c = Some((
-                    // UGLY HACK, TODO!!!!!
-                    rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)),
-                    b,
-                    c,
-                ));
-
-                &scale_and_rotate_design_lines(
-                    &fractal.design_lines,
-                    rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO!!!!!
-                    cycle_angle,
-                    cycle_scale,
-                    progress,
-                )
+            let blueprint_vectors: Vec<VectoredLine> = if let Some(start) = self.animation_start {
+                self.animation_frame(&global_design_vectors, start)
             } else {
-                &fractal.design_lines
+                global_design_vectors
             };
 
-            if self.a_b_c.is_some() {
-                let (a, b, c) = self.a_b_c.unwrap();
-                painter.line_segment(
-                    [to_screen * a, to_screen * b],
-                    Stroke::new(2.0, Color32::RED),
-                );
-                painter.line_segment(
-                    [to_screen * a, to_screen * c],
-                    Stroke::new(2.0, Color32::GREEN),
-                );
-            }
+            self.paint_fractal(&painter, &blueprint_vectors);
 
-            let blueprint_global_vectors =
-                reversible_lines_to_global_line_vectors(blueprint_lines, to_screen);
-
-            self.paint_fractal(&painter, &blueprint_global_vectors);
+            // if self.a_b_c.is_some() {
+            //     let (a, b, c) = self
+            //         .a_b_c
+            //         .expect("We can expect a_b_c to be Some, because we just checked it is Some");
+            //     painter.line_segment([a, b], Stroke::new(2.0, Color32::RED));
+            //     painter.line_segment([a, c], Stroke::new(2.0, Color32::GREEN));
+            // }
         }
 
         // Make sure we allocate what we used (everything)

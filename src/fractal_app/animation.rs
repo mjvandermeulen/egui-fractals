@@ -1,9 +1,10 @@
 use egui::{Pos2, Vec2, emath::Rot2};
 
 use crate::fractal_app::{
-    animation::animation_tools::animation_progress_to_scale, structs_and_enums::ReversibleLine,
+    animation::animation_tools::animation_progress_to_scale, structs_and_enums::VectoredLine,
 };
 
+// TODO check if these need to be pub
 pub mod animation_structs_and_enums;
 pub mod animation_tools;
 
@@ -18,26 +19,21 @@ pub fn scale_and_rotate_point_around_center(point: Pos2, center: Pos2, rotation:
     rotated_point
 }
 
-pub fn scale_and_rotate_design_lines(
-    dls: &[ReversibleLine],
+pub fn scale_and_rotate_vectored_lines(
+    lines: &[VectoredLine],
     rotation_center: Pos2,
     cycle_angle: f32,
     cycle_scale: f32,
     progress: f32,
-) -> Vec<ReversibleLine> {
+) -> Vec<VectoredLine> {
     let angle = progress * cycle_angle;
     let scale = animation_progress_to_scale(progress, cycle_scale);
     let rotation = scale * Rot2::from_angle(angle);
-    dls.iter()
-        .map(|dl| {
-            let new_line = [
-                scale_and_rotate_point_around_center(dl.line[0], rotation_center, rotation),
-                scale_and_rotate_point_around_center(dl.line[1], rotation_center, rotation),
-            ];
-            ReversibleLine {
-                line: new_line,
-                reversed: dl.reversed,
-            }
+    lines
+        .iter()
+        .map(|line| VectoredLine {
+            pos: scale_and_rotate_point_around_center(line.pos, rotation_center, rotation),
+            vec: rotation * line.vec,
         })
         .collect()
 }

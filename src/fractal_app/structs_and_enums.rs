@@ -38,7 +38,7 @@ pub struct Fractal {
 
 // design structs
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct VectoredLine {
     pub pos: Pos2,
     pub vec: Vec2,
