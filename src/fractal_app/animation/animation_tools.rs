@@ -2,9 +2,24 @@ use std::time::Instant;
 
 use egui::Pos2;
 
-pub fn animation_progress(start_time: Instant, animation_length: f32) -> f32 {
+pub fn animation_progress(
+    start_time: Instant,
+    animation_length: f32,
+    repeat_cycle: Option<usize>,
+) -> f32 {
     let elapsed_time = start_time.elapsed().as_secs_f32();
-    elapsed_time / animation_length
+
+    match repeat_cycle {
+        Some(rc) => {
+            let progress_at_cycle_start = rc as f32;
+            let progress_in_cycle = (elapsed_time % animation_length) / animation_length;
+            log::info!(
+                "progress_at_cycle_start: {progress_at_cycle_start}. progress_in_cycle: {progress_in_cycle}"
+            );
+            progress_at_cycle_start + progress_in_cycle
+        }
+        None => elapsed_time / animation_length,
+    }
 }
 
 pub fn animation_progress_to_scale(progress: f32, cycle_scale: f32) -> f32 {

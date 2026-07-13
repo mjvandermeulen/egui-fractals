@@ -51,8 +51,20 @@ pub struct FractalApp {
     hovered_line: Option<usize>, // for coloring the hovered line neon green.
     // NOTE: when dragging over a non green line, it will "pick up" the line
     // TODO: include LineHandles in the hovered_line.
+
+    // TODO!!! put all animation stuff in a struct.
     #[serde(skip)]
     animation_start: Option<Instant>,
+    // TODO!!! progress: f32, // for animation. instead of local, so you can pause and resume.
+    #[serde(skip)]
+    animation_cycle: usize, // one cycle is when a generator line is animated to take exactly the place of the initiator.
+    #[serde(skip)]
+    new_cycle: bool,
+    #[serde(skip)]
+    animation_repetition_cycle: Option<usize>, // the cycle that can be repeated to make a continuous animation.
+    #[serde(skip)]
+    animation_cycle_start_limited_depth_paint_count: usize,
+    #[serde(skip)]
     a_b_c: Option<(Pos2, Pos2, Pos2)>, // for animation. HACK TEMP
 }
 
@@ -69,6 +81,10 @@ impl Default for FractalApp {
             trash_line_key_down: false,
             hovered_line: None,
             animation_start: None,
+            animation_cycle: 0,
+            new_cycle: true, // works, but semi ugly.
+            animation_repetition_cycle: None,
+            animation_cycle_start_limited_depth_paint_count: 0,
             a_b_c: None,
         }
     }
@@ -173,7 +189,7 @@ impl FractalApp {
                 Some(Instant::now())
             };
         }
-        // if let Some(animation) = &mut fractal.animation { LEFT OFF HERE
+        // if let Some(animation) = &mut fractal.animation { TODO!!!!
         // ui.add(
         //     Slider::new(&mut fractal.animation.length, 0.5..=30.0)
         //         .text("Animation length (seconds)"),
@@ -210,10 +226,16 @@ impl FractalApp {
         gdvs: &[VectoredLine], // global design vectors
         start: Instant,
     ) -> Vec<VectoredLine> {
+        let cycle_length = self.fractals[self.fractal_index].animation.length;
         let progress = animation::animation_tools::animation_progress(
             start,
-            self.fractals[self.fractal_index].animation.length,
+            cycle_length,
+            self.animation_repetition_cycle,
         );
+        let cycle: usize = progress.floor() as usize;
+        self.new_cycle = cycle != self.animation_cycle;
+        self.animation_cycle = cycle;
+
         let cycle_angle = gdvs[0].vec.angle() - gdvs[1].vec.angle();
         let cycle_scale = gdvs[0].vec.length() / gdvs[1].vec.length();
         // HACK, check if there is a generator line. TODO!!!!!
@@ -249,25 +271,26 @@ impl FractalApp {
             paint_directed_line_segment(painter, vec, lw_ratio, color);
         });
     }
-
+    #[expect(clippy::too_many_lines)] // TODO
     fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredLine]) {
         let fractal = &self.fractals[self.fractal_index];
-        debug_assert!(
+        let started_next_cycle = self.animation_start.is_some()
+            && self.animation_repetition_cycle.is_none()
+            && self.new_cycle;
+        let paint_depth = if started_next_cycle {
+            fractal.depth - 1
+        } else {
             fractal.depth
-                <= max_depth_with_branches(
-                    MAX_PAINTED_LINE_COUNT,
-                    vectored_design_lines.len() - 1,
-                    fractal.mirror,
-                    fractal.replace_line
-                ),
-            "fractal.depth = {}, max_depth_with_branches(...) = {}",
-            fractal.depth,
-            max_depth_with_branches(
-                MAX_PAINTED_LINE_COUNT,
-                vectored_design_lines.len() - 1,
-                fractal.mirror,
-                fractal.replace_line
-            )
+        };
+        let max_depth = max_depth_with_branches(
+            MAX_PAINTED_LINE_COUNT,
+            vectored_design_lines.len() - 1,
+            fractal.mirror,
+            fractal.replace_line,
+        );
+        debug_assert!(
+            paint_depth <= max_depth,
+            "paint_depth = {paint_depth}, max_depth_with_branches(...) = {max_depth}"
         );
         let mut shapes: Vec<Shape> = Vec::new();
         let rect = painter.clip_rect();
@@ -292,7 +315,7 @@ impl FractalApp {
                 line_transforms
             })
             .collect();
-        if !fractal.replace_line || fractal.depth == 0 {
+        if !fractal.replace_line || paint_depth == 0 {
             paint_line(
                 [initiator.pos, initiator.pos + initiator.vec],
                 line_color(0, fractal.rainbow),
@@ -307,10 +330,10 @@ impl FractalApp {
         }];
 
         let mut new_nodes = Vec::new();
-        for depth in 1..fractal.depth + 1 {
+        for depth in 1..paint_depth + 1 {
             let color = line_color(depth, fractal.rainbow);
 
-            if depth < fractal.depth {
+            if depth < paint_depth {
                 new_nodes.clear();
                 new_nodes.reserve(nodes.len() * 2);
             }
@@ -333,7 +356,7 @@ impl FractalApp {
                     };
 
                     if fractal.replace_line {
-                        if depth == fractal.depth {
+                        if depth == paint_depth {
                             paint_line([paint_a, paint_b], color, fractal.fixed_final_line_width);
                         }
                     } else {
@@ -343,13 +366,31 @@ impl FractalApp {
                             painted_node.vec.length() / fractal.initiator_length_width_ratio,
                         );
                     }
-                    if depth < fractal.depth {
+                    if depth < paint_depth {
                         new_nodes.push(painted_node);
                     }
                 }
             }
 
             std::mem::swap(&mut nodes, &mut new_nodes);
+        }
+
+        if started_next_cycle {
+            // if the last frame of the previous cycle has the same painted line count as the first (depth limited) frame,
+            //   we can start to repeat this cycle
+            if self.line_count == self.animation_cycle_start_limited_depth_paint_count {
+                self.animation_repetition_cycle = Some(self.animation_cycle);
+            }
+            log::info!(
+                "Cycle {} - Previous {} - Painted {} --- fractal depth {} - paint depth {}",
+                self.animation_cycle,
+                self.line_count,
+                shapes.len(),
+                fractal.depth,
+                paint_depth
+            );
+
+            self.animation_cycle_start_limited_depth_paint_count = shapes.len();
         }
         self.line_count = shapes.len();
         painter.extend(shapes);
