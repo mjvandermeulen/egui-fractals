@@ -205,7 +205,7 @@ impl FractalApp {
         ));
     }
 
-    fn animation_frame(
+    fn animation_frame_vectors(
         &mut self,
         gdvs: &[VectoredLine], // global design vectors
         start: Instant,
@@ -397,17 +397,13 @@ impl eframe::App for FractalApp {
         self.design(ui, to_screen, &painter);
 
         let fractal = &mut self.fractals[self.fractal_index]; // HACK for now. Change after self.animate is coded.
+        let global_design_vectors =
+            reversible_lines_to_global_line_vectors(&fractal.design_lines, to_screen);
         if self.show_design_only {
-            let design_global_vectors =
-                reversible_lines_to_global_line_vectors(&fractal.design_lines, to_screen);
-
-            self.paint_design(&painter, &design_global_vectors);
+            self.paint_design(&painter, &global_design_vectors);
         } else {
-            let global_design_vectors: Vec<VectoredLine> =
-                reversible_lines_to_global_line_vectors(&fractal.design_lines, to_screen);
-
             let blueprint_vectors: Vec<VectoredLine> = if let Some(start) = self.animation_start {
-                self.animation_frame(&global_design_vectors, start)
+                self.animation_frame_vectors(&global_design_vectors, start)
             } else {
                 global_design_vectors
             };

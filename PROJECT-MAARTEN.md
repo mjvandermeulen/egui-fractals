@@ -1,4 +1,4 @@
-# NTOE:
+# NOTE:
 
 move away from drop box and icloud storage.
 now I often have to
@@ -14,17 +14,22 @@ in the root dir of the project
 ### Animation quick small
 
 - [x] add scaling: ratio.pow(progress)
-- [ ] refactor BIG: width always ratio of length. Otherwise animation is wrong: when scaling endpoints the length of the line changes!
-- [ ] refactor: don't translate design point, but the global design vectors.
+- [x] refactor BIG: width always ratio of length. Otherwise animation is wrong: when scaling endpoints the length of the line changes!
+- [x] refactor: don't translate design point, but the global design vectors.
 
 ```mermaid
 graph TD
-    A[Design Points TODO!!!!! update] --> B[Global Design Vectors]
-    B -->|possible animation| C[Global Blueprint]
+    Design[Design] -->|self.design_lines| ToGlobalVecs[to global design vecs]
+    ToGlobalVecs -->|global design vectors| DO{Design Only?}
+    DO --> |yes| PaintDesign[Paint Design]
+    DO --> |no| AniChoice{animation?}
+    AniChoice --> |yes|AF
+    AniChoice --> |no|Paint[Paint]
+    AF[Animation Frame] --> |blueprint_vectors|Paint[Paint]
 ```
 
 - [ ] add animation length slider
-- [ ] always have a default animation: no Option needed!
+- [x] always have a default animation: no Option needed!
 
 ### Animation bigger
 
