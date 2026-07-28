@@ -1,16 +1,12 @@
 use egui::{NumExt as _, Pos2, Rect, Response, emath::RectTransform};
 
-// TODO!!: change to super::
-use crate::{
+use super::{
     FractalApp,
-    fractal_app::{
-        design_helpers::{
-            closest_line, continue_dragging_line_handle, hovered_line_handle, make_loop,
-            start_new_line,
-        },
-        structs_and_enums::LinesStyle,
-        tools::max_depth_with_branches,
+    design_helpers::{
+        closest_line, continue_dragging_line_handle, hovered_line_handle, make_loop, start_new_line,
     },
+    structs_and_enums::LinesStyle,
+    tools::max_depth_with_branches,
 };
 
 pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {

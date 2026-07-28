@@ -1,8 +1,8 @@
 use egui::{Pos2, Vec2, emath::Rot2};
 
-use crate::fractal_app::{
-    animation::animation_tools::animation_progress_to_scale, structs_and_enums::VectoredLine,
-};
+use super::structs_and_enums::VectoredLine;
+
+use animation_tools::animation_progress_to_scale;
 
 // TODO check if these need to be pub
 pub mod animation_structs_and_enums;
