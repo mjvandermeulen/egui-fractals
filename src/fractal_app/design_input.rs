@@ -11,8 +11,8 @@ use super::{
 
 pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
-    // https://github.com/emilk/egui/discussions/1464 -> if. fine tuned with gemini. Maarten.
-    if ui.ctx().memory(|mem| mem.focused()).is_none() {
+    // https://github.com/emilk/egui/discussions/1464. fine tuned with gemini. Maarten.
+    if ui.ctx().memory(egui::Memory::focused).is_none() {
         // TODO!!!: turn max depth into self.max_depth and calc right away
         // NOPE: only calc max_depth once: right after the design phase
         let max_depth = max_depth_with_branches(
@@ -130,6 +130,7 @@ pub fn handle_mouse_input(
     ui.input(|input| {
         let zoom_delta = input.zoom_delta();
         if zoom_delta != 1.0 {
+            // clippy pedantic complains and suggests an error margin, but that's not needed here.
             fractal.zoom *= zoom_delta;
             return;
         }
@@ -149,8 +150,8 @@ pub fn handle_hovered_line_mouse_input(
     click_and_drag_response: &Response,
 ) {
     // LEARN let ... else
-    //   always needs a return
-    //   avoid heavy indentation by returning instead of skipping over an indented block
+    //   - always needs a return
+    //   - avoids heavy indentation by returning instead of skipping over an indented block
     let Some((hover_line_index, t)) = closest_line(
         local_hover_pos,
         &fractal_app.fractals[fractal_app.fractal_index].design_lines,

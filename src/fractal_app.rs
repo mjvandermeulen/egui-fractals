@@ -90,6 +90,7 @@ impl Default for FractalApp {
 
 impl FractalApp {
     /// Called once before the first frame.
+    #[must_use]
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
@@ -126,6 +127,10 @@ impl FractalApp {
         }
         if ui
             .add_enabled(
+                // TODO!!! clippy pedantic warns about comparing floats:
+                // (fractal.zoom - Self::default
+                //  ().fractals[self.fractal_index].zoom).abs() > error_margin
+                // same for .center
                 fractal.zoom != Self::default().fractals[self.fractal_index].zoom
                     || fractal.center != Self::default().fractals[self.fractal_index].center,
                 Button::new("Reset View"),
@@ -449,10 +454,7 @@ impl eframe::App for FractalApp {
 
             self.paint_fractal(&painter, &blueprint_vectors);
 
-            // if self.a_b_c.is_some() {
-            //     let (a, b, c) = self
-            //         .a_b_c
-            //         .expect("We can expect a_b_c to be Some, because we just checked it is Some");
+            // if let Some((a, b, c)) = self.a_b_c {
             //     painter.line_segment([a, b], Stroke::new(2.0, Color32::RED));
             //     painter.line_segment([a, c], Stroke::new(2.0, Color32::GREEN));
             // }

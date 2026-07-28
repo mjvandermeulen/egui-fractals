@@ -50,7 +50,7 @@ pub fn fractals() -> Vec<Fractal> {
             ],
             replace_line: false,
             lines_style: LinesStyle::Free,
-            zoom: 0.55592126,
+            zoom: 0.555_921_26,
             center: pos2(0.5, -0.7),
             initiator_length_width_ratio: 6.0,
             fixed_final_line_width: 1.0,
