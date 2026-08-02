@@ -162,13 +162,28 @@ impl FractalApp {
                 Slider::new(&mut fractal.fixed_final_line_width, 0.05..=1.1)
                     .logarithmic(true)
                     .text("Final line width"),
-            )
+            );
         } else {
+            // TODO: replace with 1 - 4% line width / length
+            // let mut inverse = 1.0 / self.value;
+
+            // // Display the slider bound to `inverse`
+            // if ui
+            //     .add(egui::Slider::new(&mut inverse, 0.1..=10.0).text("Inverse Value"))
+            //     .changed()
+            // {
+            //     // Avoid division by zero if your range includes 0
+            //     if inverse != 0.0 {
+            //         self.value = 1.0 / inverse;
+            //     }
+            // }
+
             ui.add(
-                Slider::new(&mut fractal.initiator_length_width_ratio, 25.0..=100.0)
-                    .text("length/width ratio"),
-            )
-        };
+                egui::Slider::new(&mut fractal.initiator_width_length_ratio, 0.005..=0.07)
+                    .custom_formatter(|x, _| format!("{:.1}%", x * 100.0))
+                    .text("width % of line length"),
+            );
+        }
         ui.add(Slider::new(&mut fractal.depth, 0..=max_depth).text("depth"));
 
         egui::reset_button(ui, self, "Full Reset"); // NOTE: will not looked disabled, because of self.line_count
@@ -259,7 +274,7 @@ impl FractalApp {
     }
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredLine]) {
-        let lw_ratio = self.fractals[self.fractal_index].initiator_length_width_ratio;
+        let lw_ratio = self.fractals[self.fractal_index].initiator_width_length_ratio;
         let highlight_color =
             Color32::from_hex("#0FFF50").expect("Expected hex neon green to be parsed correctly");
         design_vectors.iter().enumerate().for_each(|(i, vec)| {
@@ -322,7 +337,7 @@ impl FractalApp {
             paint_line(
                 [initiator.pos, initiator.pos + initiator.vec],
                 line_color(0, fractal.rainbow),
-                initiator.vec.length() / fractal.initiator_length_width_ratio,
+                initiator.vec.length() * fractal.initiator_width_length_ratio,
             );
         }
 
@@ -366,7 +381,7 @@ impl FractalApp {
                         paint_line(
                             [paint_a, paint_b],
                             color,
-                            painted_node.vec.length() / fractal.initiator_length_width_ratio,
+                            painted_node.vec.length() * fractal.initiator_width_length_ratio,
                         );
                     }
                     if depth < paint_depth {

@@ -6,7 +6,8 @@ use super::{
 };
 
 pub fn fractals() -> Vec<Fractal> {
-    vec![
+    // in VSCode, rust-analyzer stumbles over returning a vec![] directly, so we assign it to a variable first
+    let fractals = vec![
         Fractal {
             name: "Simple Twig".to_owned(),
             mirror: false,
@@ -25,7 +26,7 @@ pub fn fractals() -> Vec<Fractal> {
             lines_style: LinesStyle::Free,
             zoom: 0.18,
             center: pos2(0.0, -2.5),
-            initiator_length_width_ratio: 50.0,
+            initiator_width_length_ratio: 0.02,
             fixed_final_line_width: 1.0,
             depth: 9,
             animation: Animation { length: 1.5 },
@@ -52,10 +53,11 @@ pub fn fractals() -> Vec<Fractal> {
             lines_style: LinesStyle::Free,
             zoom: 0.555_921_26,
             center: pos2(0.5, -0.7),
-            initiator_length_width_ratio: 6.0,
+            initiator_width_length_ratio: 0.15,
             fixed_final_line_width: 1.0,
             depth: 14,
             animation: Animation { length: 1.5 },
         },
-    ]
+    ];
+    fractals
 }
