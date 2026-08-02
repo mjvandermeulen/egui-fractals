@@ -274,7 +274,7 @@ impl FractalApp {
     }
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredLine]) {
-        let lw_ratio = self.fractals[self.fractal_index].initiator_width_length_ratio;
+        let width_length_ratio = self.fractals[self.fractal_index].initiator_width_length_ratio;
         let highlight_color =
             Color32::from_hex("#0FFF50").expect("Expected hex neon green to be parsed correctly");
         design_vectors.iter().enumerate().for_each(|(i, vec)| {
@@ -286,7 +286,7 @@ impl FractalApp {
             } else {
                 Color32::ORANGE
             };
-            paint_directed_line_segment(painter, vec, lw_ratio, color);
+            paint_directed_line_segment(painter, vec, width_length_ratio, color);
         });
     }
     #[expect(clippy::too_many_lines)] // TODO
