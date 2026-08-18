@@ -1,21 +1,39 @@
-# TODO
+# NOTE:
 
-## SUPER NOW
+move away from drop box and icloud storage.
+now I often have to
+
+    sudo chown -R mjvandermeulen .
+
+in the root dir of the project
+
+# TODO
 
 ## NOW
 
-- [ ] reset Zoom button
-- [ ] fractals. START ALL WITH ONLY DEPTH = 1. NO SPOILER
-    - [ ] twig
-    - [ ] tree
-    - [ ] leaf (not mirrored, 2 branches)
-    - [ ] snowflake
-    - [ ] squares
-- [ ] on free/tree/loop switch: update design_lines
-- [ ] fine tune:
-    - [ ] Alt: 10 times
-    - [ ] Ctrl: 100 times
-- [ ] hover to select line, then drag or flip that line
+### Animation quick small
+
+- [x] add scaling: ratio.pow(progress)
+- [x] refactor BIG: width always ratio of length. Otherwise animation is wrong: when scaling endpoints the length of the line changes!
+- [x] refactor: don't translate design point, but the global design vectors.
+
+```mermaid
+graph TD
+    Design[Design] -->|self.design_lines| ToGlobalVecs[to global design vecs]
+    ToGlobalVecs -->|global design vectors| DO{Design Only?}
+    DO --> |yes| PaintDesign[Paint Design]
+    DO --> |no| AniChoice{animation?}
+    AniChoice --> |yes|AF
+    AniChoice --> |no|Paint[Paint]
+    AF[Animation Frame] --> |blueprint_vectors|Paint[Paint]
+```
+
+- [ ] add animation length slider
+- [x] always have a default animation: no Option needed!
+
+### Animation bigger
+
+- [ ] ....
 
 ## FIX
 
@@ -28,6 +46,18 @@
 
 ## LATER
 
+- [x] reset Zoom button
+- [ ] fractals. START ALL WITH ONLY DEPTH = 1. NO SPOILER
+    - [ ] twig
+    - [ ] tree
+    - [ ] leaf (not mirrored, 2 branches)
+    - [ ] snowflake
+    - [ ] squares
+- [ ] on free/tree/loop switch: update design_lines
+- [ ] fine tune:
+    - [ ] Alt: 10 times
+    - [ ] Ctrl: 100 times
+- [ ] hover to select line, then drag or flip that line
 - [x] add branches by drawing
 - [ ] show design line count
 - [ ] offer to delete the shortest design line
@@ -82,10 +112,18 @@ What if you start the first gen branches with thickness 1?
 
 # FIX HANGING ON START:
 
-```
+````
+
 cd /Users/mjvandermeulen/Library/Application Support/egui-demo-app
 ls
 app.ron
+
 ```
 
 remove the app.ron file.
+```
+
+```
+
+```
+````
