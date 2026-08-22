@@ -13,6 +13,7 @@ use egui::{
     pos2,
     widgets::Slider,
 };
+use rayon::join;
 use std::time::Instant;
 
 use animation::{animation_tools::find_animation_rotation_center, scale_and_rotate_vectored_lines};
