@@ -5,6 +5,7 @@ use super::{
     structs_and_enums::{Fractal, LinesStyle, ReversibleLine},
 };
 
+// TODO: change name and file name to fractal_presets() or something like that.
 pub fn fractals() -> Vec<Fractal> {
     // in VSCode, rust-analyzer stumbles over returning a vec![] directly, so we assign it to a variable first
     let fractals = vec![
