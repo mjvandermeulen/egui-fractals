@@ -23,11 +23,11 @@ use design_input::{handle_keyboard_input, handle_mouse_input};
 use fractals::fractals;
 use paint_fractal_helpers::line_color;
 use structs_and_enums::{
-    Fractal, LineHandles, LineTransform, LinesStyle, Node, ReversibleLine, VectoredLine,
+    Fractal, LineHandles, LineTransform, LinesStyle, ReversibleLine, VectoredLine,
 };
 use tools::max_depth_with_branches;
 
-use crate::fractal_app::paint_fractal_helpers::paint_fractal_lines;
+use crate::fractal_app::paint_fractal_helpers::{paint_fractal_lines, paint_line_generator};
 
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
 
@@ -292,7 +292,8 @@ impl FractalApp {
             paint_directed_line_segment(painter, vec, width_length_ratio, color);
         });
     }
-    #[expect(clippy::too_many_lines)] // TODO
+
+    // #[expect(clippy::too_many_lines)] // TODO, removed the core paint lines, so no longer too long
     fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredLine]) {
         let fractal = &self.fractals[self.fractal_index];
         let started_next_cycle = self.animation_start.is_some()
@@ -315,13 +316,8 @@ impl FractalApp {
         );
         let mut shapes: Vec<Shape> = Vec::new();
         let rect = painter.clip_rect();
-        let mut paint_line = |points: [Pos2; 2], color: Color32, width: f32| {
-            let line: [Pos2; 2] = [points[0], points[1]];
-            // culling
-            if rect.intersects(Rect::from_two_pos(line[0], line[1])) {
-                shapes.push(Shape::line_segment(line, (width, color)));
-            }
-        };
+
+        let mut paint_line = paint_line_generator(&mut shapes, rect);
 
         let initiator = vectored_design_lines[0];
         let transformations: Vec<LineTransform> = vectored_design_lines[1..]
@@ -344,19 +340,14 @@ impl FractalApp {
             );
         }
 
-        // CORE paint_fractal loop:
-        // TODO!!!!!! the core should be refactored into a separate function,
-        //   plus a multi-threaded version that uses rayon::join() to split the transformations into two halves, and then join the results.
-
-        // ######################################################
         paint_fractal_lines(
             &mut paint_line,
             &initiator,
-            &fractal,
+            fractal,
             &transformations,
             paint_depth,
         );
-
+        drop(paint_line); // drop the closure to avoid borrow issues with shapes below. This can be avoided by using refactoring out the part where the closure is used, but this is simpler for now.
         if started_next_cycle {
             // if the last frame of the previous cycle has the same painted line count as the first (depth limited) frame,
             //   we can start to repeat this cycle

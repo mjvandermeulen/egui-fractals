@@ -1,17 +1,30 @@
-use egui::Color32;
+use egui::{Color32, Pos2, Rect, Shape};
 
-use crate::fractal_app::structs_and_enums::{LineTransform, VectoredLine};
+use super::structs_and_enums::{Fractal, LineTransform, Node, VectoredLine};
 
-use super::structs_and_enums::Node;
+// Closure Factory:
+// returns a closure that paints lines into the shapes Vec, but only if they intersect the given rect.
+pub fn paint_line_generator(
+    shapes: &mut Vec<Shape>,
+    rect: Rect,
+) -> impl FnMut([Pos2; 2], Color32, f32) {
+    move |points: [Pos2; 2], color: Color32, width: f32| {
+        let line: [Pos2; 2] = [points[0], points[1]];
+        // culling
+        if rect.intersects(Rect::from_two_pos(line[0], line[1])) {
+            shapes.push(Shape::line_segment(line, (width, color)));
+        }
+    }
+}
 
 // Adds to the shapes Vec the lines of the fractal, up to the specified depth.
 // NOTE: It takes the paint_line closure to add the lines to the the captured (by the closure) shapes Vec.
 pub fn paint_fractal_lines(
     paint_line: &mut dyn FnMut([egui::Pos2; 2], Color32, f32),
     initiator: &VectoredLine,
-    fractal: &super::structs_and_enums::Fractal,
+    fractal: &Fractal,
     transformations: &Vec<LineTransform>,
-    paint_depth: usize,
+    max_depth: usize,
 ) {
     let mut nodes = vec![Node {
         pos: initiator.pos,
@@ -19,10 +32,10 @@ pub fn paint_fractal_lines(
     }];
 
     let mut new_nodes = Vec::new();
-    for depth in 1..=paint_depth {
+    for depth in 1..=max_depth {
         let color = line_color(depth, fractal.rainbow);
 
-        if depth < paint_depth {
+        if depth < max_depth {
             new_nodes.clear();
             new_nodes.reserve(nodes.len() * 2);
         }
@@ -45,9 +58,10 @@ pub fn paint_fractal_lines(
                 };
 
                 if fractal.replace_line {
-                    if depth == paint_depth {
+                    if depth == max_depth {
                         paint_line([paint_a, paint_b], color, fractal.fixed_final_line_width);
                     }
+                    // else: do not paint the line, just store the new node for the next iteration
                 } else {
                     paint_line(
                         [paint_a, paint_b],
@@ -55,7 +69,7 @@ pub fn paint_fractal_lines(
                         painted_node.vec.length() * fractal.initiator_width_length_ratio,
                     );
                 }
-                if depth < paint_depth {
+                if depth < max_depth {
                     new_nodes.push(painted_node);
                 }
             }
