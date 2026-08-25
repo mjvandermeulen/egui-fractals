@@ -71,7 +71,7 @@ pub struct Node {
     pub vec: Vec2,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct LineTransform {
     pub base_rot: egui::emath::Rot2,
     pub rot: egui::emath::Rot2,

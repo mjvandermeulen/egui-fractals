@@ -1,11 +1,34 @@
 # NOTE:
 
+## DROPBOX and ICLOUD
+
 move away from drop box and icloud storage.
 now I often have to
 
     sudo chown -R mjvandermeulen .
 
 in the root dir of the project
+
+# RAYON
+
+use rayon::prelude::\*;
+
+fn main() {
+let initial_vec = vec![1, 2, 3];
+
+    // 1. flat_map transforms 1 item into many, then flattens them
+    let new_vec: Vec<i32> = initial_vec
+        .par_iter()
+        .with_max_len(1) // Keep the chunk size restricted to 1
+        .flat_map(|&item| {
+            // Return an iterable (like a small vector) for each item
+            vec![item, item * 10]
+        })
+        .collect(); // Flattens and gathers everything into one Vec
+
+    println!("{:?}", new_vec); // Output: [1, 10, 25, 20, 3, 30]
+
+}
 
 # TODO
 

@@ -13,7 +13,6 @@ use egui::{
     pos2,
     widgets::Slider,
 };
-use rayon::join;
 use std::time::Instant;
 
 use animation::{animation_tools::find_animation_rotation_center, scale_and_rotate_vectored_lines};
@@ -27,7 +26,9 @@ use structs_and_enums::{
 };
 use tools::max_depth_with_branches;
 
-use crate::fractal_app::paint_fractal_helpers::{paint_fractal_lines, paint_line_generator};
+use crate::fractal_app::paint_fractal_helpers::{
+    paint_fractal_lines, paint_line_generator, /* parallel_paint_fractal_lines, */
+};
 
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
 
@@ -314,10 +315,8 @@ impl FractalApp {
             paint_depth <= max_depth,
             "paint_depth = {paint_depth}, max_depth_with_branches(...) = {max_depth}"
         );
-        let mut shapes: Vec<Shape> = Vec::new();
+        let mut initiator_shape: Vec<Shape> = Vec::new();
         let rect = painter.clip_rect();
-
-        let mut paint_line = paint_line_generator(&mut shapes, rect);
 
         let initiator = vectored_design_lines[0];
         let transformations: Vec<LineTransform> = vectored_design_lines[1..]
@@ -333,35 +332,39 @@ impl FractalApp {
             })
             .collect();
         if !fractal.replace_line || paint_depth == 0 {
-            paint_line(
+            // LEARN: generate a closure and call it immediately. the closure is dropped immediately as well.
+            paint_line_generator(&mut initiator_shape, rect)(
                 [initiator.pos, initiator.pos + initiator.vec],
                 line_color(0, fractal.rainbow),
                 initiator.vec.length() * fractal.initiator_width_length_ratio,
             );
         }
+        // drop(paint_line); // drop the closure to avoid borrow issues with shapes below.
 
-        paint_fractal_lines(
-            &mut paint_line,
-            &initiator,
-            fractal,
-            &transformations,
-            paint_depth,
-        );
-        drop(paint_line); // drop the closure to avoid borrow issues with shapes below. This can be avoided by using refactoring out the part where the closure is used, but this is simpler for now.
+        // let mut shapes = if transformations.len() == 2
+        // {
+        //     // TODO!!!! for now only len == 2
+        //     // parallel_paint_fractal_lines(rect, &initiator, fractal, &transformations, paint_depth)
+        // } else {
+        // };
+        let mut shapes =
+            paint_fractal_lines(rect, &initiator, fractal, &transformations, paint_depth);
+        shapes.append(&mut initiator_shape);
+
         if started_next_cycle {
             // if the last frame of the previous cycle has the same painted line count as the first (depth limited) frame,
             //   we can start to repeat this cycle
             if self.line_count == self.animation_cycle_start_limited_depth_paint_count {
                 self.animation_repetition_cycle = Some(self.animation_cycle);
             }
-            log::info!(
-                "Cycle {} - Previous {} - Painted {} --- fractal depth {} - paint depth {}",
-                self.animation_cycle,
-                self.line_count,
-                shapes.len(),
-                fractal.depth,
-                paint_depth
-            );
+            // log::info!(
+            //     "Cycle {} - Previous {} - Painted {} --- fractal depth {} - paint depth {}",
+            //     self.animation_cycle,
+            //     self.line_count,
+            //     shapes.len(),
+            //     fractal.depth,
+            //     paint_depth
+            // );
 
             self.animation_cycle_start_limited_depth_paint_count = shapes.len();
         }

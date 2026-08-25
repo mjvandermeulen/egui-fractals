@@ -13,9 +13,9 @@ pub fn animation_progress(
         Some(rc) => {
             let progress_at_cycle_start = rc as f32;
             let progress_in_cycle = (elapsed_time % animation_length) / animation_length;
-            log::info!(
-                "progress_at_cycle_start: {progress_at_cycle_start}. progress_in_cycle: {progress_in_cycle}"
-            );
+            // log::info!(
+            //     "progress_at_cycle_start: {progress_at_cycle_start}. progress_in_cycle: {progress_in_cycle}"
+            // );
             progress_at_cycle_start + progress_in_cycle
         }
         None => elapsed_time / animation_length,
