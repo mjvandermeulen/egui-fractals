@@ -27,7 +27,8 @@ use structs_and_enums::{
 use tools::max_depth_with_branches;
 
 use crate::fractal_app::paint_fractal_helpers::{
-    paint_fractal_lines, paint_line_generator, /* parallel_paint_fractal_lines, */
+    paint_fractal_lines, paint_line_generator,
+    parallel_paint_fractal_lines, /* parallel_paint_fractal_lines, */
 };
 
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
@@ -341,14 +342,11 @@ impl FractalApp {
         }
         // drop(paint_line); // drop the closure to avoid borrow issues with shapes below.
 
-        // let mut shapes = if transformations.len() == 2
-        // {
-        //     // TODO!!!! for now only len == 2
-        //     // parallel_paint_fractal_lines(rect, &initiator, fractal, &transformations, paint_depth)
-        // } else {
-        // };
+        // LEFT OFF HERE: only use parallel_paint..... for now.... even when painting a twig "HELLO PARALLEL WORLD" --- TODO!!!!!
+        //     //
+
         let mut shapes =
-            paint_fractal_lines(rect, &initiator, fractal, &transformations, paint_depth);
+            parallel_paint_fractal_lines(rect, &initiator, fractal, &transformations, paint_depth);
         shapes.append(&mut initiator_shape);
 
         if started_next_cycle {
