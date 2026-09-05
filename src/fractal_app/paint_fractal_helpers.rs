@@ -41,7 +41,7 @@ pub fn paint_line_generator(
 // It is a little convoluted, but since it's used rarely there is not performance issue, and it keeps things DRY.
 // TODO!!: replace this function with it's own one line body everywhere in the code.
 // Does that drop the paint_line? YES, tested
-pub fn paint_one_line(
+fn paint_one_line(
     shapes: &mut Vec<Shape>,
     rect: Rect,
     points: [Pos2; 2],
@@ -80,9 +80,9 @@ pub fn paint_fractal_lines(
         //  create a new node per transformation and paint the line in it
         //  if we're not at the max depth, store the new node for the next iteration
 
-        // the nesting of the node loop inside the transformations loop is purely for speed
-        //   it is (just) noticibly faster with a 1 branch depth 17 MIRRORED tree
-        // Feel free to read it the other way around, which I think is more intuitive.
+        // The nesting of the node loop inside the transformations loop is purely for speed.
+        //   It is (just) noticibly faster with a 1 branch depth 17 MIRRORED tree.
+        //   Feel free to read it the other way around, which I think is more intuitive.
         for &transform in transformations {
             for parent_node in &nodes {
                 let paint_a = parent_node.pos + transform.base_rot * parent_node.vec;
@@ -143,7 +143,7 @@ pub fn parallel_paint_fractal_lines(
             let paint_b = paint_a + paint_vec;
 
             {
-                // avoid having to drop the paint_line, by indenting LEARN
+                // avoid having to drop the paint_line by indenting. LEARN
                 let mut paint_line = paint_line_generator(&mut shapes_iter, rect);
                 if fractal.replace_line {
                     if max_depth == 1 {
@@ -166,10 +166,6 @@ pub fn parallel_paint_fractal_lines(
                     max_depth,
                 );
             }
-            // Call paint_fractal_lines for each transformation parallelly.
-            // Change paint_fractal_lines to take a closure again....
-            // paint_fractal_lines(rect, initiator, fractal, transformations, max_depth)
-            // LEFT OFF HERE: Call paint_fractal_lines with new depth!
             shapes_iter
         })
         .collect::<Vec<_>>()

@@ -13,7 +13,8 @@ use egui::{
     pos2,
     widgets::Slider,
 };
-use std::time::Instant;
+use log::info;
+use std::time::{Duration, Instant};
 
 use animation::{animation_tools::find_animation_rotation_center, scale_and_rotate_vectored_lines};
 use design_helpers::handle_line_style_change;
@@ -69,6 +70,11 @@ pub struct FractalApp {
     animation_cycle_start_limited_depth_paint_count: usize,
     #[serde(skip)]
     a_b_c: Option<(Pos2, Pos2, Pos2)>, // for animation. HACK TEMP
+    #[serde(skip)]
+    benchmark_cycle_countdown: usize,
+    #[serde(skip)]
+    bench_start: Option<Instant>,
+    bench_seconds: f32,
 }
 
 impl Default for FractalApp {
@@ -89,6 +95,9 @@ impl Default for FractalApp {
             animation_repetition_cycle: None,
             animation_cycle_start_limited_depth_paint_count: 0,
             a_b_c: None,
+            benchmark_cycle_countdown: 0,
+            bench_start: None,
+            bench_seconds: 0.0,
         }
     }
 }
@@ -217,6 +226,20 @@ impl FractalApp {
         //     Slider::new(&mut fractal.animation.length, 0.5..=30.0)
         //         .text("Animation length (seconds)"),
         // );
+
+        // ---------------------------------------------------------------------
+        ui.separator();
+
+        if ui
+            .add_enabled(
+                self.benchmark_cycle_countdown == 0,
+                egui::Button::new("Benchmark"),
+            )
+            .clicked()
+        {
+            self.benchmark_cycle_countdown = 250;
+            self.bench_start = Some(Instant::now());
+        }
 
         // ---------------------------------------------------------------------
         ui.separator();
@@ -384,9 +407,20 @@ impl eframe::App for FractalApp {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        if self.animation_start.is_some() {
+        if self.animation_start.is_some() || self.benchmark_cycle_countdown > 1 {
             ui.ctx().request_repaint();
         }
+
+        if self.benchmark_cycle_countdown > 1 {
+            self.benchmark_cycle_countdown -= 1;
+        } else if self.benchmark_cycle_countdown == 1
+            && let Some(bench_start) = self.bench_start
+        {
+            self.benchmark_cycle_countdown = 0;
+            self.bench_seconds = Instant::now().duration_since(bench_start).as_secs_f32();
+            log::info!("seconds: {}", self.bench_seconds);
+        }
+
         let fractal = &mut self.fractals[self.fractal_index];
 
         fractal.depth = fractal.depth.at_most(max_depth_with_branches(
