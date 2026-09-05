@@ -368,9 +368,24 @@ impl FractalApp {
         // LEFT OFF HERE: only use parallel_paint..... for now.... even when painting a twig "HELLO PARALLEL WORLD" --- TODO!!!!!
         //     //
 
-        let mut shapes =
-            parallel_paint_fractal_lines(rect, &initiator, fractal, &transformations, paint_depth);
-        shapes.append(&mut initiator_shape);
+        // HACKISH: TO BENCH I'M REdoing the closure:
+
+        let mut paint_line = paint_line_generator(&mut initiator_shape, rect);
+        paint_fractal_lines(
+            &mut paint_line,
+            &initiator,
+            fractal,
+            &transformations,
+            1,
+            paint_depth,
+        );
+        // shapes.append(&mut initiator_shape);
+        drop(paint_line);
+        let shapes = initiator_shape; // HACK HACK PUKE!
+
+        // let mut shapes =
+        //     parallel_paint_fractal_lines(rect, &initiator, fractal, &transformations, paint_depth);
+        // shapes.append(&mut initiator_shape);
 
         if started_next_cycle {
             // if the last frame of the previous cycle has the same painted line count as the first (depth limited) frame,
