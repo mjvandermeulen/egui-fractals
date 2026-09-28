@@ -363,10 +363,6 @@ impl FractalApp {
                 initiator.vec.length() * fractal.initiator_width_length_ratio,
             );
         }
-        // drop(paint_line); // drop the closure to avoid borrow issues with shapes below.
-
-        // LEFT OFF HERE: only use parallel_paint..... for now.... even when painting a twig "HELLO PARALLEL WORLD" --- TODO!!!!!
-        //     //
 
         let mut shapes =
             parallel_paint_fractal_lines(rect, &initiator, fractal, &transformations, paint_depth);
