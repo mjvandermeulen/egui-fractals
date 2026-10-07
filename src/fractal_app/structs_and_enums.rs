@@ -1,9 +1,10 @@
 use super::animation::animation_structs_and_enums::Animation;
-use egui::{Pos2, Vec2, emath::RectTransform};
+use egui::{Pos2, Rect, Vec2, emath::RectTransform};
+use serde::{Deserialize, Serialize};
 
 // Fractal struct
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum LinesStyle {
     Free,
     Tree,
@@ -15,12 +16,12 @@ pub enum LineHandles {
     BothHandles, // or Both...
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct ReversibleLine {
     pub line: [Pos2; 2],
     pub reversed: bool,
 }
-#[derive(PartialEq, Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(PartialEq, Debug, Clone, Deserialize, Serialize)]
 pub struct Fractal {
     pub name: String,
     pub mirror: bool,
@@ -38,7 +39,7 @@ pub struct Fractal {
 
 // design structs
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct VectoredLine {
     pub pos: Pos2,
     pub vec: Vec2,
@@ -71,7 +72,7 @@ pub struct Node {
     pub vec: Vec2,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct LineTransform {
     pub base_rot: egui::emath::Rot2,
     pub rot: egui::emath::Rot2,
@@ -96,4 +97,14 @@ impl LineTransform {
                 ),
         }
     }
+}
+// parallel_paint_fractal_lines(rect, &initiator, fractal, &transformations, paint_depth);
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BenchParallelPaintFractalLines {
+    pub rect: Rect,
+    pub initiator: VectoredLine,
+    pub fractal: Fractal,
+    pub transformations: Vec<LineTransform>,
+    pub max_depth: usize,
 }

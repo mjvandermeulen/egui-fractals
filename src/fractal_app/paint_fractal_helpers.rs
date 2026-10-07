@@ -39,7 +39,7 @@ pub fn paint_line_generator(
 // Paints a single line into the shapes Vec, but only if it intersects the given rect.
 // This is a convenience function that uses the paint_line_generator closure factory.
 // It is a little convoluted, but since it's used rarely there is not performance issue, and it keeps things DRY.
-// TODO!!: replace this function with it's own one line body everywhere in the code.
+// TODO!!: (DONE?) replace this function with it's own one line body everywhere in the code.
 // Does that drop the paint_line? YES, tested
 fn paint_one_line(
     shapes: &mut Vec<Shape>,
@@ -116,6 +116,7 @@ pub fn paint_fractal_lines(
 }
 
 #[must_use]
+#[inline]
 pub fn parallel_paint_fractal_lines(
     rect: Rect,
     initiator: &VectoredLine,

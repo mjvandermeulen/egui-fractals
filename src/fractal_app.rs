@@ -5,6 +5,9 @@ mod fractals;
 mod paint_fractal_helpers;
 mod structs_and_enums;
 mod tools;
+use std::fs::File;
+use std::io::BufWriter;
+use std::time::Instant;
 
 use egui::{
     Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
@@ -13,8 +16,6 @@ use egui::{
     pos2,
     widgets::Slider,
 };
-use log::info;
-use std::time::{Duration, Instant};
 
 use animation::{animation_tools::find_animation_rotation_center, scale_and_rotate_vectored_lines};
 use design_helpers::handle_line_style_change;
@@ -27,9 +28,9 @@ use structs_and_enums::{
 };
 use tools::max_depth_with_branches;
 
-use crate::fractal_app::paint_fractal_helpers::{
-    paint_fractal_lines, paint_line_generator,
-    parallel_paint_fractal_lines, /* parallel_paint_fractal_lines, */
+use crate::fractal_app::{
+    paint_fractal_helpers::{paint_line_generator, parallel_paint_fractal_lines},
+    structs_and_enums::BenchParallelPaintFractalLines,
 };
 
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
@@ -71,10 +72,7 @@ pub struct FractalApp {
     #[serde(skip)]
     a_b_c: Option<(Pos2, Pos2, Pos2)>, // for animation. HACK TEMP
     #[serde(skip)]
-    benchmark_cycle_countdown: usize,
-    #[serde(skip)]
-    bench_start: Option<Instant>,
-    bench_seconds: f32,
+    bench_prep: bool,
 }
 
 impl Default for FractalApp {
@@ -95,9 +93,7 @@ impl Default for FractalApp {
             animation_repetition_cycle: None,
             animation_cycle_start_limited_depth_paint_count: 0,
             a_b_c: None,
-            benchmark_cycle_countdown: 0,
-            bench_start: None,
-            bench_seconds: 0.0,
+            bench_prep: false,
         }
     }
 }
@@ -231,14 +227,10 @@ impl FractalApp {
         ui.separator();
 
         if ui
-            .add_enabled(
-                self.benchmark_cycle_countdown == 0,
-                egui::Button::new("Benchmark"),
-            )
+            .add_enabled(!self.bench_prep, egui::Button::new("Prep for Benchmark"))
             .clicked()
         {
-            self.benchmark_cycle_countdown = 250;
-            self.bench_start = Some(Instant::now());
+            self.bench_prep = true;
         }
 
         // ---------------------------------------------------------------------
@@ -364,6 +356,25 @@ impl FractalApp {
             );
         }
 
+        if self.bench_prep {
+            self.bench_prep = false;
+            // Save current params to a json file,
+            // in preparation for benchmarking.
+            let bench = BenchParallelPaintFractalLines {
+                rect,
+                initiator,
+                fractal: fractal.clone(),
+                transformations: transformations.clone(),
+                max_depth: paint_depth,
+            };
+
+            let file = File::create("bench_prep_parallel_struct.json")
+                .expect("Expect no prob with file creation");
+            let writer = BufWriter::new(file);
+            serde_json::to_writer_pretty(writer, &bench)
+                .expect("Expect no prob with writing to JSON file");
+        }
+
         let mut shapes =
             parallel_paint_fractal_lines(rect, &initiator, fractal, &transformations, paint_depth);
         shapes.append(&mut initiator_shape);
@@ -403,20 +414,6 @@ impl eframe::App for FractalApp {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        if self.animation_start.is_some() || self.benchmark_cycle_countdown > 1 {
-            ui.ctx().request_repaint();
-        }
-
-        if self.benchmark_cycle_countdown > 1 {
-            self.benchmark_cycle_countdown -= 1;
-        } else if self.benchmark_cycle_countdown == 1
-            && let Some(bench_start) = self.bench_start
-        {
-            self.benchmark_cycle_countdown = 0;
-            self.bench_seconds = Instant::now().duration_since(bench_start).as_secs_f32();
-            log::info!("seconds: {}", self.bench_seconds);
-        }
-
         let fractal = &mut self.fractals[self.fractal_index];
 
         fractal.depth = fractal.depth.at_most(max_depth_with_branches(
