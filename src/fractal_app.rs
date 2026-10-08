@@ -1,12 +1,12 @@
 mod animation;
+mod bench_helpers;
 mod design_helpers;
 mod design_input;
 mod fractals;
-mod paint_fractal_helpers;
-mod structs_and_enums;
+pub mod paint_fractal_helpers; // pub for benching check if needed
+pub mod structs_and_enums; // pub for benching TODO check
 mod tools;
-use std::fs::File;
-use std::io::BufWriter;
+
 use std::time::Instant;
 
 use egui::{
@@ -18,20 +18,17 @@ use egui::{
 };
 
 use animation::{animation_tools::find_animation_rotation_center, scale_and_rotate_vectored_lines};
-use design_helpers::handle_line_style_change;
-use design_helpers::{paint_directed_line_segment, reversible_lines_to_global_line_vectors};
+use bench_helpers::save_bench_prep_parallel_struct_to_json;
+use design_helpers::{
+    handle_line_style_change, paint_directed_line_segment, reversible_lines_to_global_line_vectors,
+};
 use design_input::{handle_keyboard_input, handle_mouse_input};
 use fractals::fractals;
-use paint_fractal_helpers::line_color;
+use paint_fractal_helpers::{line_color, paint_line_generator, parallel_paint_fractal_lines};
 use structs_and_enums::{
     Fractal, LineHandles, LineTransform, LinesStyle, ReversibleLine, VectoredLine,
 };
 use tools::max_depth_with_branches;
-
-use crate::fractal_app::{
-    paint_fractal_helpers::{paint_line_generator, parallel_paint_fractal_lines},
-    structs_and_enums::BenchParallelPaintFractalLines,
-};
 
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
 
@@ -358,21 +355,16 @@ impl FractalApp {
 
         if self.bench_prep {
             self.bench_prep = false;
+
             // Save current params to a json file,
             // in preparation for benchmarking.
-            let bench = BenchParallelPaintFractalLines {
+            save_bench_prep_parallel_struct_to_json(
                 rect,
-                initiator,
-                fractal: fractal.clone(),
-                transformations: transformations.clone(),
-                max_depth: paint_depth,
-            };
-
-            let file = File::create("bench_prep_parallel_struct.json")
-                .expect("Expect no prob with file creation");
-            let writer = BufWriter::new(file);
-            serde_json::to_writer_pretty(writer, &bench)
-                .expect("Expect no prob with writing to JSON file");
+                &initiator,
+                fractal,
+                &transformations,
+                paint_depth,
+            );
         }
 
         let mut shapes =

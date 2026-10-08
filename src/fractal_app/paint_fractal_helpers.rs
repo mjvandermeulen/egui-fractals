@@ -36,20 +36,21 @@ pub fn paint_line_generator(
     }
 }
 
-// Paints a single line into the shapes Vec, but only if it intersects the given rect.
-// This is a convenience function that uses the paint_line_generator closure factory.
-// It is a little convoluted, but since it's used rarely there is not performance issue, and it keeps things DRY.
-// TODO!!: (DONE?) replace this function with it's own one line body everywhere in the code.
-// Does that drop the paint_line? YES, tested
-fn paint_one_line(
-    shapes: &mut Vec<Shape>,
-    rect: Rect,
-    points: [Pos2; 2],
-    color: Color32,
-    width: f32,
-) {
-    paint_line_generator(shapes, rect)(points, color, width);
-}
+// // Paints a single line into the shapes Vec, but only if it intersects the given rect.
+// // This is a convenience function that uses the paint_line_generator closure factory.
+// // It is a little convoluted, but since it's used rarely there is not performance issue, and it keeps things DRY.
+// // TODO!!: (DONE?) replace this function with it's own one line body everywhere in the code.
+// // Does that drop the paint_line? YES, tested
+// LEARN
+// fn paint_one_line(
+//     shapes: &mut Vec<Shape>,
+//     rect: Rect,
+//     points: [Pos2; 2],
+//     color: Color32,
+//     width: f32,
+// ) {
+//     paint_line_generator(shapes, rect)(points, color, width);
+// }
 
 // Returns a Vec of Shapes representing the fractal lines painted within the given rect,
 // starting AFTER the initiator line, applying the given transformations up to the specified max_depth.

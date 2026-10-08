@@ -1,5 +1,5 @@
 use super::animation::animation_structs_and_enums::Animation;
-use egui::{Pos2, Rect, Vec2, emath::RectTransform};
+use egui::{Pos2, Vec2, emath::RectTransform};
 use serde::{Deserialize, Serialize};
 
 // Fractal struct
@@ -99,12 +99,3 @@ impl LineTransform {
     }
 }
 // parallel_paint_fractal_lines(rect, &initiator, fractal, &transformations, paint_depth);
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BenchParallelPaintFractalLines {
-    pub rect: Rect,
-    pub initiator: VectoredLine,
-    pub fractal: Fractal,
-    pub transformations: Vec<LineTransform>,
-    pub max_depth: usize,
-}
