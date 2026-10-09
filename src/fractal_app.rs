@@ -30,6 +30,8 @@ use structs_and_enums::{
 };
 use tools::max_depth_with_branches;
 
+use crate::paint_fractal_helpers::sequential_paint_fractal_lines;
+
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
 
 #[derive(PartialEq, serde::Deserialize, serde::Serialize)]

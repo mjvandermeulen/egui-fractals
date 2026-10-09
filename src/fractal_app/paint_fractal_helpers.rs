@@ -55,6 +55,7 @@ pub fn paint_line_generator(
 // Returns a Vec of Shapes representing the fractal lines painted within the given rect,
 // starting AFTER the initiator line, applying the given transformations up to the specified max_depth.
 // Aug 30th: This needs to take a closure, since that closure is used in the parallel version and in fractal_app (when bypassing parallelization).
+// Oct 9th: bypassing parallelization is still not implemented yet :)
 pub fn paint_fractal_lines(
     paint_line: &mut impl FnMut([egui::Pos2; 2], egui::Color32, f32),
     initiator: &VectoredLine,
@@ -67,8 +68,8 @@ pub fn paint_fractal_lines(
         pos: initiator.pos,
         vec: initiator.vec,
     }];
-
     let mut new_nodes = Vec::new();
+
     for depth in depth..=max_depth {
         let color = line_color(depth, fractal.rainbow);
 
@@ -135,7 +136,7 @@ pub fn parallel_paint_fractal_lines(
     let color = line_color(1, fractal.rainbow);
 
     transformations
-        .par_iter()
+        .par_iter() // PARALLEL Computation initiated here!
         .with_max_len(1)
         .flat_map(|&transform| {
             let mut shapes_iter = Vec::new();
@@ -171,4 +172,26 @@ pub fn parallel_paint_fractal_lines(
             shapes_iter
         })
         .collect::<Vec<_>>()
+}
+pub fn sequential_paint_fractal_lines(
+    rect: Rect,
+    initiator: &VectoredLine,
+    fractal: &Fractal,
+    transformations: &Vec<LineTransform>,
+    max_depth: usize,
+) -> Vec<Shape> {
+    let mut shapes = Vec::new();
+    {
+        // avoid having to drop the paint_line by indenting. LEARN
+        let mut paint_line = paint_line_generator(&mut shapes, rect);
+        paint_fractal_lines(
+            &mut paint_line,
+            initiator,
+            fractal,
+            transformations,
+            2,
+            max_depth,
+        );
+    }
+    shapes
 }
