@@ -1,104 +1,104 @@
 {
-  "rect": {
-    "min": {
-      "x": 0.0,
-      "y": 0.0
-    },
-    "max": {
-      "x": 1440.0,
-      "y": 847.0
-    }
-  },
-  "initiator": {
-    "pos": {
-      "x": 692.79535,
-      "y": 717.73096
-    },
-    "vec": {
-      "x": 1.2492676,
-      "y": -62.34613
-    }
-  },
-  "fractal": {
-    "name": "Simple Twig",
-    "mirror": false,
-    "rainbow": true,
-    "design_lines": [
-      {
-        "line": [
-          {
+    "rect": {
+        "min": {
             "x": 0.0,
             "y": 0.0
-          },
-          {
-            "x": 0.01406765,
-            "y": -0.70205927
-          }
+        },
+        "max": {
+            "x": 720.0,
+            "y": 847.0
+        }
+    },
+    "initiator": {
+        "pos": {
+            "x": 385.0033,
+            "y": 610.42664
+        },
+        "vec": {
+            "x": -182.69836,
+            "y": 2.0366821
+        }
+    },
+    "fractal": {
+        "name": "Simple Twig",
+        "mirror": false,
+        "rainbow": false,
+        "design_lines": [
+            {
+                "line": [
+                    {
+                        "x": 0.0,
+                        "y": 0.0
+                    },
+                    {
+                        "x": -0.8059761,
+                        "y": 0.008984864
+                    }
+                ],
+                "reversed": false
+            },
+            {
+                "line": [
+                    {
+                        "x": -0.8059761,
+                        "y": 0.008984864
+                    },
+                    {
+                        "x": -0.4491427,
+                        "y": -0.36643055
+                    }
+                ],
+                "reversed": true
+            },
+            {
+                "line": [
+                    {
+                        "x": -0.4491427,
+                        "y": -0.36643055
+                    },
+                    {
+                        "x": 0.0,
+                        "y": 0.0
+                    }
+                ],
+                "reversed": true
+            }
         ],
-        "reversed": false
-      },
-      {
-        "line": [
-          {
-            "x": 0.01406765,
-            "y": -0.70205927
-          },
-          {
-            "x": 0.16300201,
-            "y": -1.3542264
-          }
-        ],
-        "reversed": false
-      },
-      {
-        "line": [
-          {
-            "x": 0.01406765,
-            "y": -0.70205927
-          },
-          {
-            "x": 0.17005348,
-            "y": -1.3921859
-          }
-        ],
-        "reversed": false
-      }
+        "replace_line": true,
+        "lines_style": "Loop",
+        "zoom": 0.3148328,
+        "center": {
+            "x": -0.1103023,
+            "y": -0.8246293
+        },
+        "initiator_width_length_ratio": 0.02,
+        "fixed_final_line_width": 1.0,
+        "depth": 12,
+        "animation": {
+            "length": 1.5
+        }
+    },
+    "transformations": [
+        {
+            "base_rot": {
+                "s": 0.46079677,
+                "c": 0.5521287
+            },
+            "rot": {
+                "s": -0.46079686,
+                "c": 0.4478714
+            }
+        },
+        {
+            "base_rot": {
+                "s": -0.0,
+                "c": -0.0
+            },
+            "rot": {
+                "s": 0.46079677,
+                "c": 0.5521287
+            }
+        }
     ],
-    "replace_line": false,
-    "lines_style": "Tree",
-    "zoom": 0.10484605,
-    "center": {
-      "x": 0.30634257,
-      "y": -3.3132393
-    },
-    "initiator_width_length_ratio": 0.02,
-    "fixed_final_line_width": 1.0,
-    "depth": 14,
-    "animation": {
-      "length": 1.5
-    }
-  },
-  "transformations": [
-    {
-      "base_rot": {
-        "s": 0.0,
-        "c": 1.0
-      },
-      "rot": {
-        "s": 0.19344811,
-        "c": 0.9328097
-      }
-    },
-    {
-      "base_rot": {
-        "s": 0.0,
-        "c": 1.0
-      },
-      "rot": {
-        "s": 0.20240533,
-        "c": 0.9870589
-      }
-    }
-  ],
-  "max_depth": 14
+    "max_depth": 12
 }

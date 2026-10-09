@@ -364,7 +364,8 @@ impl FractalApp {
                 fractal,
                 &transformations,
                 paint_depth,
-            );
+            )
+            .expect("Expected save_bench_prep_parallel_struct_to_json not to cause any trouble");
         }
 
         let mut shapes =

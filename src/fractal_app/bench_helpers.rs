@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fs::File;
 use std::io::BufWriter;
 
@@ -12,7 +13,7 @@ pub fn save_bench_prep_parallel_struct_to_json(
     fractal: &Fractal,
     transformations: &Vec<LineTransform>,
     max_depth: usize,
-) {
+) -> Result<(), Box<dyn Error>> {
     #[derive(Debug, Serialize)]
     pub struct BenchParallelPaintFractalLinesRef<'a> {
         pub rect: Rect,
@@ -30,8 +31,8 @@ pub fn save_bench_prep_parallel_struct_to_json(
         max_depth,
     };
 
-    let file =
-        File::create("bench_prep_parallel_struct.json").expect("Expect no prob with file creation");
+    let file = File::create("bench_prep_parallel_struct.json")?;
     let writer = BufWriter::new(file);
-    serde_json::to_writer_pretty(writer, &bench).expect("Expect no prob with writing to JSON file");
+    serde_json::to_writer_pretty(writer, &bench)?;
+    Ok(())
 }
