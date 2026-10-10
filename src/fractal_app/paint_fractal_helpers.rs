@@ -173,6 +173,9 @@ pub fn parallel_paint_fractal_lines(
         })
         .collect::<Vec<_>>()
 }
+
+// for benching
+// maybe needed for WASM?
 pub fn sequential_paint_fractal_lines(
     rect: Rect,
     initiator: &VectoredLine,
