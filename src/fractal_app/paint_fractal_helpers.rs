@@ -192,7 +192,7 @@ pub fn sequential_paint_fractal_lines(
             initiator,
             fractal,
             transformations,
-            2,
+            1,
             max_depth,
         );
     }
