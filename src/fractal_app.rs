@@ -30,6 +30,7 @@ use structs_and_enums::{
 };
 use tools::max_depth_with_branches;
 
+// TODO: find the error that pops op when the vec gets too large.
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
 
 #[derive(PartialEq, serde::Deserialize, serde::Serialize)]
@@ -344,6 +345,7 @@ impl FractalApp {
                 line_transforms
             })
             .collect();
+        // BUG: line width needs to be correct when fractal.replace line &&paint_depth == 0
         if !fractal.replace_line || paint_depth == 0 {
             // LEARN: generate a closure and call it immediately. the closure is dropped immediately as well.
             paint_line_generator(&mut initiator_shape, rect)(

@@ -26,8 +26,14 @@ fn bench_parallel(c: &mut Criterion) {
         max_depth: usize,
     }
 
-    let l = read_bench_prep_parallel_struct_from_json()
+    let mut l = read_bench_prep_parallel_struct_from_json()
         .expect("MAARTEN SAYS: expect bench_parallel json read and parse to succeed.");
+
+    // #########################################################################
+    // NOTE: increase max_depth for testing
+    // #########################################################################
+
+    l.max_depth += 2;
 
     c.bench_function("sequential_paint_fractal", |b| {
         b.iter(|| {

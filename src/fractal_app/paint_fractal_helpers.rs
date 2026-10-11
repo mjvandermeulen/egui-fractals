@@ -75,7 +75,8 @@ pub fn paint_fractal_lines(
 
         if depth < max_depth {
             new_nodes.clear();
-            new_nodes.reserve(nodes.len() * 2);
+            // new_nodes.reserve(nodes.len() * 2); // TODO!!!!!! whoa, update and bench this!!! SEE NEXT LINE
+            new_nodes.reserve(nodes.len() * transformations.len());
         }
 
         // iterate over stored parent nodes
@@ -84,6 +85,7 @@ pub fn paint_fractal_lines(
 
         // The nesting of the node loop inside the transformations loop is purely for speed.
         //   It is (just) noticibly faster with a 1 branch depth 17 MIRRORED tree.
+        // Benching: at least over 5% slower.
         //   Feel free to read it the other way around, which I think is more intuitive.
         for &transform in transformations {
             for parent_node in &nodes {
@@ -107,6 +109,7 @@ pub fn paint_fractal_lines(
                         painted_node.vec.length() * fractal.initiator_width_length_ratio,
                     );
                 }
+                // Criterion bench (2 ^ 19 test): wrapping in `if` gives a 8 - 12% improvement.
                 if depth < max_depth {
                     new_nodes.push(painted_node);
                 }
