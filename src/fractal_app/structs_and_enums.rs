@@ -46,6 +46,7 @@ pub struct VectoredLine {
 }
 
 impl VectoredLine {
+    #[must_use]
     pub fn from_reversible_line(
         ReversibleLine { line, reversed }: ReversibleLine,
         to_screen: RectTransform,
@@ -63,6 +64,7 @@ impl VectoredLine {
 
 // paint_fractal structs
 
+// NOTE: a Node has the same fields as a VectoredLine
 #[derive(Clone, Copy)]
 // OPTI!!!: add length and add length factor to LineTransform,
 //   then the lengthfactor to calculate width does not need multiple length calcs
@@ -72,6 +74,12 @@ pub struct Node {
     pub vec: Vec2,
 }
 
+impl Node {
+    #[must_use]
+    pub fn from_vectored_line(VectoredLine { pos, vec }: VectoredLine) -> Self {
+        Self { pos, vec }
+    }
+}
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct LineTransform {
     pub base_rot: egui::emath::Rot2,
@@ -79,6 +87,7 @@ pub struct LineTransform {
 }
 
 impl LineTransform {
+    #[must_use]
     pub fn from_design_vector(
         base: &VectoredLine,
         design_line: VectoredLine,

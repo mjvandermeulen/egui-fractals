@@ -25,7 +25,7 @@ pub fn animation_progress(
 pub fn animation_progress_to_scale(progress: f32, cycle_scale: f32) -> f32 {
     cycle_scale.powf(progress)
 }
-
+#[expect(clippy::similar_names)]
 pub fn find_animation_rotation_center(
     b: Pos2,
     c: Pos2,

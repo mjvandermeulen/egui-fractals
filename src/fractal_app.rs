@@ -329,7 +329,6 @@ impl FractalApp {
             paint_depth <= max_depth,
             "paint_depth = {paint_depth}, max_depth_with_branches(...) = {max_depth}"
         );
-        let mut initiator_shape: Vec<Shape> = Vec::new();
         let rect = painter.clip_rect();
 
         let initiator = vectored_design_lines[0];
@@ -345,15 +344,16 @@ impl FractalApp {
                 line_transforms
             })
             .collect();
-        // BUG: line width needs to be correct when fractal.replace line &&paint_depth == 0
-        if !fractal.replace_line || paint_depth == 0 {
-            // LEARN: generate a closure and call it immediately. the closure is dropped immediately as well.
-            paint_line_generator(&mut initiator_shape, rect)(
-                [initiator.pos, initiator.pos + initiator.vec],
-                line_color(0, fractal.rainbow),
-                initiator.vec.length() * fractal.initiator_width_length_ratio,
-            );
-        }
+
+        let mut initiator_shape: Vec<Shape> = Vec::new();
+        // PROBABLY RESOLVED WITH NEW CLOSURE: BUG: line width needs to be correct when fractal.replace line &&paint_depth == 0
+        // LEARN: generate a closure and call it immediately. the closure is dropped immediately as well.
+        paint_line_generator(&mut initiator_shape, rect, fractal)(
+            0,
+            [initiator.pos, initiator.pos + initiator.vec],
+            initiator.vec,
+            line_color(0, fractal.rainbow),
+        );
 
         if self.bench_prep {
             self.bench_prep = false;
