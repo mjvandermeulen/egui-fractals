@@ -10,9 +10,10 @@ use serde::{Deserialize, Serialize};
 // use egui_fractals::FractalApp::
 
 fn bench_parallel(c: &mut Criterion) {
-    fn read_bench_prep_parallel_struct_from_json()
-    -> Result<BenchParallelPaintFractalLinesOwned, Box<dyn Error>> {
-        let reader = BufReader::new(File::open("bench_prep_parallel_struct.json")?);
+    fn read_bench_prep_parallel_struct_from_json(
+        path: &'static str,
+    ) -> Result<BenchParallelPaintFractalLinesOwned, Box<dyn Error>> {
+        let reader = BufReader::new(File::open(path)?);
         let loaded: BenchParallelPaintFractalLinesOwned = serde_json::from_reader(reader)?;
         Ok(loaded)
     }
@@ -26,35 +27,70 @@ fn bench_parallel(c: &mut Criterion) {
         max_depth: usize,
     }
 
-    let mut l = read_bench_prep_parallel_struct_from_json()
-        .expect("MAARTEN SAYS: expect bench_parallel json read and parse to succeed.");
+    let mut loaded_binary_fractal =
+        read_bench_prep_parallel_struct_from_json("bench_prep_bin_tree_parallel_struct.json")
+            .expect("MAARTEN SAYS: expect bench_parallel json read and parse to succeed.");
 
     // #########################################################################
     // NOTE: increase max_depth for testing
     // #########################################################################
 
-    l.max_depth += 2;
+    loaded_binary_fractal.max_depth += 2;
 
-    c.bench_function("sequential_paint_fractal", |b| {
+    c.bench_function("sequential_paint_fractal_bin_tree", |b| {
         b.iter(|| {
             sequential_paint_fractal_lines(
-                black_box(l.rect),
-                black_box(&l.initiator),
-                black_box(&l.fractal),
-                black_box(&l.transformations),
-                black_box(l.max_depth),
+                black_box(loaded_binary_fractal.rect),
+                black_box(&loaded_binary_fractal.initiator),
+                black_box(&loaded_binary_fractal.fractal),
+                black_box(&loaded_binary_fractal.transformations),
+                black_box(loaded_binary_fractal.max_depth),
             )
         });
     });
 
-    c.bench_function("parallel_paint_fractal", |b| {
+    c.bench_function("parallel_paint_fractal_bin_tree", |b| {
         b.iter(|| {
             parallel_paint_fractal_lines(
-                black_box(l.rect),
-                black_box(&l.initiator),
-                black_box(&l.fractal),
-                black_box(&l.transformations),
-                black_box(l.max_depth),
+                black_box(loaded_binary_fractal.rect),
+                black_box(&loaded_binary_fractal.initiator),
+                black_box(&loaded_binary_fractal.fractal),
+                black_box(&loaded_binary_fractal.transformations),
+                black_box(loaded_binary_fractal.max_depth),
+            )
+        });
+    });
+
+    let mut loaded_multi_branch_fractal =
+        read_bench_prep_parallel_struct_from_json("bench_prep_11_branch_parallel_struct.json")
+            .expect("MAARTEN SAYS: expect bench_parallel json read and parse to succeed.");
+
+    // #########################################################################
+    // NOTE: increase max_depth for testing
+    // #########################################################################
+
+    loaded_multi_branch_fractal.max_depth += 2;
+
+    c.bench_function("sequential_paint_fractal_b_11", |b| {
+        b.iter(|| {
+            sequential_paint_fractal_lines(
+                black_box(loaded_multi_branch_fractal.rect),
+                black_box(&loaded_multi_branch_fractal.initiator),
+                black_box(&loaded_multi_branch_fractal.fractal),
+                black_box(&loaded_multi_branch_fractal.transformations),
+                black_box(loaded_multi_branch_fractal.max_depth),
+            )
+        });
+    });
+
+    c.bench_function("parallel_paint_fractal_b_11", |b| {
+        b.iter(|| {
+            parallel_paint_fractal_lines(
+                black_box(loaded_multi_branch_fractal.rect),
+                black_box(&loaded_multi_branch_fractal.initiator),
+                black_box(&loaded_multi_branch_fractal.fractal),
+                black_box(&loaded_multi_branch_fractal.transformations),
+                black_box(loaded_multi_branch_fractal.max_depth),
             )
         });
     });

@@ -1,7 +1,7 @@
 use egui::{Color32, Pos2, Rect, Shape, Vec2};
 use rayon::prelude::*;
 
-use super::structs_and_enums::{Fractal, LineTransform, Node, VectoredLine};
+use super::structs_and_enums::{Branch, Fractal, LineTransform, VectoredLine};
 
 const RAINBOW_COLORS: [Color32; 6] = [
     Color32::from_rgb(255, 0, 0),   // Red
@@ -28,6 +28,7 @@ pub fn paint_line_generator(
     move |depth, line, line_vec, color| {
         let width = if fractal.replace_line {
             if depth != fractal.depth {
+                // TODO!!!!! fractal.depth is not always the correct one, see ` let paint_depth = ` in fractal_app.rs
                 return; // only the final iteration is drawn
             }
             fractal.fixed_final_line_width
@@ -40,18 +41,15 @@ pub fn paint_line_generator(
         }
     }
 }
-fn construct_current_node_and_line(
-    parent_node: &Node,
+fn construct_current_branch_and_line(
+    parent_branch: &Branch,
     transform: &LineTransform,
-) -> (Node, [Pos2; 2]) {
-    let paint_a = parent_node.pos + transform.base_rot * parent_node.vec;
-    let paint_vec = transform.rot * parent_node.vec;
-    let paint_b = paint_a + paint_vec;
-    let painted_node = Node {
-        pos: paint_a,
-        vec: paint_vec,
-    };
-    (painted_node, [paint_a, paint_b])
+) -> (Branch, [Pos2; 2]) {
+    let parent_node = parent_branch.parent_node + transform.base_rot * parent_branch.edge;
+    let edge = transform.rot * parent_branch.edge;
+    let child_node = parent_node + edge;
+    let current_branch = Branch { parent_node, edge };
+    (current_branch, [parent_node, child_node])
 }
 
 // Returns a Vec of Shapes representing the fractal lines painted within the given rect,
@@ -60,55 +58,48 @@ fn construct_current_node_and_line(
 // Oct 9th: bypassing parallelization is still not implemented yet :)
 pub fn paint_fractal_lines(
     paint_line: &mut impl FnMut(usize, [egui::Pos2; 2], Vec2, egui::Color32),
-    base_node: &Node,
+    trunk: &Branch,
     fractal: &Fractal,
     transformations: &Vec<LineTransform>,
     depth: usize,
     max_depth: usize,
 ) {
-    let mut nodes = vec![Node {
-        pos: base_node.pos,
-        vec: base_node.vec,
-    }];
-    let mut new_nodes = Vec::new();
+    let mut branches = vec![*trunk];
+    let mut new_branches = Vec::new();
 
     for d in depth..=max_depth {
         let color = line_color(d, fractal.rainbow);
 
         if d < max_depth {
-            new_nodes.clear();
-            // new_nodes.reserve(nodes.len() * 2); // TODO!!!!!! whoa, update and bench this!!! SEE NEXT LINE
-            new_nodes.reserve(nodes.len() * transformations.len());
+            new_branches.clear();
+            new_branches.reserve(branches.len() * transformations.len());
         }
 
-        // iterate over stored parent nodes
-        //  create a new node per transformation and paint the line in it
-        //  if we're not at the max depth, store the new node for the next iteration
+        // iterate over stored parent branches
+        //  create a new branch per transformation and paint the line in it
+        //  if we're not at the max depth, store the new branch for the next iteration
 
-        // The nesting of the node loop inside the transformations loop is purely for speed.
+        // The nesting of the branch loop inside the transformations loop is purely for speed.
         //   It is (just) noticibly faster with a 1 branch depth 17 MIRRORED tree.
         // Benching: at least over 5% slower.
         //   Feel free to read it the other way around, which I think is more intuitive.
         for &transform in transformations {
-            for parent_node in &nodes {
-                let (current_node, line) = construct_current_node_and_line(parent_node, &transform);
-                paint_line(1, line, current_node.vec, color);
+            for parent_branch in &branches {
+                let (current_branch, line) =
+                    construct_current_branch_and_line(parent_branch, &transform);
+                paint_line(d, line, current_branch.edge, color);
 
                 // Criterion bench (2 ^ 19 test): wrapping in `if` gives a 8 - 12% improvement.
                 if d < max_depth {
-                    new_nodes.push(current_node);
+                    new_branches.push(current_branch);
                 }
             }
         }
 
-        std::mem::swap(&mut nodes, &mut new_nodes);
+        std::mem::swap(&mut branches, &mut new_branches);
     }
 }
 
-// TODO!!!!!
-// CLAUDE:
-// A likely bug I spotted:
-// In your current parallel_paint_fractal_lines, you call paint_fractal_lines(..., initiator, ..., 2, max_depth). That restarts from the initiator, not from the depth-1 node you just painted, so every top-level branch regenerates the same depth-2+ tree from the root. In the version above I pass node (the depth-1 node) as the start, which fixes that. Taking a Node instead of a &VectoredLine also saves you from converting.
 #[must_use]
 #[inline]
 pub fn parallel_paint_fractal_lines(
@@ -121,9 +112,9 @@ pub fn parallel_paint_fractal_lines(
     if max_depth < 1 {
         return Vec::new();
     }
-    let initiator_node = Node {
-        pos: initiator.pos,
-        vec: initiator.vec,
+    let trunk = Branch {
+        parent_node: initiator.pos,
+        edge: initiator.vec,
     };
     let color = line_color(1, fractal.rainbow);
     transformations
@@ -132,16 +123,16 @@ pub fn parallel_paint_fractal_lines(
         .flat_map(|&transform| {
             let mut shapes_iter = Vec::new();
 
-            let (current_node, line) = construct_current_node_and_line(&initiator_node, &transform);
+            let (current_branch, line) = construct_current_branch_and_line(&trunk, &transform);
 
             {
                 // avoid having to drop the paint_line by indenting. LEARN
                 let mut paint_line = paint_line_generator(&mut shapes_iter, rect, fractal);
-                paint_line(2, line, current_node.vec, color);
+                paint_line(1, line, current_branch.edge, color);
 
                 paint_fractal_lines(
                     &mut paint_line,
-                    &current_node,
+                    &current_branch,
                     fractal,
                     transformations,
                     2,
@@ -170,7 +161,7 @@ pub fn sequential_paint_fractal_lines(
         let mut paint_line = paint_line_generator(&mut shapes, rect, fractal);
         paint_fractal_lines(
             &mut paint_line,
-            &Node::from_vectored_line(*initiator), // TODO avoid this deref? Only happens once. Cheap
+            &Branch::from_vectored_line(*initiator), // TODO avoid this deref? Only happens once. Cheap
             fractal,
             transformations,
             1,

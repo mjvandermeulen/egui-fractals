@@ -64,20 +64,22 @@ impl VectoredLine {
 
 // paint_fractal structs
 
-// NOTE: a Node has the same fields as a VectoredLine
 #[derive(Clone, Copy)]
 // OPTI!!!: add length and add length factor to LineTransform,
 //   then the lengthfactor to calculate width does not need multiple length calcs
 //   (pythagoras sqrt is expensive)
-pub struct Node {
-    pub pos: Pos2,
-    pub vec: Vec2,
+pub struct Branch {
+    pub parent_node: Pos2,
+    pub edge: Vec2,
 }
 
-impl Node {
+impl Branch {
     #[must_use]
     pub fn from_vectored_line(VectoredLine { pos, vec }: VectoredLine) -> Self {
-        Self { pos, vec }
+        Self {
+            parent_node: pos,
+            edge: vec,
+        }
     }
 }
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
