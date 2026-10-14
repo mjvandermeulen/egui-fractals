@@ -1,5 +1,4 @@
 use egui::{Color32, Pos2, Rect, Shape, Vec2};
-use rayon::prelude::*;
 
 use super::structs_and_enums::{Branch, Fractal, LineTransform, VectoredLine};
 
@@ -41,7 +40,7 @@ pub fn paint_line_generator(
         }
     }
 }
-fn construct_current_branch_and_line(
+pub fn construct_current_branch_and_line(
     parent_branch: &Branch,
     transform: &LineTransform,
 ) -> (Branch, [Pos2; 2]) {
@@ -98,50 +97,6 @@ pub fn paint_fractal_lines(
 
         std::mem::swap(&mut branches, &mut new_branches);
     }
-}
-
-#[must_use]
-#[inline]
-pub fn parallel_paint_fractal_lines(
-    rect: Rect,
-    initiator: &VectoredLine,
-    fractal: &Fractal,
-    transformations: &Vec<LineTransform>,
-    max_depth: usize,
-) -> Vec<Shape> {
-    if max_depth < 1 {
-        return Vec::new();
-    }
-    let trunk = Branch {
-        parent_node: initiator.pos,
-        edge: initiator.vec,
-    };
-    let color = line_color(1, fractal.rainbow);
-    transformations
-        .par_iter() // PARALLEL Computation initiated here!
-        .with_max_len(1)
-        .flat_map(|&transform| {
-            let mut shapes_iter = Vec::new();
-
-            let (current_branch, line) = construct_current_branch_and_line(&trunk, &transform);
-
-            {
-                // avoid having to drop the paint_line by indenting. LEARN
-                let mut paint_line = paint_line_generator(&mut shapes_iter, rect, fractal);
-                paint_line(1, line, current_branch.edge, color);
-
-                paint_fractal_lines(
-                    &mut paint_line,
-                    &current_branch,
-                    fractal,
-                    transformations,
-                    2,
-                    max_depth,
-                );
-            }
-            shapes_iter
-        })
-        .collect::<Vec<_>>()
 }
 
 // for benching

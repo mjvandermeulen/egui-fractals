@@ -4,6 +4,7 @@ mod design_helpers;
 mod design_input;
 mod fractals;
 pub mod paint_fractal_helpers; // pub for benching check if needed
+pub mod parallel_paint_fractal; // only "used" in lib.rs for criterion benching.
 pub mod structs_and_enums; // pub for benching TODO check
 mod tools;
 
@@ -24,7 +25,7 @@ use design_helpers::{
 };
 use design_input::{handle_keyboard_input, handle_mouse_input};
 use fractals::fractals;
-use paint_fractal_helpers::{line_color, paint_line_generator, parallel_paint_fractal_lines};
+use paint_fractal_helpers::{line_color, paint_line_generator, sequential_paint_fractal_lines};
 use structs_and_enums::{
     Fractal, LineHandles, LineTransform, LinesStyle, ReversibleLine, VectoredLine,
 };
@@ -369,8 +370,13 @@ impl FractalApp {
             .expect("Expected save_bench_prep_parallel_struct_to_json not to cause any trouble");
         }
 
-        let mut shapes =
-            parallel_paint_fractal_lines(rect, &initiator, fractal, &transformations, paint_depth);
+        let mut shapes = sequential_paint_fractal_lines(
+            rect,
+            &initiator,
+            fractal,
+            &transformations,
+            paint_depth,
+        );
         shapes.append(&mut initiator_shape);
 
         if started_next_cycle {

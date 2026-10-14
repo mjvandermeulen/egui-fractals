@@ -2,9 +2,9 @@ use std::{error::Error, fs::File, io::BufReader};
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use egui::Rect;
-use egui_fractals::paint_fractal_helpers::{
-    parallel_paint_fractal_lines, sequential_paint_fractal_lines,
-};
+use egui_fractals::paint_fractal_helpers::sequential_paint_fractal_lines;
+
+use egui_fractals::parallel_paint_fractal::parallel_paint_fractal_lines;
 use egui_fractals::structs_and_enums::{Fractal, LineTransform, VectoredLine};
 use serde::{Deserialize, Serialize};
 // use egui_fractals::FractalApp::
