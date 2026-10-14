@@ -212,7 +212,7 @@ pub fn start_new_line(
         let Some(screenpos) = cd_response.interact_pointer_pos() else {
             return;
         };
-        let pos = from_screen * screenpos; // TODO!!!! rename
+        let pos = from_screen * screenpos; // TODO rename
         let fractal = &fractal_app.fractals[fractal_app.fractal_index];
         let mut start_pos = pos;
         let mut new_line_index = fractal.design_lines.len();
@@ -269,7 +269,7 @@ pub fn make_loop(fractal_app: &mut FractalApp) {
     }
     let new_len = new_dls.len();
     if new_len > 1 && new_dls[new_len - 1].line[0] == base.line[0] {
-        // the last line would disappear NOTE: is it possible that other lines would disappear too? TODO!!!
+        // the last line would disappear NOTE: is it possible that other lines would disappear too? TODO!
         new_dls[new_len - 2].line[1] = new_dls[new_len - 1].line[1];
         new_dls[new_len - 1].line[0] = new_dls[new_len - 1].line[1];
     }

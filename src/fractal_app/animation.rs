@@ -11,7 +11,7 @@ pub mod animation_tools;
 // move to tools (rename to helpers.rs)
 // to get the Rot2, for all points:
 // let rotation = Rot2::from_angle(angle_radians);
-// TODO!!!!Rot2 can have a scale factor
+// TODO! Rot2 can have a scale factor
 pub fn scale_and_rotate_point_around_center(point: Pos2, center: Pos2, rotation: Rot2) -> Pos2 {
     let point_vec: Vec2 = point - center;
     let rotated_vec: Vec2 = rotation * point_vec;

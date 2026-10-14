@@ -13,7 +13,7 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
     // https://github.com/emilk/egui/discussions/1464. fine tuned with gemini. Maarten.
     if ui.ctx().memory(egui::Memory::focused).is_none() {
-        // TODO!!!: turn max depth into self.max_depth and calc right away
+        // TODO: turn max depth into self.max_depth and calc right away
         // NOPE: only calc max_depth once: right after the design phase
         let max_depth = max_depth_with_branches(
             super::MAX_PAINTED_LINE_COUNT,

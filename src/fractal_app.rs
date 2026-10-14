@@ -55,10 +55,10 @@ pub struct FractalApp {
     // NOTE: when dragging over a non green line, it will "pick up" the line
     // TODO: include LineHandles in the hovered_line.
 
-    // TODO!!! put all animation stuff in a struct.
+    // TODO! put all animation stuff in a struct.
     #[serde(skip)]
     animation_start: Option<Instant>,
-    // TODO!!! progress: f32, // for animation. instead of local, so you can pause and resume.
+    // TODO! progress: f32, // for animation. instead of local, so you can pause and resume.
     #[serde(skip)]
     animation_cycle: usize, // one cycle is when a generator line is animated to take exactly the place of the initiator.
     #[serde(skip)]
@@ -135,7 +135,7 @@ impl FractalApp {
         }
         if ui
             .add_enabled(
-                // TODO!!! clippy pedantic warns about comparing floats:
+                // TODO clippy pedantic warns about comparing floats:
                 // (fractal.zoom - Self::default
                 //  ().fractals[self.fractal_index].zoom).abs() > error_margin
                 // same for .center
@@ -205,9 +205,9 @@ impl FractalApp {
             "Start Animation"
         };
         if ui.add_enabled(true, Button::new(animate_text)).on_hover_text(if self.animation_start.is_some() {
-            "Stop animating the fractal. TODO!!! Press space to pause/resume. Press R to reset animation."
+            "Stop animating the fractal. TODO! press space to pause/resume. Press R to reset animation."
         } else {
-            "Start animating the fractal. TODO!!! Press space to pause/resume. Press R to reset animation."
+            "Start animating the fractal. TODO! Press space to pause/resume. Press R to reset animation."
         }).clicked(){
             self.animation_start = if self.animation_start.is_some() {
                 None
@@ -215,7 +215,7 @@ impl FractalApp {
                 Some(Instant::now())
             };
         }
-        // if let Some(animation) = &mut fractal.animation { TODO!!!!
+        // if let Some(animation) = &mut fractal.animation { TODO
         // ui.add(
         //     Slider::new(&mut fractal.animation.length, 0.5..=30.0)
         //         .text("Animation length (seconds)"),
@@ -284,7 +284,7 @@ impl FractalApp {
 
         scale_and_rotate_vectored_lines(
             gdvs,
-            rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO!!!!!
+            rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO
             cycle_angle,
             cycle_scale,
             progress,
@@ -346,7 +346,6 @@ impl FractalApp {
             .collect();
 
         let mut initiator_shape: Vec<Shape> = Vec::new();
-        // PROBABLY RESOLVED WITH NEW CLOSURE: BUG: line width needs to be correct when fractal.replace line &&paint_depth == 0
         // LEARN: generate a closure and call it immediately. the closure is dropped immediately as well.
         paint_line_generator(&mut initiator_shape, rect, fractal)(
             0,
