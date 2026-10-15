@@ -7,6 +7,8 @@ use serde::Serialize;
 
 use crate::fractal_app::structs_and_enums::{Fractal, LineTransform, VectoredLine};
 
+// Save current params to a json file,
+// in preparation for benchmarking.
 pub fn save_bench_prep_parallel_struct_to_json(
     rect: Rect,
     initiator: &VectoredLine,

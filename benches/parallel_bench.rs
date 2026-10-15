@@ -71,7 +71,9 @@ fn bench_parallel(c: &mut Criterion) {
 
     loaded_multi_branch_fractal.max_depth += 2;
 
-    c.bench_function("sequential_paint_fractal_b_11", |b| {
+    let mut slow = c.benchmark_group("parallel_slow");
+    slow.sample_size(20);
+    slow.bench_function("sequential_paint_fractal_b_11", |b| {
         b.iter(|| {
             sequential_paint_fractal_lines(
                 black_box(loaded_multi_branch_fractal.rect),
@@ -82,8 +84,8 @@ fn bench_parallel(c: &mut Criterion) {
             )
         });
     });
-
-    c.bench_function("parallel_paint_fractal_b_11", |b| {
+    // Hackish Claude idea to limit sample of this slow function to 10
+    slow.bench_function("parallel_paint_fractal_b_11", |b| {
         b.iter(|| {
             parallel_paint_fractal_lines(
                 black_box(loaded_multi_branch_fractal.rect),
@@ -94,6 +96,7 @@ fn bench_parallel(c: &mut Criterion) {
             )
         });
     });
+    slow.finish();
 }
 
 criterion_group!(benches, bench_parallel);

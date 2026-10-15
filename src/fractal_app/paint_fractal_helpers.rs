@@ -99,10 +99,7 @@ pub fn paint_fractal_lines(
     }
 }
 
-// for benching
-// maybe needed for WASM?
 #[must_use]
-#[inline]
 pub fn sequential_paint_fractal_lines(
     rect: Rect,
     initiator: &VectoredLine,
@@ -114,6 +111,15 @@ pub fn sequential_paint_fractal_lines(
     {
         // avoid having to drop the paint_line by indenting. LEARN
         let mut paint_line = paint_line_generator(&mut shapes, rect, fractal);
+
+        // paint the initiator (trunk)
+        paint_line(
+            0,
+            [initiator.pos, initiator.pos + initiator.vec],
+            initiator.vec,
+            line_color(0, fractal.rainbow),
+        );
+
         paint_fractal_lines(
             &mut paint_line,
             &Branch::from_vectored_line(*initiator), // TODO avoid this deref? Only happens once. Cheap

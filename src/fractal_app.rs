@@ -309,9 +309,67 @@ impl FractalApp {
         });
     }
 
-    // #[expect(clippy::too_many_lines)] // TODO, removed the core paint lines, so no longer too long
     fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredLine]) {
         let fractal = &self.fractals[self.fractal_index];
+        let debug_assert_max_depth = max_depth_with_branches(
+            MAX_PAINTED_LINE_COUNT,
+            vectored_design_lines.len() - 1,
+            fractal.mirror,
+            fractal.replace_line,
+        );
+        debug_assert!(
+            fractal.depth <= debug_assert_max_depth,
+            "fractal.depth = {}, max_depth_with_branches(...) = {debug_assert_max_depth}",
+            fractal.depth
+        );
+        let rect = painter.clip_rect();
+
+        let initiator = vectored_design_lines[0];
+        let transformations: Vec<LineTransform> = vectored_design_lines[1..]
+            .iter()
+            .flat_map(|line| {
+                let mut line_transforms: Vec<LineTransform> =
+                    vec![LineTransform::from_design_vector(&initiator, *line, false)];
+                if fractal.mirror {
+                    line_transforms
+                        .push(LineTransform::from_design_vector(&initiator, *line, true));
+                }
+                line_transforms
+            })
+            .collect();
+
+        if self.bench_prep {
+            self.bench_prep = false;
+            save_bench_prep_parallel_struct_to_json(
+                rect,
+                &initiator,
+                fractal,
+                &transformations,
+                fractal.depth,
+            )
+            .expect("Expected save_bench_prep_parallel_struct_to_json not to cause any trouble");
+        }
+
+        let shapes = sequential_paint_fractal_lines(
+            rect,
+            &initiator,
+            fractal,
+            &transformations,
+            fractal.depth,
+        );
+        self.line_count = shapes.len();
+        painter.extend(shapes);
+    }
+
+    // TODO: This is a verbatim copy of paint_fractal for now.
+    fn animate(&mut self, painter: &Painter, vectored_design_lines: &[VectoredLine]) {
+        let fractal = &self.fractals[self.fractal_index];
+        let max_depth = max_depth_with_branches(
+            MAX_PAINTED_LINE_COUNT,
+            vectored_design_lines.len() - 1,
+            fractal.mirror,
+            fractal.replace_line,
+        );
         let started_next_cycle = self.animation_start.is_some()
             && self.animation_repetition_cycle.is_none()
             && self.new_cycle;
@@ -320,12 +378,6 @@ impl FractalApp {
         } else {
             fractal.depth
         };
-        let max_depth = max_depth_with_branches(
-            MAX_PAINTED_LINE_COUNT,
-            vectored_design_lines.len() - 1,
-            fractal.mirror,
-            fractal.replace_line,
-        );
         debug_assert!(
             paint_depth <= max_depth,
             "paint_depth = {paint_depth}, max_depth_with_branches(...) = {max_depth}"
@@ -443,14 +495,15 @@ impl eframe::App for FractalApp {
             reversible_lines_to_global_line_vectors(&fractal.design_lines, to_screen);
         if self.show_design_only {
             self.paint_design(&painter, &global_design_vectors);
-        } else {
-            let blueprint_vectors: Vec<VectoredLine> = if let Some(start) = self.animation_start {
-                self.animation_frame_vectors(&global_design_vectors, start)
-            } else {
-                global_design_vectors
+        } else if self.animation_start.is_some() {
+            // TODO: move the following logic into self.animate
+            if let Some(start) = self.animation_start {
+                let blueprint_vectors: Vec<VectoredLine> =
+                    self.animation_frame_vectors(&global_design_vectors, start);
+                self.animate(&painter, &blueprint_vectors);
             };
-
-            self.paint_fractal(&painter, &blueprint_vectors);
+        } else {
+            self.paint_fractal(&painter, &global_design_vectors);
 
             // if let Some((a, b, c)) = self.a_b_c {
             //     painter.line_segment([a, b], Stroke::new(2.0, Color32::RED));
