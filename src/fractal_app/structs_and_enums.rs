@@ -12,8 +12,8 @@ pub enum LinesStyle {
 }
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum LineHandles {
-    SingleHandle(usize),
-    BothHandles, // or Both...
+    SingleHandle(usize), // 0: start handle, 1: end handle
+    BothHandles,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy, Deserialize, Serialize)]
@@ -68,6 +68,8 @@ impl VectoredLine {
 // OPTI!!!: add length and add length factor to LineTransform,
 //   then the lengthfactor to calculate width does not need multiple length calcs
 //   (pythagoras sqrt is expensive)
+// only used in parallel_ and paint_fractal_helpers. If parallel gets fully removed,
+// then move this to paint_fractal_helpers and remove all `pub`
 pub struct Branch {
     pub parent_node: Pos2,
     pub edge: Vec2,
@@ -109,4 +111,3 @@ impl LineTransform {
         }
     }
 }
-// parallel_paint_fractal_lines(rect, &initiator, fractal, &transformations, paint_depth);
