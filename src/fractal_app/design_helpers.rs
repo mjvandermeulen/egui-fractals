@@ -143,7 +143,6 @@ pub fn continue_dragging_line_handle(
 ) {
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
 
-    let tuning_ratio = if fractal_app.fine_tune { 0.02 } else { 1.0 };
     let target_handles: Vec<(usize, usize, Pos2)> = match handles {
         LineHandles::SingleHandle(end_index) => {
             vec![(
@@ -151,7 +150,7 @@ pub fn continue_dragging_line_handle(
                 *end_index,
                 from_screen
                     * (to_screen * fractal.design_lines[line].line[*end_index]
-                        + tuning_ratio * click_and_drag_response.drag_delta()),
+                        + click_and_drag_response.drag_delta() / fractal_app.fine_tune),
             )]
         }
         LineHandles::BothHandles => {
@@ -162,7 +161,7 @@ pub fn continue_dragging_line_handle(
                     end_index,
                     from_screen
                         * (to_screen * fractal.design_lines[line].line[end_index]
-                            + tuning_ratio * click_and_drag_response.drag_delta()),
+                            + click_and_drag_response.drag_delta() / fractal_app.fine_tune),
                 ));
             }
             handles

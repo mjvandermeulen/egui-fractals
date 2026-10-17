@@ -7,32 +7,36 @@ use egui_fractals::paint_fractal_helpers::sequential_paint_fractal_lines;
 use egui_fractals::parallel_paint_fractal::parallel_paint_fractal_lines;
 use egui_fractals::structs_and_enums::{Fractal, LineTransform, VectoredLine};
 use serde::{Deserialize, Serialize};
-// use egui_fractals::FractalApp::
+
+// USAGE:
+// cargo bench
+// cargo bench "seq.*tree" # only run benches that match regex "seq.*tree"
+// TODO: better grouping. Ask Claude.
+
+#[derive(Debug, Serialize, Deserialize)]
+struct BenchParallelPaintFractalLinesOwned {
+    rect: Rect,
+    initiator: VectoredLine,
+    fractal: Fractal,
+    transformations: Vec<LineTransform>,
+    max_depth: usize,
+}
+
+fn read_bench_prep_parallel_struct_from_json(
+    path: &'static str,
+) -> Result<BenchParallelPaintFractalLinesOwned, Box<dyn Error>> {
+    let reader = BufReader::new(File::open(path)?);
+    let loaded: BenchParallelPaintFractalLinesOwned = serde_json::from_reader(reader)?;
+    Ok(loaded)
+}
 
 fn bench_parallel(c: &mut Criterion) {
-    fn read_bench_prep_parallel_struct_from_json(
-        path: &'static str,
-    ) -> Result<BenchParallelPaintFractalLinesOwned, Box<dyn Error>> {
-        let reader = BufReader::new(File::open(path)?);
-        let loaded: BenchParallelPaintFractalLinesOwned = serde_json::from_reader(reader)?;
-        Ok(loaded)
-    }
-
-    #[derive(Debug, Serialize, Deserialize)]
-    struct BenchParallelPaintFractalLinesOwned {
-        rect: Rect,
-        initiator: VectoredLine,
-        fractal: Fractal,
-        transformations: Vec<LineTransform>,
-        max_depth: usize,
-    }
-
     let mut loaded_binary_fractal =
         read_bench_prep_parallel_struct_from_json("bench_prep_bin_tree_parallel_struct.json")
             .expect("MAARTEN SAYS: expect bench_parallel json read and parse to succeed.");
 
     // #########################################################################
-    // NOTE: increase max_depth for testing
+    // NOTE: max_depth increased for testing
     // #########################################################################
 
     loaded_binary_fractal.max_depth += 2;
@@ -66,11 +70,12 @@ fn bench_parallel(c: &mut Criterion) {
             .expect("MAARTEN SAYS: expect bench_parallel json read and parse to succeed.");
 
     // #########################################################################
-    // NOTE: increase max_depth for testing
+    // NOTE: max_depth increased for testing
     // #########################################################################
 
     loaded_multi_branch_fractal.max_depth += 2;
 
+    // Hackish Claude idea to limit sample of this slow function
     let mut slow = c.benchmark_group("parallel_slow");
     slow.sample_size(20);
     slow.bench_function("sequential_paint_fractal_b_11", |b| {
@@ -84,7 +89,8 @@ fn bench_parallel(c: &mut Criterion) {
             )
         });
     });
-    // Hackish Claude idea to limit sample of this slow function to 10
+    // Hackish Claude idea to limit sample of this slow function
+    slow.sample_size(10);
     slow.bench_function("parallel_paint_fractal_b_11", |b| {
         b.iter(|| {
             parallel_paint_fractal_lines(
