@@ -21,6 +21,7 @@ A simple app to desing line segment fractals.
 | 9         | set depth to max allowed                                                     |
 | Alt       | Drag 10 times more precise                                                   |
 | Ctrl      | Drag 100 times more precise                                                  |
+| Ctrl-Alt  | Drag 1000 times more precise                                                 |
 
 ### important mouse actions:
 

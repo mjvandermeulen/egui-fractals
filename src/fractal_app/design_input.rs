@@ -80,7 +80,14 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
         log::info!("Logging a dump of the current fractal:\n\n {fractal:#?}",);
     }
 
-    fractal_app.fine_tune = ui.input(|i| i.modifiers.ctrl);
+    // fine tuning (big shout shout out to Claude)
+    let (control_pressed, alt_pressed) = ui.input(|i| (i.modifiers.ctrl, i.modifiers.alt));
+    fractal_app.fine_tune = match (control_pressed, alt_pressed) {
+        (true, true) => 1000.0,
+        (true, false) => 100.0,
+        (false, true) => 10.0,
+        (false, false) => 1.0,
+    };
 }
 
 pub fn handle_mouse_input(

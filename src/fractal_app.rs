@@ -42,7 +42,7 @@ pub struct FractalApp {
     #[serde(skip)]
     line_count: usize,
     #[serde(skip)]
-    fine_tune: bool, // turn into f32 for normal 1.0, ten times (Alt) 10.0 and 100 times (Ctrl) 100.0
+    fine_tune: f32, // normal 1.0, ten times (Alt) 10.0 and 100 times (Ctrl) 100.0
     #[serde(skip)]
     dragged_handles: Option<(usize, LineHandles)>, // Add option for incorrect drag. Now it catches an endpoint when dragging over it, after starting in the middle of nowhere :)
     #[serde(skip)]
@@ -81,7 +81,7 @@ impl Default for FractalApp {
             fractal_index: 0,
             line_count: 0,
             show_design_only: false,
-            fine_tune: false,
+            fine_tune: 1.0,
             dragged_handles: None,
             new_line_key_down: false,
             trash_line_key_down: false,
@@ -188,7 +188,7 @@ impl FractalApp {
             // }
 
             ui.add(
-                egui::Slider::new(&mut fractal.initiator_width_length_ratio, 0.005..=0.07)
+                egui::Slider::new(&mut fractal.initiator_width_length_ratio, 0.001..=0.07)
                     .custom_formatter(|x, _| format!("{:.1}%", x * 100.0))
                     .text("width % of line length"),
             );

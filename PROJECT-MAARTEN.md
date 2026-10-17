@@ -59,14 +59,15 @@ graph TD
     - [ ] leaf (not mirrored, 2 branches)
     - [ ] snowflake
     - [ ] squares
-- [ ] on free/tree/loop switch: update design_lines
-- [ ] fine tune:
-    - [ ] Alt: 10 times
-    - [ ] Ctrl: 100 times
+- [x] ?DONE? on free/tree/loop switch: update design_lines
+- [x] fine tune:
+    - [x] Alt: 10 times
+    - [x] Ctrl: 100 times
 - [ ] hover to select line, then drag or flip that line
 - [x] add branches by drawing
 - [ ] show design line count
 - [ ] offer to delete the shortest design line
+- [ ] criterion bench: regroup?
 
 ## MUCH LATER
 
