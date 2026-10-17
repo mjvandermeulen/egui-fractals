@@ -96,6 +96,8 @@ keys:
 
 ## Node
 
+_Oct 2026: I'm confused about this wording. Node was used in the original clock fractal for what's now called a Branch. Here it's a "View"._
+
 A Node is like the new view you create on a phone when you stretch, rotate and move an image on a phone with two fingers. It's defined by a position and a vector.
 
 Zoom: ===> Node, Zoom is the top zoom in the settings...
@@ -119,7 +121,7 @@ What if you start the first gen branches with thickness 1?
 
 # FIX HANGING ON START:
 
-````
+```
 
 cd /Users/mjvandermeulen/Library/Application Support/egui-demo-app
 ls
@@ -128,9 +130,3 @@ app.ron
 ```
 
 remove the app.ron file.
-```
-
-```
-
-```
-````
