@@ -1,9 +1,10 @@
 use super::animation::animation_structs_and_enums::Animation;
 use egui::{Pos2, Vec2, emath::RectTransform};
+use serde::{Deserialize, Serialize};
 
 // Fractal struct
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum LinesStyle {
     Free,
     Tree,
@@ -11,16 +12,16 @@ pub enum LinesStyle {
 }
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum LineHandles {
-    SingleHandle(usize),
-    BothHandles, // or Both...
+    SingleHandle(usize), // 0: start handle, 1: end handle
+    BothHandles,
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct ReversibleLine {
     pub line: [Pos2; 2],
     pub reversed: bool,
 }
-#[derive(PartialEq, Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(PartialEq, Debug, Clone, Deserialize, Serialize)]
 pub struct Fractal {
     pub name: String,
     pub mirror: bool,
@@ -38,13 +39,14 @@ pub struct Fractal {
 
 // design structs
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct VectoredLine {
     pub pos: Pos2,
     pub vec: Vec2,
 }
 
 impl VectoredLine {
+    #[must_use]
     pub fn from_reversible_line(
         ReversibleLine { line, reversed }: ReversibleLine,
         to_screen: RectTransform,
@@ -66,18 +68,30 @@ impl VectoredLine {
 // OPTI!!!: add length and add length factor to LineTransform,
 //   then the lengthfactor to calculate width does not need multiple length calcs
 //   (pythagoras sqrt is expensive)
-pub struct Node {
-    pub pos: Pos2,
-    pub vec: Vec2,
+// only used in parallel_ and paint_fractal_helpers. If parallel gets fully removed,
+// then move this to paint_fractal_helpers and remove all `pub`
+pub struct Branch {
+    pub parent_node: Pos2,
+    pub edge: Vec2,
 }
 
-#[derive(Clone, Copy)]
+impl Branch {
+    #[must_use]
+    pub fn from_vectored_line(VectoredLine { pos, vec }: VectoredLine) -> Self {
+        Self {
+            parent_node: pos,
+            edge: vec,
+        }
+    }
+}
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct LineTransform {
     pub base_rot: egui::emath::Rot2,
     pub rot: egui::emath::Rot2,
 }
 
 impl LineTransform {
+    #[must_use]
     pub fn from_design_vector(
         base: &VectoredLine,
         design_line: VectoredLine,

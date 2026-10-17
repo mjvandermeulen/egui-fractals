@@ -1,11 +1,17 @@
 # NOTE:
 
+## DROPBOX and ICLOUD
+
 move away from drop box and icloud storage.
 now I often have to
 
     sudo chown -R mjvandermeulen .
 
 in the root dir of the project
+
+# RAYON
+
+no improvements found. Only kept for benching...
 
 # TODO
 

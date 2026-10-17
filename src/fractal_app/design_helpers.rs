@@ -76,6 +76,7 @@ pub fn reversible_lines_to_global_line_vectors(
 //   - distance
 //   - ratio of where on the line the closest point on the segment is between a and b
 //       e.g.: a: 0.0, b: 1.0  middle: 0.5
+#[expect(clippy::many_single_char_names)] // LEARN from Claude: expect VS allow: expect will complain once the issue is fixed, and you can remove the attribute
 fn distance_to_line(p: Pos2, [a, b]: [Pos2; 2]) -> (f32, f32) {
     let v = b - a; // Segment vector
     let u = p - a; // Vector to point
@@ -211,7 +212,7 @@ pub fn start_new_line(
         let Some(screenpos) = cd_response.interact_pointer_pos() else {
             return;
         };
-        let pos = from_screen * screenpos; // TODO!!!! rename
+        let pos = from_screen * screenpos; // TODO rename
         let fractal = &fractal_app.fractals[fractal_app.fractal_index];
         let mut start_pos = pos;
         let mut new_line_index = fractal.design_lines.len();
@@ -268,7 +269,7 @@ pub fn make_loop(fractal_app: &mut FractalApp) {
     }
     let new_len = new_dls.len();
     if new_len > 1 && new_dls[new_len - 1].line[0] == base.line[0] {
-        // the last line would disappear NOTE: is it possible that other lines would disappear too? TODO!!!
+        // the last line would disappear NOTE: is it possible that other lines would disappear too? TODO!
         new_dls[new_len - 2].line[1] = new_dls[new_len - 1].line[1];
         new_dls[new_len - 1].line[0] = new_dls[new_len - 1].line[1];
     }

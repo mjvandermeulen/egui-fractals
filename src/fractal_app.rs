@@ -1,10 +1,14 @@
 mod animation;
+mod bench_helpers;
 mod design_helpers;
 mod design_input;
 mod fractals;
-mod paint_fractal_helpers;
-mod structs_and_enums;
+pub mod paint_fractal_helpers; // pub for benching check if needed
+pub mod parallel_paint_fractal; // only "used" in lib.rs for criterion benching.
+pub mod structs_and_enums; // pub for benching TODO check
 mod tools;
+
+use std::time::Instant;
 
 use egui::{
     Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
@@ -13,19 +17,21 @@ use egui::{
     pos2,
     widgets::Slider,
 };
-use std::time::Instant;
 
 use animation::{animation_tools::find_animation_rotation_center, scale_and_rotate_vectored_lines};
-use design_helpers::handle_line_style_change;
-use design_helpers::{paint_directed_line_segment, reversible_lines_to_global_line_vectors};
+use bench_helpers::save_bench_prep_parallel_struct_to_json;
+use design_helpers::{
+    handle_line_style_change, paint_directed_line_segment, reversible_lines_to_global_line_vectors,
+};
 use design_input::{handle_keyboard_input, handle_mouse_input};
 use fractals::fractals;
-use paint_fractal_helpers::line_color;
+use paint_fractal_helpers::{line_color, paint_line_generator, sequential_paint_fractal_lines};
 use structs_and_enums::{
-    Fractal, LineHandles, LineTransform, LinesStyle, Node, ReversibleLine, VectoredLine,
+    Fractal, LineHandles, LineTransform, LinesStyle, ReversibleLine, VectoredLine,
 };
 use tools::max_depth_with_branches;
 
+// TODO: find the error that pops op when the vec gets too large.
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
 
 #[derive(PartialEq, serde::Deserialize, serde::Serialize)]
@@ -50,10 +56,10 @@ pub struct FractalApp {
     // NOTE: when dragging over a non green line, it will "pick up" the line
     // TODO: include LineHandles in the hovered_line.
 
-    // TODO!!! put all animation stuff in a struct.
+    // TODO! put all animation stuff in a struct.
     #[serde(skip)]
     animation_start: Option<Instant>,
-    // TODO!!! progress: f32, // for animation. instead of local, so you can pause and resume.
+    // TODO! progress: f32, // for animation. instead of local, so you can pause and resume.
     #[serde(skip)]
     animation_cycle: usize, // one cycle is when a generator line is animated to take exactly the place of the initiator.
     #[serde(skip)]
@@ -64,6 +70,8 @@ pub struct FractalApp {
     animation_cycle_start_limited_depth_paint_count: usize,
     #[serde(skip)]
     a_b_c: Option<(Pos2, Pos2, Pos2)>, // for animation. HACK TEMP
+    #[serde(skip)]
+    bench_prep: bool,
 }
 
 impl Default for FractalApp {
@@ -84,6 +92,7 @@ impl Default for FractalApp {
             animation_repetition_cycle: None,
             animation_cycle_start_limited_depth_paint_count: 0,
             a_b_c: None,
+            bench_prep: false,
         }
     }
 }
@@ -127,7 +136,7 @@ impl FractalApp {
         }
         if ui
             .add_enabled(
-                // TODO!!! clippy pedantic warns about comparing floats:
+                // TODO clippy pedantic warns about comparing floats:
                 // (fractal.zoom - Self::default
                 //  ().fractals[self.fractal_index].zoom).abs() > error_margin
                 // same for .center
@@ -197,9 +206,9 @@ impl FractalApp {
             "Start Animation"
         };
         if ui.add_enabled(true, Button::new(animate_text)).on_hover_text(if self.animation_start.is_some() {
-            "Stop animating the fractal. TODO!!! Press space to pause/resume. Press R to reset animation."
+            "Stop animating the fractal. TODO! press space to pause/resume. Press R to reset animation."
         } else {
-            "Start animating the fractal. TODO!!! Press space to pause/resume. Press R to reset animation."
+            "Start animating the fractal. TODO! Press space to pause/resume. Press R to reset animation."
         }).clicked(){
             self.animation_start = if self.animation_start.is_some() {
                 None
@@ -207,11 +216,21 @@ impl FractalApp {
                 Some(Instant::now())
             };
         }
-        // if let Some(animation) = &mut fractal.animation { TODO!!!!
+        // if let Some(animation) = &mut fractal.animation { TODO
         // ui.add(
         //     Slider::new(&mut fractal.animation.length, 0.5..=30.0)
         //         .text("Animation length (seconds)"),
         // );
+
+        // ---------------------------------------------------------------------
+        ui.separator();
+
+        if ui
+            .add_enabled(!self.bench_prep, egui::Button::new("Prep for Benchmark"))
+            .clicked()
+        {
+            self.bench_prep = true;
+        }
 
         // ---------------------------------------------------------------------
         ui.separator();
@@ -266,7 +285,7 @@ impl FractalApp {
 
         scale_and_rotate_vectored_lines(
             gdvs,
-            rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO!!!!!
+            rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO
             cycle_angle,
             cycle_scale,
             progress,
@@ -289,36 +308,21 @@ impl FractalApp {
             paint_directed_line_segment(painter, vec, width_length_ratio, color);
         });
     }
-    #[expect(clippy::too_many_lines)] // TODO
+
     fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredLine]) {
         let fractal = &self.fractals[self.fractal_index];
-        let started_next_cycle = self.animation_start.is_some()
-            && self.animation_repetition_cycle.is_none()
-            && self.new_cycle;
-        let paint_depth = if started_next_cycle {
-            fractal.depth - 1
-        } else {
-            fractal.depth
-        };
-        let max_depth = max_depth_with_branches(
+        let debug_assert_max_depth = max_depth_with_branches(
             MAX_PAINTED_LINE_COUNT,
             vectored_design_lines.len() - 1,
             fractal.mirror,
             fractal.replace_line,
         );
         debug_assert!(
-            paint_depth <= max_depth,
-            "paint_depth = {paint_depth}, max_depth_with_branches(...) = {max_depth}"
+            fractal.depth <= debug_assert_max_depth,
+            "fractal.depth = {}, max_depth_with_branches(...) = {debug_assert_max_depth}",
+            fractal.depth
         );
-        let mut shapes: Vec<Shape> = Vec::new();
         let rect = painter.clip_rect();
-        let mut paint_line = |points: [Pos2; 2], color: Color32, width: f32| {
-            let line: [Pos2; 2] = [points[0], points[1]];
-            // culling
-            if rect.intersects(Rect::from_two_pos(line[0], line[1])) {
-                shapes.push(Shape::line_segment(line, (width, color)));
-            }
-        };
 
         let initiator = vectored_design_lines[0];
         let transformations: Vec<LineTransform> = vectored_design_lines[1..]
@@ -333,65 +337,99 @@ impl FractalApp {
                 line_transforms
             })
             .collect();
-        if !fractal.replace_line || paint_depth == 0 {
-            paint_line(
-                [initiator.pos, initiator.pos + initiator.vec],
-                line_color(0, fractal.rainbow),
-                initiator.vec.length() * fractal.initiator_width_length_ratio,
-            );
+
+        if self.bench_prep {
+            self.bench_prep = false;
+            save_bench_prep_parallel_struct_to_json(
+                rect,
+                &initiator,
+                fractal,
+                &transformations,
+                fractal.depth,
+            )
+            .expect("Expected save_bench_prep_parallel_struct_to_json not to cause any trouble");
         }
 
-        // CORE paint_fractal loop:
-        let mut nodes = vec![Node {
-            pos: initiator.pos,
-            vec: initiator.vec,
-        }];
+        let shapes = sequential_paint_fractal_lines(
+            rect,
+            &initiator,
+            fractal,
+            &transformations,
+            fractal.depth,
+        );
+        self.line_count = shapes.len();
+        painter.extend(shapes);
+    }
 
-        let mut new_nodes = Vec::new();
-        for depth in 1..paint_depth + 1 {
-            let color = line_color(depth, fractal.rainbow);
+    // TODO: This is a verbatim copy of paint_fractal for now.
+    fn animate(&mut self, painter: &Painter, vectored_design_lines: &[VectoredLine]) {
+        let fractal = &self.fractals[self.fractal_index];
+        let max_depth = max_depth_with_branches(
+            MAX_PAINTED_LINE_COUNT,
+            vectored_design_lines.len() - 1,
+            fractal.mirror,
+            fractal.replace_line,
+        );
+        let started_next_cycle = self.animation_start.is_some()
+            && self.animation_repetition_cycle.is_none()
+            && self.new_cycle;
+        let paint_depth = if started_next_cycle {
+            fractal.depth - 1
+        } else {
+            fractal.depth
+        };
+        debug_assert!(
+            paint_depth <= max_depth,
+            "paint_depth = {paint_depth}, max_depth_with_branches(...) = {max_depth}"
+        );
+        let rect = painter.clip_rect();
 
-            if depth < paint_depth {
-                new_nodes.clear();
-                new_nodes.reserve(nodes.len() * 2);
-            }
-
-            // iterate over stored parent nodes
-            //  create a new node per transformation and paint the line in it
-            //  if we're not at the max depth, store the new node for the next iteration
-
-            // the nesting of the node loop inside the transformations loop is purely for speed
-            //   it is (just) noticibly faster with a 1 branch depth 17 mirrorred tree
-            // Feel free to read it the other way around.
-            for &transform in &transformations {
-                for parent_node in &nodes {
-                    let paint_a = parent_node.pos + transform.base_rot * parent_node.vec;
-                    let paint_vec = transform.rot * parent_node.vec;
-                    let paint_b = paint_a + paint_vec;
-                    let painted_node = Node {
-                        pos: paint_a,
-                        vec: paint_vec,
-                    };
-
-                    if fractal.replace_line {
-                        if depth == paint_depth {
-                            paint_line([paint_a, paint_b], color, fractal.fixed_final_line_width);
-                        }
-                    } else {
-                        paint_line(
-                            [paint_a, paint_b],
-                            color,
-                            painted_node.vec.length() * fractal.initiator_width_length_ratio,
-                        );
-                    }
-                    if depth < paint_depth {
-                        new_nodes.push(painted_node);
-                    }
+        let initiator = vectored_design_lines[0];
+        let transformations: Vec<LineTransform> = vectored_design_lines[1..]
+            .iter()
+            .flat_map(|line| {
+                let mut line_transforms: Vec<LineTransform> =
+                    vec![LineTransform::from_design_vector(&initiator, *line, false)];
+                if fractal.mirror {
+                    line_transforms
+                        .push(LineTransform::from_design_vector(&initiator, *line, true));
                 }
-            }
+                line_transforms
+            })
+            .collect();
 
-            std::mem::swap(&mut nodes, &mut new_nodes);
+        let mut initiator_shape: Vec<Shape> = Vec::new();
+        // LEARN: generate a closure and call it immediately. the closure is dropped immediately as well.
+        paint_line_generator(&mut initiator_shape, rect, fractal)(
+            0,
+            [initiator.pos, initiator.pos + initiator.vec],
+            initiator.vec,
+            line_color(0, fractal.rainbow),
+        );
+
+        if self.bench_prep {
+            self.bench_prep = false;
+
+            // Save current params to a json file,
+            // in preparation for benchmarking.
+            save_bench_prep_parallel_struct_to_json(
+                rect,
+                &initiator,
+                fractal,
+                &transformations,
+                paint_depth,
+            )
+            .expect("Expected save_bench_prep_parallel_struct_to_json not to cause any trouble");
         }
+
+        let mut shapes = sequential_paint_fractal_lines(
+            rect,
+            &initiator,
+            fractal,
+            &transformations,
+            paint_depth,
+        );
+        shapes.append(&mut initiator_shape);
 
         if started_next_cycle {
             // if the last frame of the previous cycle has the same painted line count as the first (depth limited) frame,
@@ -399,14 +437,14 @@ impl FractalApp {
             if self.line_count == self.animation_cycle_start_limited_depth_paint_count {
                 self.animation_repetition_cycle = Some(self.animation_cycle);
             }
-            log::info!(
-                "Cycle {} - Previous {} - Painted {} --- fractal depth {} - paint depth {}",
-                self.animation_cycle,
-                self.line_count,
-                shapes.len(),
-                fractal.depth,
-                paint_depth
-            );
+            // log::info!(
+            //     "Cycle {} - Previous {} - Painted {} --- fractal depth {} - paint depth {}",
+            //     self.animation_cycle,
+            //     self.line_count,
+            //     shapes.len(),
+            //     fractal.depth,
+            //     paint_depth
+            // );
 
             self.animation_cycle_start_limited_depth_paint_count = shapes.len();
         }
@@ -428,9 +466,6 @@ impl eframe::App for FractalApp {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        if self.animation_start.is_some() {
-            ui.ctx().request_repaint();
-        }
         let fractal = &mut self.fractals[self.fractal_index];
 
         fractal.depth = fractal.depth.at_most(max_depth_with_branches(
@@ -460,14 +495,15 @@ impl eframe::App for FractalApp {
             reversible_lines_to_global_line_vectors(&fractal.design_lines, to_screen);
         if self.show_design_only {
             self.paint_design(&painter, &global_design_vectors);
-        } else {
-            let blueprint_vectors: Vec<VectoredLine> = if let Some(start) = self.animation_start {
-                self.animation_frame_vectors(&global_design_vectors, start)
-            } else {
-                global_design_vectors
+        } else if self.animation_start.is_some() {
+            // TODO: move the following logic into self.animate
+            if let Some(start) = self.animation_start {
+                let blueprint_vectors: Vec<VectoredLine> =
+                    self.animation_frame_vectors(&global_design_vectors, start);
+                self.animate(&painter, &blueprint_vectors);
             };
-
-            self.paint_fractal(&painter, &blueprint_vectors);
+        } else {
+            self.paint_fractal(&painter, &global_design_vectors);
 
             // if let Some((a, b, c)) = self.a_b_c {
             //     painter.line_segment([a, b], Stroke::new(2.0, Color32::RED));
