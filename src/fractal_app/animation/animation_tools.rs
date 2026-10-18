@@ -2,6 +2,37 @@ use std::time::Instant;
 
 use egui::Pos2;
 
+/// Returns the animation progress since `start_time`.
+///
+/// Progress is measured in units of whole animations: `0.0` is the start,
+/// `1.0` is one full `animation_length` later, `2.0` is two lengths later, and
+/// so on. The integer part counts completed cycles and the decimal part is
+/// how far you are into the current one.
+///
+/// Whenever the elapsed time lands exactly on a multiple of `animation_length`,
+/// the progress is a clean whole number, which marks the boundary between two
+/// cycles.
+///
+/// # Arguments
+///
+/// * `start_time` - The moment the animation started.
+/// * `animation_length` - Duration of one cycle, in seconds. Must be positive.
+/// * `repeat_cycle` - Selects the looping behavior:
+///   * `Some(n)`: the animation repeats. Progress is pinned to cycle `n`, so it
+///     sweeps from `n as f32` up to (but never reaching) `n as f32 + 1.0`, then
+///     wraps back to `n as f32`.
+///   * `None`: no repeating. Progress keeps growing without bound.
+///
+/// # Returns
+///
+/// With `Some(n)`: `n + (elapsed % animation_length) / animation_length`.
+/// With `None`: `elapsed / animation_length`.
+///
+/// # Notes
+///
+/// Because the time is computed in `f32`, hitting an exact whole number is
+/// rare in practice. Treat the boundary as approximate, and don't compare the
+/// result with `==`.
 pub fn animation_progress(
     start_time: Instant,
     animation_length: f32,

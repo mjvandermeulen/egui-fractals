@@ -362,11 +362,17 @@ impl FractalApp {
     }
 
     // TODO: This is a verbatim copy of paint_fractal for now.
-    fn animate(&mut self, painter: &Painter, vectored_design_lines: &[VectoredLine]) {
+    fn animate(&mut self, painter: &Painter, global_design_vectors: &[VectoredLine]) {
+        let Some(start) = self.animation_start else {
+            return;
+        };
+        let blueprint_vectors: Vec<VectoredLine> =
+            self.animation_frame_vectors(global_design_vectors, start);
+
         let fractal = &self.fractals[self.fractal_index];
         let max_depth = max_depth_with_branches(
             MAX_PAINTED_LINE_COUNT,
-            vectored_design_lines.len() - 1,
+            blueprint_vectors.len() - 1,
             fractal.mirror,
             fractal.replace_line,
         );
@@ -384,8 +390,8 @@ impl FractalApp {
         );
         let rect = painter.clip_rect();
 
-        let initiator = vectored_design_lines[0];
-        let transformations: Vec<LineTransform> = vectored_design_lines[1..]
+        let initiator = blueprint_vectors[0];
+        let transformations: Vec<LineTransform> = blueprint_vectors[1..]
             .iter()
             .flat_map(|line| {
                 let mut line_transforms: Vec<LineTransform> =
@@ -496,19 +502,14 @@ impl eframe::App for FractalApp {
         if self.show_design_only {
             self.paint_design(&painter, &global_design_vectors);
         } else if self.animation_start.is_some() {
-            // TODO: move the following logic into self.animate
-            if let Some(start) = self.animation_start {
-                let blueprint_vectors: Vec<VectoredLine> =
-                    self.animation_frame_vectors(&global_design_vectors, start);
-                self.animate(&painter, &blueprint_vectors);
-            };
+            self.animate(&painter, &global_design_vectors);
         } else {
             self.paint_fractal(&painter, &global_design_vectors);
 
-            // if let Some((a, b, c)) = self.a_b_c {
-            //     painter.line_segment([a, b], Stroke::new(2.0, Color32::RED));
-            //     painter.line_segment([a, c], Stroke::new(2.0, Color32::GREEN));
-            // }
+            if let Some((a, b, c)) = self.a_b_c {
+                painter.line_segment([a, b], Stroke::new(2.0, Color32::RED));
+                painter.line_segment([a, c], Stroke::new(2.0, Color32::GREEN));
+            }
         }
 
         // Make sure we allocate what we used (everything)
