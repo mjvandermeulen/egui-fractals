@@ -11,7 +11,7 @@ mod tools;
 use std::time::Instant;
 
 use egui::{
-    Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
+    Button, Color32, NumExt as _, Painter, Pos2, Rect, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
     emath::RectTransform,
     pos2,
@@ -25,7 +25,7 @@ use design_helpers::{
 };
 use design_input::{handle_keyboard_input, handle_mouse_input};
 use fractals::fractals;
-use paint_fractal_helpers::{line_color, paint_line_generator, sequential_paint_fractal_lines};
+use paint_fractal_helpers::sequential_paint_fractal_lines;
 use structs_and_enums::{
     Fractal, LineHandles, LineTransform, LinesStyle, ReversibleLine, VectoredLine,
 };
@@ -358,6 +358,8 @@ impl FractalApp {
             fractal.depth,
         );
         self.line_count = shapes.len();
+        // TODO: Bench and try to avoid `let shapes`, just push to painter...
+        // never mind: the std::mem::swap trick won't work.
         painter.extend(shapes);
     }
 
@@ -404,15 +406,6 @@ impl FractalApp {
             })
             .collect();
 
-        let mut initiator_shape: Vec<Shape> = Vec::new();
-        // LEARN: generate a closure and call it immediately. the closure is dropped immediately as well.
-        paint_line_generator(&mut initiator_shape, rect, fractal)(
-            0,
-            [initiator.pos, initiator.pos + initiator.vec],
-            initiator.vec,
-            line_color(0, fractal.rainbow),
-        );
-
         if self.bench_prep {
             self.bench_prep = false;
 
@@ -428,14 +421,13 @@ impl FractalApp {
             .expect("Expected save_bench_prep_parallel_struct_to_json not to cause any trouble");
         }
 
-        let mut shapes = sequential_paint_fractal_lines(
+        let shapes = sequential_paint_fractal_lines(
             rect,
             &initiator,
             fractal,
             &transformations,
             paint_depth,
         );
-        shapes.append(&mut initiator_shape);
 
         if started_next_cycle {
             // if the last frame of the previous cycle has the same painted line count as the first (depth limited) frame,
