@@ -358,7 +358,7 @@ impl FractalApp {
         painter.extend(shapes);
     }
 
-    // TODO: This is a verbatim copy of paint_fractal for now.
+    // TODO: This was (is) a verbatim copy of paint_fractal not long ago.
     fn animate(&mut self, painter: &Painter, global_design_vectors: &[VectoredLine]) {
         let Some(start) = self.animation_start else {
             return;
@@ -473,6 +473,7 @@ impl eframe::App for FractalApp {
         if self.show_design_only {
             self.paint_design(&painter, &global_design_vectors);
         } else if self.animation_start.is_some() {
+            ui.request_repaint();
             self.animate(&painter, &global_design_vectors);
         } else {
             self.paint_fractal(&painter, &global_design_vectors);
