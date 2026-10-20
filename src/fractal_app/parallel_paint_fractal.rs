@@ -54,6 +54,7 @@ pub fn parallel_paint_fractal_lines(
                 transformations,
                 2,
                 max_depth,
+                None,
             );
             shapes_iter
         })

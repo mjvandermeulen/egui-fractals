@@ -261,14 +261,8 @@ impl FractalApp {
     fn animation_frame_vectors(
         &mut self,
         gdvs: &[VectoredLine], // global design vectors
-        start: Instant,
+        progress: f32,
     ) -> Vec<VectoredLine> {
-        let cycle_length = self.fractals[self.fractal_index].animation.length;
-        let progress = animation::animation_tools::animation_progress(
-            start,
-            cycle_length,
-            self.animation_repetition_cycle,
-        );
         let cycle: usize = progress.floor() as usize;
         self.new_cycle = cycle != self.animation_cycle;
         self.animation_cycle = cycle;
@@ -356,6 +350,7 @@ impl FractalApp {
             fractal,
             &transformations,
             fractal.depth,
+            None,
         );
         self.line_count = shapes.len();
         // TODO: Bench and try to avoid `let shapes`, just push to painter...
@@ -368,8 +363,14 @@ impl FractalApp {
         let Some(start) = self.animation_start else {
             return;
         };
+        let cycle_length = self.fractals[self.fractal_index].animation.length;
+        let progress = animation::animation_tools::animation_progress(
+            start,
+            cycle_length,
+            self.animation_repetition_cycle,
+        );
         let blueprint_vectors: Vec<VectoredLine> =
-            self.animation_frame_vectors(global_design_vectors, start);
+            self.animation_frame_vectors(global_design_vectors, progress);
 
         let fractal = &self.fractals[self.fractal_index];
         let max_depth = max_depth_with_branches(
@@ -406,27 +407,13 @@ impl FractalApp {
             })
             .collect();
 
-        if self.bench_prep {
-            self.bench_prep = false;
-
-            // Save current params to a json file,
-            // in preparation for benchmarking.
-            save_bench_prep_parallel_struct_to_json(
-                rect,
-                &initiator,
-                fractal,
-                &transformations,
-                paint_depth,
-            )
-            .expect("Expected save_bench_prep_parallel_struct_to_json not to cause any trouble");
-        }
-
         let shapes = sequential_paint_fractal_lines(
             rect,
             &initiator,
             fractal,
             &transformations,
             paint_depth,
+            Some(progress),
         );
 
         if started_next_cycle {
@@ -435,14 +422,6 @@ impl FractalApp {
             if self.line_count == self.animation_cycle_start_limited_depth_paint_count {
                 self.animation_repetition_cycle = Some(self.animation_cycle);
             }
-            // log::info!(
-            //     "Cycle {} - Previous {} - Painted {} --- fractal depth {} - paint depth {}",
-            //     self.animation_cycle,
-            //     self.line_count,
-            //     shapes.len(),
-            //     fractal.depth,
-            //     paint_depth
-            // );
 
             self.animation_cycle_start_limited_depth_paint_count = shapes.len();
         }

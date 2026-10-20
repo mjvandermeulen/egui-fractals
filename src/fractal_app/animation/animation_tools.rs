@@ -6,7 +6,7 @@ use egui::Pos2;
 ///
 /// Progress is measured in units of whole animations: `0.0` is the start,
 /// `1.0` is one full `animation_length` later, `2.0` is two lengths later, and
-/// so on. The integer part counts completed cycles and the decimal part is
+/// so on. The integer part counts completed cycles and the fractional part is
 /// how far you are into the current one.
 ///
 /// Whenever the elapsed time lands exactly on a multiple of `animation_length`,
@@ -43,10 +43,7 @@ pub fn animation_progress(
     match repeat_cycle {
         Some(rc) => {
             let progress_at_cycle_start = rc as f32;
-            let progress_in_cycle = (elapsed_time % animation_length) / animation_length;
-            // log::info!(
-            //     "progress_at_cycle_start: {progress_at_cycle_start}. progress_in_cycle: {progress_in_cycle}"
-            // );
+            let progress_in_cycle = (elapsed_time / animation_length).fract();
             progress_at_cycle_start + progress_in_cycle
         }
         None => elapsed_time / animation_length,
