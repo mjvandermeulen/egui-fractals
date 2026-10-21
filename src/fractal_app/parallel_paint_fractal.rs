@@ -1,3 +1,7 @@
+#![allow(warnings)]
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
+// TODO!!!! remove this file and all rayon related stuff
+// SEE warning suppression above
 use egui::{Rect, Shape};
 use rayon::prelude::*;
 
@@ -33,18 +37,25 @@ pub fn parallel_paint_fractal_lines(
 
             {
                 // avoid having to drop the paint_line by indenting. LEARN
-                let mut paint_line = paint_line_generator(&mut shapes_iter, rect, fractal);
-                paint_line(1, line, current_branch.edge, color);
-
-                paint_fractal_lines(
-                    &mut paint_line,
-                    &current_branch,
+                let mut paint_line = paint_line_generator(
+                    &mut shapes_iter,
+                    rect,
                     fractal,
-                    transformations,
-                    2,
+                    line_color(0, fractal.rainbow),
+                    0,
                     max_depth,
                 );
             }
+            paint_fractal_lines(
+                &mut shapes_iter,
+                rect,
+                &current_branch,
+                fractal,
+                transformations,
+                2,
+                max_depth,
+                None,
+            );
             shapes_iter
         })
         .collect::<Vec<_>>()

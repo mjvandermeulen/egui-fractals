@@ -55,3 +55,7 @@ Push the main branch. This will trigger a rebuild on Github and Github will serv
 If changes are lagging:
 
 - Chrome Dev tools: Application -> Clear Site Data
+
+Update local settings:
+
+- `.github/workflows/pages.yml`

@@ -11,7 +11,7 @@ mod tools;
 use std::time::Instant;
 
 use egui::{
-    Button, Color32, NumExt as _, Painter, Pos2, Rect, Shape, Stroke, Ui,
+    Button, Color32, NumExt as _, Painter, Pos2, Rect, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
     emath::RectTransform,
     pos2,
@@ -25,7 +25,7 @@ use design_helpers::{
 };
 use design_input::{handle_keyboard_input, handle_mouse_input};
 use fractals::fractals;
-use paint_fractal_helpers::{line_color, paint_line_generator, sequential_paint_fractal_lines};
+use paint_fractal_helpers::sequential_paint_fractal_lines;
 use structs_and_enums::{
     Fractal, LineHandles, LineTransform, LinesStyle, ReversibleLine, VectoredLine,
 };
@@ -261,14 +261,8 @@ impl FractalApp {
     fn animation_frame_vectors(
         &mut self,
         gdvs: &[VectoredLine], // global design vectors
-        start: Instant,
+        progress: f32,
     ) -> Vec<VectoredLine> {
-        let cycle_length = self.fractals[self.fractal_index].animation.length;
-        let progress = animation::animation_tools::animation_progress(
-            start,
-            cycle_length,
-            self.animation_repetition_cycle,
-        );
         let cycle: usize = progress.floor() as usize;
         self.new_cycle = cycle != self.animation_cycle;
         self.animation_cycle = cycle;
@@ -356,17 +350,32 @@ impl FractalApp {
             fractal,
             &transformations,
             fractal.depth,
+            None,
         );
         self.line_count = shapes.len();
+        // TODO: Bench and try to avoid `let shapes`, just push to painter...
+        // never mind: the std::mem::swap trick won't work.
         painter.extend(shapes);
     }
 
-    // TODO: This is a verbatim copy of paint_fractal for now.
-    fn animate(&mut self, painter: &Painter, vectored_design_lines: &[VectoredLine]) {
+    // TODO: This was (is) a verbatim copy of paint_fractal not long ago.
+    fn animate(&mut self, painter: &Painter, global_design_vectors: &[VectoredLine]) {
+        let Some(start) = self.animation_start else {
+            return;
+        };
+        let cycle_length = self.fractals[self.fractal_index].animation.length;
+        let progress = animation::animation_tools::animation_progress(
+            start,
+            cycle_length,
+            self.animation_repetition_cycle,
+        );
+        let blueprint_vectors: Vec<VectoredLine> =
+            self.animation_frame_vectors(global_design_vectors, progress);
+
         let fractal = &self.fractals[self.fractal_index];
         let max_depth = max_depth_with_branches(
             MAX_PAINTED_LINE_COUNT,
-            vectored_design_lines.len() - 1,
+            blueprint_vectors.len() - 1,
             fractal.mirror,
             fractal.replace_line,
         );
@@ -384,8 +393,8 @@ impl FractalApp {
         );
         let rect = painter.clip_rect();
 
-        let initiator = vectored_design_lines[0];
-        let transformations: Vec<LineTransform> = vectored_design_lines[1..]
+        let initiator = blueprint_vectors[0];
+        let transformations: Vec<LineTransform> = blueprint_vectors[1..]
             .iter()
             .flat_map(|line| {
                 let mut line_transforms: Vec<LineTransform> =
@@ -398,38 +407,14 @@ impl FractalApp {
             })
             .collect();
 
-        let mut initiator_shape: Vec<Shape> = Vec::new();
-        // LEARN: generate a closure and call it immediately. the closure is dropped immediately as well.
-        paint_line_generator(&mut initiator_shape, rect, fractal)(
-            0,
-            [initiator.pos, initiator.pos + initiator.vec],
-            initiator.vec,
-            line_color(0, fractal.rainbow),
-        );
-
-        if self.bench_prep {
-            self.bench_prep = false;
-
-            // Save current params to a json file,
-            // in preparation for benchmarking.
-            save_bench_prep_parallel_struct_to_json(
-                rect,
-                &initiator,
-                fractal,
-                &transformations,
-                paint_depth,
-            )
-            .expect("Expected save_bench_prep_parallel_struct_to_json not to cause any trouble");
-        }
-
-        let mut shapes = sequential_paint_fractal_lines(
+        let shapes = sequential_paint_fractal_lines(
             rect,
             &initiator,
             fractal,
             &transformations,
             paint_depth,
+            Some(progress),
         );
-        shapes.append(&mut initiator_shape);
 
         if started_next_cycle {
             // if the last frame of the previous cycle has the same painted line count as the first (depth limited) frame,
@@ -437,14 +422,6 @@ impl FractalApp {
             if self.line_count == self.animation_cycle_start_limited_depth_paint_count {
                 self.animation_repetition_cycle = Some(self.animation_cycle);
             }
-            // log::info!(
-            //     "Cycle {} - Previous {} - Painted {} --- fractal depth {} - paint depth {}",
-            //     self.animation_cycle,
-            //     self.line_count,
-            //     shapes.len(),
-            //     fractal.depth,
-            //     paint_depth
-            // );
 
             self.animation_cycle_start_limited_depth_paint_count = shapes.len();
         }
@@ -496,19 +473,15 @@ impl eframe::App for FractalApp {
         if self.show_design_only {
             self.paint_design(&painter, &global_design_vectors);
         } else if self.animation_start.is_some() {
-            // TODO: move the following logic into self.animate
-            if let Some(start) = self.animation_start {
-                let blueprint_vectors: Vec<VectoredLine> =
-                    self.animation_frame_vectors(&global_design_vectors, start);
-                self.animate(&painter, &blueprint_vectors);
-            };
+            ui.request_repaint();
+            self.animate(&painter, &global_design_vectors);
         } else {
             self.paint_fractal(&painter, &global_design_vectors);
 
-            // if let Some((a, b, c)) = self.a_b_c {
-            //     painter.line_segment([a, b], Stroke::new(2.0, Color32::RED));
-            //     painter.line_segment([a, c], Stroke::new(2.0, Color32::GREEN));
-            // }
+            if let Some((a, b, c)) = self.a_b_c {
+                painter.line_segment([a, b], Stroke::new(2.0, Color32::RED));
+                painter.line_segment([a, c], Stroke::new(2.0, Color32::GREEN));
+            }
         }
 
         // Make sure we allocate what we used (everything)

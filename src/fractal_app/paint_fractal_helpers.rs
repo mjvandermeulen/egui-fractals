@@ -23,14 +23,18 @@ pub fn paint_line_generator(
     shapes: &mut Vec<Shape>,
     rect: Rect,
     fractal: &Fractal,
-) -> impl FnMut(usize, [Pos2; 2], Vec2, Color32) {
-    move |depth, line, line_vec, color| {
+    color: Color32,
+    depth: usize,
+    max_depth: usize,
+) -> impl FnMut([Pos2; 2], Vec2) {
+    let final_depth = depth == max_depth;
+    move |line, line_vec| {
         let width = if fractal.replace_line {
-            if depth != fractal.depth {
-                // TODO!!!!! fractal.depth is not always the correct one, see ` let paint_depth = ` in fractal_app.rs
+            if final_depth {
+                fractal.fixed_final_line_width
+            } else {
                 return; // only the final iteration is drawn
             }
-            fractal.fixed_final_line_width
         } else {
             line_vec.length() * fractal.initiator_width_length_ratio
         };
@@ -51,23 +55,32 @@ pub fn construct_current_branch_and_line(
     (current_branch, [parent_node, child_node])
 }
 
-// Returns a Vec of Shapes representing the fractal lines painted within the given rect,
+// Mutates a Vec of Shapes representing the fractal lines painted within the given rect,
 // starting AFTER the initiator line, applying the given transformations up to the specified max_depth.
 // Aug 30th: This needs to take a closure, since that closure is used in the parallel version and in fractal_app (when bypassing parallelization).
 // Oct 9th: bypassing parallelization is still not implemented yet :)
 pub fn paint_fractal_lines(
-    paint_line: &mut impl FnMut(usize, [egui::Pos2; 2], Vec2, egui::Color32),
+    shapes: &mut Vec<Shape>,
+    rect: Rect,
     trunk: &Branch,
     fractal: &Fractal,
     transformations: &Vec<LineTransform>,
     depth: usize,
     max_depth: usize,
+    opacity_progress: Option<f32>,
 ) {
     let mut branches = vec![*trunk];
     let mut new_branches = Vec::new();
 
     for d in depth..=max_depth {
-        let color = line_color(d, fractal.rainbow);
+        let mut color = line_color(d, fractal.rainbow);
+        if d == max_depth
+            && let Some(progress) = opacity_progress
+        {
+            let p = progress.fract();
+            color = color.gamma_multiply(p * p * p);
+        }
+        let mut paint_line = paint_line_generator(shapes, rect, fractal, color, depth, max_depth);
 
         if d < max_depth {
             new_branches.clear();
@@ -86,7 +99,7 @@ pub fn paint_fractal_lines(
             for parent_branch in &branches {
                 let (current_branch, line) =
                     construct_current_branch_and_line(parent_branch, &transform);
-                paint_line(d, line, current_branch.edge, color);
+                paint_line(line, current_branch.edge);
 
                 // Criterion bench (2 ^ 19 test): wrapping in `if` gives a 8 - 12% improvement.
                 if d < max_depth {
@@ -106,28 +119,37 @@ pub fn sequential_paint_fractal_lines(
     fractal: &Fractal,
     transformations: &Vec<LineTransform>,
     max_depth: usize,
+    animation_progress: Option<f32>,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
     {
         // avoid having to drop the paint_line by indenting. LEARN
-        let mut paint_line = paint_line_generator(&mut shapes, rect, fractal);
+        let mut paint_line = paint_line_generator(
+            &mut shapes,
+            rect,
+            fractal,
+            line_color(0, fractal.rainbow),
+            0,
+            max_depth,
+        );
 
         // paint the initiator (trunk)
         paint_line(
-            0,
             [initiator.pos, initiator.pos + initiator.vec],
             initiator.vec,
-            line_color(0, fractal.rainbow),
-        );
-
-        paint_fractal_lines(
-            &mut paint_line,
-            &Branch::from_vectored_line(*initiator), // TODO avoid this deref? Only happens once. Cheap
-            fractal,
-            transformations,
-            1,
-            max_depth,
         );
     }
+
+    paint_fractal_lines(
+        &mut shapes,
+        rect,
+        &Branch::from_vectored_line(*initiator), // TODO avoid this deref? Only happens once. Cheap
+        fractal,
+        transformations,
+        1,
+        max_depth,
+        animation_progress,
+    );
+
     shapes
 }
