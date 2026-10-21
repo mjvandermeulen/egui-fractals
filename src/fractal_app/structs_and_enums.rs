@@ -70,6 +70,8 @@ impl VectoredLine {
 //   (pythagoras sqrt is expensive)
 // only used in parallel_ and paint_fractal_helpers. If parallel gets fully removed,
 // then move this to paint_fractal_helpers and remove all `pub`
+
+// TODO move this to paint faractal helpers and remove 'pub'
 pub struct Branch {
     pub parent_node: Pos2,
     pub edge: Vec2,
