@@ -1122,7 +1122,6 @@ dependencies = [
  "egui",
  "env_logger",
  "log",
- "rayon",
  "serde",
  "serde_json",
  "wasm-bindgen-futures",

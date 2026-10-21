@@ -4,7 +4,6 @@ mod design_helpers;
 mod design_input;
 mod fractals;
 pub mod paint_fractal_helpers; // pub for benching check if needed
-pub mod parallel_paint_fractal; // only "used" in lib.rs for criterion benching.
 pub mod structs_and_enums; // pub for benching TODO check
 mod tools;
 
@@ -25,9 +24,9 @@ use design_helpers::{
 };
 use design_input::{handle_keyboard_input, handle_mouse_input};
 use fractals::fractals;
-use paint_fractal_helpers::sequential_paint_fractal_lines;
+use paint_fractal_helpers::paint_fractal_lines;
 use structs_and_enums::{
-    Fractal, LineHandles, LineTransform, LinesStyle, ReversibleLine, VectoredLine,
+    Branch, Fractal, LineHandles, LineTransform, LinesStyle, ReversibleLine, VectoredLine,
 };
 use tools::max_depth_with_branches;
 
@@ -344,11 +343,12 @@ impl FractalApp {
             .expect("Expected save_bench_prep_parallel_struct_to_json not to cause any trouble");
         }
 
-        let shapes = sequential_paint_fractal_lines(
+        let shapes = paint_fractal_lines(
             rect,
-            &initiator,
+            &Branch::from_vectored_line(initiator),
             fractal,
             &transformations,
+            1,
             fractal.depth,
             None,
         );
@@ -407,12 +407,13 @@ impl FractalApp {
             })
             .collect();
 
-        let shapes = sequential_paint_fractal_lines(
+        let shapes = paint_fractal_lines(
             rect,
-            &initiator,
+            &Branch::from_vectored_line(initiator),
             fractal,
             &transformations,
-            paint_depth,
+            1,
+            fractal.depth,
             Some(progress),
         );
 
