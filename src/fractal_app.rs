@@ -4,7 +4,7 @@ mod design_helpers;
 mod design_input;
 mod fractals;
 pub mod paint_fractal_helpers; // pub for benching check if needed
-pub mod structs_and_enums; // pub for benching TODO check
+pub mod structs_and_enums; // pub for benching TODO check if needed
 mod tools;
 
 use std::time::Instant;
@@ -358,7 +358,7 @@ impl FractalApp {
         painter.extend(shapes);
     }
 
-    // TODO: This was (is) a verbatim copy of paint_fractal not long ago.
+    // TODO: This was  a verbatim copy of paint_fractal not long ago.
     fn animate(&mut self, painter: &Painter, global_design_vectors: &[VectoredLine]) {
         let Some(start) = self.animation_start else {
             return;

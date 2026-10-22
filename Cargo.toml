@@ -33,7 +33,7 @@ web-sys = "0.3.70"              # to access the DOM (to hide the loading text)
 criterion = "0.5"
 
 [[bench]]
-name = "parallel_bench"
+name = "paint_benches"
 harness = false
 
 [profile.release]
