@@ -30,7 +30,7 @@ pub fn fractals() -> Vec<Fractal> {
             initiator_width_length_ratio: 0.02,
             fixed_final_line_width: 1.0,
             depth: 9,
-            animation: Animation { length: 1.5 },
+            animation: Animation { cycle_length: 1.5 },
         },
         Fractal {
             name: "Squares".to_owned(),
@@ -57,7 +57,7 @@ pub fn fractals() -> Vec<Fractal> {
             initiator_width_length_ratio: 0.15,
             fixed_final_line_width: 1.0,
             depth: 14,
-            animation: Animation { length: 1.5 },
+            animation: Animation { cycle_length: 1.5 },
         },
     ];
     fractals

@@ -17,7 +17,10 @@ use egui::{
     widgets::Slider,
 };
 
-use animation::{animation_tools::find_animation_rotation_center, scale_and_rotate_vectored_lines};
+use animation::{
+    animation_tools::find_animation_rotation_center,
+    scale_and_rotate_vectored_lines_around_rotation_center,
+};
 use bench_helpers::save_bench_prep_parallel_struct_to_json;
 use design_helpers::{
     handle_line_style_change, paint_directed_line_segment, reversible_lines_to_global_line_vectors,
@@ -276,10 +279,10 @@ impl FractalApp {
         let rotation_center = find_animation_rotation_center(b, c, cycle_angle, cycle_scale);
         self.a_b_c = Some((rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), b, c));
 
-        scale_and_rotate_vectored_lines(
+        scale_and_rotate_vectored_lines_around_rotation_center(
             gdvs,
             rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO
-            cycle_angle,
+            0.0,                                              //  cycle_angle, //HACK
             cycle_scale,
             progress,
         )
@@ -358,17 +361,19 @@ impl FractalApp {
         painter.extend(shapes);
     }
 
-    // TODO: This was  a verbatim copy of paint_fractal not long ago.
+    // TODO: This was a verbatim copy of paint_fractal not long ago.
     fn animate(&mut self, painter: &Painter, global_design_vectors: &[VectoredLine]) {
         let Some(start) = self.animation_start else {
             return;
         };
-        let cycle_length = self.fractals[self.fractal_index].animation.length;
+        let cycle_length = self.fractals[self.fractal_index].animation.cycle_length;
         let progress = animation::animation_tools::animation_progress(
             start,
             cycle_length,
             self.animation_repetition_cycle,
         );
+
+        // This is where the animation happens:
         let blueprint_vectors: Vec<VectoredLine> =
             self.animation_frame_vectors(global_design_vectors, progress);
 
@@ -379,9 +384,7 @@ impl FractalApp {
             fractal.mirror,
             fractal.replace_line,
         );
-        let started_next_cycle = self.animation_start.is_some()
-            && self.animation_repetition_cycle.is_none()
-            && self.new_cycle;
+        let started_next_cycle = self.animation_repetition_cycle.is_none() && self.new_cycle;
         let paint_depth = if started_next_cycle {
             fractal.depth - 1
         } else {

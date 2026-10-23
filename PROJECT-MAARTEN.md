@@ -1,3 +1,36 @@
+# Animation no rotation:
+
+## Thoughts
+
+When not rotating the fractal, the total progress is important, to determine the "fake (zoom) rotation". Scaling will stop and be put on repeat, but the zoom rotation will always continue.
+
+## BIG IDEA
+
+_When reaching the `fractal.animation_repetition_cycle` start rotating and **reset the scaling every cycle**_
+
+```rust
+    // before reaching the fractal.animation_repetition_cycle
+    scale = progress * cycle_scale
+    rotation = 0.0
+
+    // after reaching the fractal.animation_repetition_cycle
+    scale = (fractal.animation_repetition_cycle + progress.fract()) * cycle_scale
+    rotation = progress.floor() * -cycle_rotation // which way???
+```
+
+## Terminology
+
+`f32`
+
+- progress: MAKE THIS The full progress: Time elapsed / fractal.animation.cycle_length
+
+Whole cycles:
+
+- `progress.floor()`: the number of cycles since the start.
+- `fractal.animation_repetition_cycle`
+- `cycles_since_repetition` = `progress.floor()` - `fractal.animation_repetition_cycle`.
+  **This determines how much to rotate to give illusion of zooming**:
+
 # NOTE:
 
 ## DROPBOX and ICLOUD
@@ -11,7 +44,8 @@ in the root dir of the project
 
 # RAYON
 
-no improvements found. Only kept for benching...
+~~no improvements found. Only kept for benching...~~
+removed, since no improvement found: reason: long Shapes Vecs?
 
 # TODO
 
@@ -76,6 +110,7 @@ graph TD
 # THOUGHTS
 
 - the width of the line is independent of the screen size!
+- for the crucial fast shape painting: Are we using Rot2 to scale and rotate? (In the transformations)
 
 # Design
 
