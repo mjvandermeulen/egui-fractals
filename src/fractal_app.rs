@@ -33,7 +33,7 @@ use structs_and_enums::{
 };
 use tools::max_depth_with_branches;
 
-use crate::fractal_app::animation::design_to_frame_scale_and_rotation;
+use crate::fractal_app::animation::design_to_frame_scale_rotation_and_color_offset;
 
 // TODO: find the error that pops op when the vec gets too large.
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
@@ -260,7 +260,7 @@ impl FractalApp {
         gdvs: &[VectoredLine], // global design vectors
         progress: f32,
         repetition_cycle: usize,
-    ) -> Vec<VectoredLine> {
+    ) -> (Vec<VectoredLine>, usize) {
         let cycle_angle = gdvs[0].vec.angle() - gdvs[1].vec.angle();
         let cycle_scale = gdvs[0].vec.length() / gdvs[1].vec.length();
 
@@ -273,7 +273,7 @@ impl FractalApp {
         // To VISUALIZE the a b c triangle:
         self.a_b_c = Some((rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), b, c));
 
-        let (scale, rotation) = design_to_frame_scale_and_rotation(
+        let (scale, rotation, color_offset) = design_to_frame_scale_rotation_and_color_offset(
             cycle_angle,
             cycle_scale,
             progress,
@@ -281,11 +281,14 @@ impl FractalApp {
         );
         // HACK, check if there is a generator line. TODO!!!!!
 
-        scale_and_rotate_vectored_lines_around_rotation_center(
-            gdvs,
-            rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO
-            scale,
-            rotation,
+        (
+            scale_and_rotate_vectored_lines_around_rotation_center(
+                gdvs,
+                rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO
+                scale,
+                rotation,
+            ),
+            color_offset,
         )
     }
 
@@ -354,6 +357,7 @@ impl FractalApp {
             &transformations,
             fractal.depth,
             None,
+            0,
         );
         self.line_count = shapes.len();
         // TODO!!!!: Bench and try to avoid `let shapes`, just push to painter...
@@ -373,7 +377,7 @@ impl FractalApp {
         let progress = elapsed_time / cycle_length;
 
         // This is where the animation happens:
-        let blueprint_vectors: Vec<VectoredLine> = self.animation_frame_vectors(
+        let (blueprint_vectors, color_offset) = self.animation_frame_vectors(
             global_design_vectors,
             progress,
             self.fractals[self.fractal_index]
@@ -405,6 +409,7 @@ impl FractalApp {
             &transformations,
             fractal.depth,
             Some(progress),
+            color_offset,
         );
 
         self.line_count = shapes.len();
