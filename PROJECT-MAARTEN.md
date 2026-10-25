@@ -46,8 +46,11 @@ removed, since no improvement found: reason: long Shapes Vecs?
 
 ## NOW
 
+- [ ] Add Pause Animation
+- [ ] Set speed in "2x zoom per minute" (currently seconds/cycles)
 - [ ] FIX: animation rainbow.
-- [ ] **FIX REPLACE LINE!**
+- [ ] Replace Line animation: Don't fade
+- [x] **FIX REPLACE LINE!**
 - [ ] **Reset depth when you make a change. :). Default to yes.**
 
 ### Animation quick small

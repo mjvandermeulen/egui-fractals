@@ -66,7 +66,6 @@ pub fn paint_fractal_lines(
     trunk: &Branch,
     fractal: &Fractal,
     transformations: &Vec<LineTransform>,
-    depth: usize,
     max_depth: usize,
     opacity_progress: Option<f32>,
 ) -> Vec<Shape> {
@@ -91,7 +90,7 @@ pub fn paint_fractal_lines(
     let mut branches = vec![*trunk];
     let mut new_branches = Vec::new();
 
-    for d in depth..=max_depth {
+    for d in 1..=max_depth {
         let mut color = line_color(d, fractal.rainbow);
         if d == max_depth
             && let Some(progress) = opacity_progress
@@ -99,8 +98,7 @@ pub fn paint_fractal_lines(
             let p = progress.fract();
             color = color.gamma_multiply(p.powf(1.5)); // TODO play with this. Maybe just p * p or just p?
         }
-        let mut paint_line =
-            paint_line_generator(&mut shapes, rect, fractal, color, depth, max_depth);
+        let mut paint_line = paint_line_generator(&mut shapes, rect, fractal, color, d, max_depth);
 
         if d < max_depth {
             new_branches.clear();

@@ -352,13 +352,12 @@ impl FractalApp {
             &Branch::from_vectored_line(initiator),
             fractal,
             &transformations,
-            1,
             fractal.depth,
             None,
         );
         self.line_count = shapes.len();
-        // TODO: Bench and try to avoid `let shapes`, just push to painter...
-        // never mind: the std::mem::swap trick won't work.
+        // TODO!!!!: Bench and try to avoid `let shapes`, just push to painter...
+        // ~~never mind: the std::mem::swap trick won't work.~~ HA HA: That's for the branches. It will work!!!!
         painter.extend(shapes);
     }
 
@@ -404,7 +403,6 @@ impl FractalApp {
             &Branch::from_vectored_line(initiator),
             fractal,
             &transformations,
-            1,
             fractal.depth,
             Some(progress),
         );
