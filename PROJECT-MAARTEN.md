@@ -6,17 +6,7 @@ When not rotating the fractal, the total progress is important, to determine the
 
 ## BIG IDEA
 
-_When reaching the `fractal.animation_repetition_cycle` start rotating and **reset the scaling every cycle**_
-
-```rust
-    // before reaching the fractal.animation_repetition_cycle
-    scale = progress * cycle_scale
-    rotation = 0.0
-
-    // after reaching the fractal.animation_repetition_cycle
-    scale = (fractal.animation_repetition_cycle + progress.fract()) * cycle_scale
-    rotation = progress.floor() * -cycle_rotation // which way???
-```
+_When reaching the `fractal.animation_repetition_cycle` start rotating backwards and **reset the scaling every cycle**_
 
 ## Terminology
 
@@ -29,7 +19,12 @@ Whole cycles:
 - `progress.floor()`: the number of cycles since the start.
 - `fractal.animation_repetition_cycle`
 - `cycles_since_repetition` = `progress.floor()` - `fractal.animation_repetition_cycle`.
-  **This determines how much to rotate to give illusion of zooming**:
+  **This determines how much to rotate to give illusion of zooming**
+
+to create a blueprint we need:
+
+- `progress`
+- `fractal.animation_repetition_cycle`
 
 # NOTE:
 
@@ -50,6 +45,10 @@ removed, since no improvement found: reason: long Shapes Vecs?
 # TODO
 
 ## NOW
+
+- [ ] FIX: animation rainbow.
+- [ ] **FIX REPLACE LINE!**
+- [ ] **Reset depth when you make a change. :). Default to yes.**
 
 ### Animation quick small
 

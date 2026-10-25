@@ -5,7 +5,7 @@ use super::{
     structs_and_enums::{Fractal, LinesStyle, ReversibleLine},
 };
 
-// TODO: change name and file name to fractal_presets() or something like that.
+// TODO!!!!: change name and file name to fractal_presets() or something like that.
 pub fn fractals() -> Vec<Fractal> {
     // in VSCode, rust-analyzer stumbles over returning a vec![] directly, so we assign it to a variable first
     let fractals = vec![
@@ -30,7 +30,10 @@ pub fn fractals() -> Vec<Fractal> {
             initiator_width_length_ratio: 0.02,
             fixed_final_line_width: 1.0,
             depth: 9,
-            animation: Animation { cycle_length: 1.5 },
+            animation: Animation {
+                cycle_length: 1.5,
+                animation_repetition_cycle: 3,
+            },
         },
         Fractal {
             name: "Squares".to_owned(),
@@ -57,7 +60,10 @@ pub fn fractals() -> Vec<Fractal> {
             initiator_width_length_ratio: 0.15,
             fixed_final_line_width: 1.0,
             depth: 14,
-            animation: Animation { cycle_length: 1.5 },
+            animation: Animation {
+                cycle_length: 1.5,
+                animation_repetition_cycle: 3,
+            },
         },
     ];
     fractals
