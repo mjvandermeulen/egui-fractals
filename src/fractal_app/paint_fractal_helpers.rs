@@ -12,13 +12,18 @@ const RAINBOW_COLORS: [Color32; 6] = [
 ];
 // const OLD_RAINBOW_COLORS: [Color32; 6] = [Color32::RED,Color32::ORANGE,Color32::YELLOW,Color32::GREEN,Color32::BLUE,Color32::MAGENTA];
 #[must_use]
-pub fn line_color(depth: usize, rainbow: bool) -> Color32 {
-    if rainbow {
-        RAINBOW_COLORS[depth % RAINBOW_COLORS.len()]
-    } else {
-        Color32::BLACK
+pub fn line_color(depth: usize, color_offset: usize, fractal: &Fractal) -> Color32 {
+    if !fractal.rainbow {
+        return Color32::BLACK;
     }
+    let offset = if fractal.replace_line {
+        0
+    } else {
+        color_offset
+    };
+    RAINBOW_COLORS[(depth + offset) % RAINBOW_COLORS.len()]
 }
+
 pub fn paint_line_generator(
     shapes: &mut Vec<Shape>,
     rect: Rect,
@@ -77,7 +82,7 @@ pub fn paint_fractal_lines(
             &mut shapes,
             rect,
             fractal,
-            line_color(color_offset, fractal.rainbow),
+            line_color(0, color_offset, fractal),
             0,
             max_depth,
         );
@@ -92,9 +97,10 @@ pub fn paint_fractal_lines(
     let mut new_branches = Vec::new();
 
     for d in 1..=max_depth {
-        let mut color = line_color(d + color_offset, fractal.rainbow);
+        let mut color = line_color(d, color_offset, fractal);
         if d == max_depth
             && let Some(progress) = opacity_progress
+            && !fractal.replace_line
         {
             let p = progress.fract();
             color = color.gamma_multiply(p.powf(1.5)); // TODO play with this. Maybe just p * p or just p?

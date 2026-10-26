@@ -12,12 +12,12 @@ _When reaching the `fractal.animation_repetition_cycle` start rotating backwards
 
 `f32`
 
-- progress: MAKE THIS The full progress: Time elapsed / fractal.animation.cycle_length
+- progress: The full progress: Time elapsed / fractal.animation.cycle_length
 
 Whole cycles:
 
 - `progress.floor()`: the number of cycles since the start.
-- `fractal.animation_repetition_cycle`
+- `fractal.animation_repetition_cycle`: The cycle that will be repeated to create an illusion of infinite zooming.
 - `cycles_since_repetition` = `progress.floor()` - `fractal.animation_repetition_cycle`.
   **This determines how much to rotate to give illusion of zooming**
 
@@ -48,20 +48,20 @@ removed, since no improvement found: reason: long Shapes Vecs?
 
 - [ ] Add Pause Animation
 - [ ] Set speed in "2x zoom per minute" (currently seconds/cycles)
-- [ ] FIX: animation rainbow.
+- [x] FIX: animation rainbow.
 - [ ] Replace Line animation: Don't fade
 - [x] **FIX REPLACE LINE!**
 - [ ] **Reset depth when you make a change. :). Default to yes.**
 
-### Animation quick small
+### Animation quick now
 
-- [x] add scaling: ratio.pow(progress)
-- [x] refactor BIG: width always ratio of length. Otherwise animation is wrong: when scaling endpoints the length of the line changes!
-- [x] refactor: don't translate design point, but the global design vectors.
+## This mermaid is outdated.
+
+Make it work again: Now multiple functions when animating. (functional programming ish ish ish)
 
 ```mermaid
 graph TD
-    Design[Design] -->|self.design_lines| ToGlobalVecs[to global design vecs]
+    Design[Design OUTDATED MERMAID DIAGRAM] -->|self.design_lines| ToGlobalVecs[to global design vecs]
     ToGlobalVecs -->|global design vectors| DO{Design Only?}
     DO --> |yes| PaintDesign[Paint Design]
     DO --> |no| AniChoice{animation?}
@@ -84,7 +84,9 @@ graph TD
 ## NOTE
 
 - [ ] I have changed the naming to vec and rot (~~dir vs rot: dir is absolute. rot is relative.~~)
-- [ ] vec and **rot** INCLUDE SCALING!
+- [ ] vec and **rot** CAN INCLUDE SCALING!
+    - [ ] It's cleaner to use a non scaling rotation _and_ scaling. (UI design: use this strategy)
+    - [ ] To only do a simple matrix multiplication (Computation critical): Use only a Rot2
 
 ## LATER
 
