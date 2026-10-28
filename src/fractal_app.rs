@@ -33,7 +33,10 @@ use structs_and_enums::{
 };
 use tools::max_depth_with_branches;
 
-use crate::fractal_app::animation::design_to_frame_scale_rotation_and_color_offset;
+use crate::{
+    fractal_app::animation::design_to_frame_scale_rotation_and_color_offset,
+    structs_and_enums::AnimationState,
+};
 
 // TODO: find the error that pops op when the vec gets too large.
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
@@ -62,7 +65,7 @@ pub struct FractalApp {
 
     // TODO! put all animation stuff in a struct.
     #[serde(skip)]
-    animation_start: Option<Instant>,
+    animation_state: AnimationState,
     // TODO! progress: f32, // for animation. instead of local, so you can pause and resume.
     #[serde(skip)]
     animation_cycle: usize, // one cycle is when a generator line is animated to take exactly the place of the initiator.
@@ -88,7 +91,7 @@ impl Default for FractalApp {
             new_line_key_down: false,
             trash_line_key_down: false,
             hovered_line: None,
-            animation_start: None,
+            animation_state: AnimationState::Stopped,
             animation_cycle: 0,
             new_cycle: true, // works, but semi ugly.
             animation_cycle_start_limited_depth_paint_count: 0,
@@ -192,22 +195,55 @@ impl FractalApp {
         ui.separator();
         let fractal = &mut self.fractals[self.fractal_index];
 
-        let animate_text = if self.animation_start.is_some() {
-            "Stop Animation"
-        } else {
-            "Start Animation"
-        };
-        if ui.add_enabled(true, Button::new(animate_text)).on_hover_text(if self.animation_start.is_some() {
-            "Stop animating the fractal. TODO! press space to pause/resume. Press R to reset animation."
-        } else {
-            "Start animating the fractal. TODO! Press space to pause/resume. Press R to reset animation."
-        }).clicked(){
-            self.animation_start = if self.animation_start.is_some() {
-                None
-            } else {
-                Some(Instant::now())
-            };
-        }
+        use egui::{Button, RichText};
+        use std::time::{Duration, Instant};
+
+        ui.horizontal(|ui| {
+            let is_playing = matches!(self.animation_state, AnimationState::Playing { .. });
+            let is_stopped = matches!(self.animation_state, AnimationState::Stopped);
+
+            // Play: resumes from the paused time, or starts from ZERO after a stop
+            if ui
+                .add_enabled(!is_playing, Button::new(RichText::new("▶").size(18.0)))
+                .on_hover_text("Play (resume the animation)")
+                .clicked()
+            {
+                let previously_elapsed_time = match self.animation_state {
+                    AnimationState::Paused { elapsed } => elapsed,
+                    _ => Duration::ZERO,
+                };
+                self.animation_state = AnimationState::Playing {
+                    previously_elapsed_time,
+                    start_time: Instant::now(),
+                };
+            }
+
+            // Pause: stores the total time played so far
+            if ui
+                .add_enabled(is_playing, Button::new(RichText::new("⏸").size(18.0)))
+                .on_hover_text("Pause")
+                .clicked()
+            {
+                if let AnimationState::Playing {
+                    previously_elapsed_time,
+                    start_time,
+                } = self.animation_state
+                {
+                    self.animation_state = AnimationState::Paused {
+                        elapsed: previously_elapsed_time + start_time.elapsed(),
+                    };
+                }
+            }
+
+            // Stop: resets the animation
+            if ui
+                .add_enabled(!is_stopped, Button::new(RichText::new("⏹").size(18.0)))
+                .on_hover_text("Stop (reset the animation)")
+                .clicked()
+            {
+                self.animation_state = AnimationState::Stopped;
+            }
+        });
         ui.add(
             Slider::new(&mut fractal.animation.animation_repetition_cycle, 0..=10)
                 .text("cycle that can be repeated"),
@@ -257,7 +293,7 @@ impl FractalApp {
     // TODO: if not painting abc, then no self needed and this can move to own helper library
     fn animation_frame_vectors(
         &mut self,
-        gdvs: &[VectoredLine], // global design vectors
+        gdvs: Vec<VectoredLine>, // global design vectors
         progress: f32,
         repetition_cycle: usize,
     ) -> (Vec<VectoredLine>, usize) {
@@ -309,6 +345,7 @@ impl FractalApp {
         });
     }
 
+    // TODO remove
     fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredLine]) {
         let fractal = &self.fractals[self.fractal_index];
         let debug_assert_max_depth = max_depth_with_branches(
@@ -365,25 +402,27 @@ impl FractalApp {
         painter.extend(shapes);
     }
 
-    // TODO: This was a verbatim copy of paint_fractal not long ago.
-    fn animate(&mut self, painter: &Painter, global_design_vectors: &[VectoredLine]) {
-        let Some(start_time) = self.animation_start else {
-            return;
+    // TODO rename to paint_fractal
+    fn animate(&mut self, painter: &Painter, global_design_vectors: Vec<VectoredLine>) {
+        let mut progress = 0.0;
+        let (blueprint_vectors, color_offset) = if self.animation_state == AnimationState::Stopped {
+            (global_design_vectors, 0)
+        } else {
+            painter.ctx().request_repaint();
+            // move to own function?
+            let elapsed_time = self.animation_state.elapsed();
+            progress = elapsed_time.as_secs_f32()
+                / self.fractals[self.fractal_index].animation.cycle_length;
+
+            // This is where the animation happens:
+            self.animation_frame_vectors(
+                global_design_vectors,
+                progress,
+                self.fractals[self.fractal_index]
+                    .animation
+                    .animation_repetition_cycle,
+            )
         };
-
-        // move to own function?
-        let cycle_length = self.fractals[self.fractal_index].animation.cycle_length;
-        let elapsed_time = start_time.elapsed().as_secs_f32();
-        let progress = elapsed_time / cycle_length;
-
-        // This is where the animation happens:
-        let (blueprint_vectors, color_offset) = self.animation_frame_vectors(
-            global_design_vectors,
-            progress,
-            self.fractals[self.fractal_index]
-                .animation
-                .animation_repetition_cycle,
-        );
 
         let fractal = &self.fractals[self.fractal_index];
         let rect = painter.clip_rect();
@@ -459,12 +498,8 @@ impl eframe::App for FractalApp {
             reversible_lines_to_global_line_vectors(&fractal.design_lines, to_screen);
         if self.show_design_only {
             self.paint_design(&painter, &global_design_vectors);
-        } else if self.animation_start.is_some() {
-            ui.request_repaint();
-            self.animate(&painter, &global_design_vectors);
         } else {
-            self.paint_fractal(&painter, &global_design_vectors);
-
+            self.animate(&painter, global_design_vectors);
             if let Some((a, b, c)) = self.a_b_c {
                 painter.line_segment([a, b], Stroke::new(2.0, Color32::RED));
                 painter.line_segment([a, c], Stroke::new(2.0, Color32::GREEN));

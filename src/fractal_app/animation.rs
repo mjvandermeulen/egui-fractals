@@ -29,7 +29,7 @@ pub fn design_to_frame_scale_rotation_and_color_offset(
 }
 
 pub fn scale_and_rotate_vectored_lines_around_rotation_center(
-    lines: &[VectoredLine],
+    lines: Vec<VectoredLine>,
     rotation_center: Pos2,
     scale: f32,
     rotation: Rot2,

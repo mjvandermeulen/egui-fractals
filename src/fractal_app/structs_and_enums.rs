@@ -1,6 +1,54 @@
+use std::time::{Duration, Instant};
+
 use super::animation::animation_structs_and_enums::Animation;
 use egui::{Pos2, Vec2, emath::RectTransform};
 use serde::{Deserialize, Serialize};
+
+#[derive(PartialEq)]
+pub enum AnimationState {
+    Playing {
+        previously_elapsed_time: Duration,
+        start_time: Instant,
+    },
+    Paused {
+        elapsed: Duration,
+    },
+    Stopped,
+}
+// fn cycle_ratio(&self, cycle_length: Duration) -> f64 {
+//     if cycle_length.is_zero() {
+//         return 0.0;
+//     }
+//     self.elapsed().as_secs_f64() / cycle_length.as_secs_f64()
+// }
+
+// /// Number of fully completed cycles.
+// pub fn cycles(&self, cycle_length: Duration) -> usize {
+//     self.cycle_ratio(cycle_length).floor() as usize
+// }
+
+// /// Position within the current cycle, wrapped to 0.0..1.0.
+// pub fn phase(&self, cycle_length: Duration) -> f64 {
+//     self.cycle_ratio(cycle_length).fract()
+// }
+
+// /// Unwrapped elapsed_time / cycle_length (e.g. 2.35 = two full cycles plus 35%).
+// pub fn normalized_time(&self, cycle_length: Duration) -> f64 {
+//     self.cycle_ratio(cycle_length)
+// }
+
+impl AnimationState {
+    pub fn elapsed(&self) -> Duration {
+        match *self {
+            AnimationState::Playing {
+                previously_elapsed_time,
+                start_time,
+            } => previously_elapsed_time + start_time.elapsed(),
+            AnimationState::Paused { elapsed } => elapsed,
+            AnimationState::Stopped => Duration::ZERO,
+        }
+    }
+}
 
 // Fractal struct
 
@@ -71,7 +119,7 @@ impl VectoredLine {
 // only used in parallel_ and paint_fractal_helpers. If parallel gets fully removed,
 // then move this to paint_fractal_helpers and remove all `pub`
 
-// TODO move this to paint faractal helpers and remove 'pub'
+// TODO move this to paint fractal helpers and remove 'pub'
 pub struct Branch {
     pub parent_node: Pos2,
     pub edge: Vec2,
