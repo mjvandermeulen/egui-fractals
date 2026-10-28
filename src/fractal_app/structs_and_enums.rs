@@ -4,9 +4,13 @@ use super::animation::animation_structs_and_enums::Animation;
 use egui::{Pos2, Vec2, emath::RectTransform};
 use serde::{Deserialize, Serialize};
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum AnimationState {
     Playing {
+        previously_elapsed_time: Duration,
+        start_time: Instant,
+    },
+    PlayingReverse {
         previously_elapsed_time: Duration,
         start_time: Instant,
     },
@@ -15,38 +19,41 @@ pub enum AnimationState {
     },
     Stopped,
 }
-// fn cycle_ratio(&self, cycle_length: Duration) -> f64 {
-//     if cycle_length.is_zero() {
-//         return 0.0;
-//     }
-//     self.elapsed().as_secs_f64() / cycle_length.as_secs_f64()
-// }
-
-// /// Number of fully completed cycles.
-// pub fn cycles(&self, cycle_length: Duration) -> usize {
-//     self.cycle_ratio(cycle_length).floor() as usize
-// }
-
-// /// Position within the current cycle, wrapped to 0.0..1.0.
-// pub fn phase(&self, cycle_length: Duration) -> f64 {
-//     self.cycle_ratio(cycle_length).fract()
-// }
-
-// /// Unwrapped elapsed_time / cycle_length (e.g. 2.35 = two full cycles plus 35%).
-// pub fn normalized_time(&self, cycle_length: Duration) -> f64 {
-//     self.cycle_ratio(cycle_length)
-// }
 
 impl AnimationState {
     pub fn elapsed(&self) -> Duration {
         match *self {
-            AnimationState::Playing {
+            Self::Playing {
                 previously_elapsed_time,
                 start_time,
             } => previously_elapsed_time + start_time.elapsed(),
-            AnimationState::Paused { elapsed } => elapsed,
-            AnimationState::Stopped => Duration::ZERO,
+            Self::PlayingReverse {
+                previously_elapsed_time,
+                start_time,
+            } => {
+                // saturating_sub clamps at ZERO instead of panicking on underflow
+                previously_elapsed_time.saturating_sub(start_time.elapsed())
+            }
+            Self::Paused { elapsed } => elapsed,
+            Self::Stopped => Duration::ZERO,
         }
+    }
+
+    /// Call once per frame, before reading the time. Switches to Stopped
+    /// when reverse playback reaches the beginning.
+    pub fn update(&mut self) {
+        if let Self::PlayingReverse {
+            previously_elapsed_time,
+            start_time,
+        } = *self
+            && start_time.elapsed() >= previously_elapsed_time
+        {
+            *self = Self::Stopped;
+        }
+    }
+
+    pub fn is_playing(&self) -> bool {
+        matches!(self, Self::Playing { .. } | Self::PlayingReverse { .. })
     }
 }
 

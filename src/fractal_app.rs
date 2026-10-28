@@ -10,7 +10,7 @@ mod tools;
 use std::time::Instant;
 
 use egui::{
-    Button, Color32, NumExt as _, Painter, Pos2, Rect, Stroke, Ui,
+    Button, Color32, NumExt as _, Painter, Pos2, Rect, RichText, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
     emath::RectTransform,
     pos2,
@@ -193,49 +193,57 @@ impl FractalApp {
 
         // ---------------------------------------------------------------------
         ui.separator();
-        let fractal = &mut self.fractals[self.fractal_index];
 
-        use egui::{Button, RichText};
-        use std::time::{Duration, Instant};
+        self.animation_state.update();
 
         ui.horizontal(|ui| {
-            let is_playing = matches!(self.animation_state, AnimationState::Playing { .. });
-            let is_stopped = matches!(self.animation_state, AnimationState::Stopped);
+            let state = self.animation_state;
+            let is_forward = matches!(state, AnimationState::Playing { .. });
+            let is_reverse = matches!(state, AnimationState::PlayingReverse { .. });
+            let is_stopped = matches!(state, AnimationState::Stopped);
 
-            // Play: resumes from the paused time, or starts from ZERO after a stop
+            // Reverse: disabled while already reversing, or at the beginning (nothing to rewind)
             if ui
-                .add_enabled(!is_playing, Button::new(RichText::new("▶").size(18.0)))
-                .on_hover_text("Play (resume the animation)")
+                .add_enabled(
+                    !is_reverse && !is_stopped,
+                    Button::new(RichText::new("◀").size(18.0)),
+                )
+                .on_hover_text("Play in reverse")
                 .clicked()
             {
-                let previously_elapsed_time = match self.animation_state {
-                    AnimationState::Paused { elapsed } => elapsed,
-                    _ => Duration::ZERO,
-                };
-                self.animation_state = AnimationState::Playing {
-                    previously_elapsed_time,
+                self.animation_state = AnimationState::PlayingReverse {
+                    previously_elapsed_time: state.elapsed(),
                     start_time: Instant::now(),
                 };
             }
 
-            // Pause: stores the total time played so far
+            // Pause
             if ui
-                .add_enabled(is_playing, Button::new(RichText::new("⏸").size(18.0)))
+                .add_enabled(
+                    state.is_playing(),
+                    Button::new(RichText::new("⏸").size(18.0)),
+                )
                 .on_hover_text("Pause")
                 .clicked()
             {
-                if let AnimationState::Playing {
-                    previously_elapsed_time,
-                    start_time,
-                } = self.animation_state
-                {
-                    self.animation_state = AnimationState::Paused {
-                        elapsed: previously_elapsed_time + start_time.elapsed(),
-                    };
-                }
+                self.animation_state = AnimationState::Paused {
+                    elapsed: state.elapsed(),
+                };
             }
 
-            // Stop: resets the animation
+            // Play (forward)
+            if ui
+                .add_enabled(!is_forward, Button::new(RichText::new("▶").size(18.0)))
+                .on_hover_text("Play")
+                .clicked()
+            {
+                self.animation_state = AnimationState::Playing {
+                    previously_elapsed_time: state.elapsed(), // ZERO from Stopped
+                    start_time: Instant::now(),
+                };
+            }
+
+            // Stop
             if ui
                 .add_enabled(!is_stopped, Button::new(RichText::new("⏹").size(18.0)))
                 .on_hover_text("Stop (reset the animation)")
@@ -244,6 +252,7 @@ impl FractalApp {
                 self.animation_state = AnimationState::Stopped;
             }
         });
+        let fractal = &mut self.fractals[self.fractal_index];
         ui.add(
             Slider::new(&mut fractal.animation.animation_repetition_cycle, 0..=10)
                 .text("cycle that can be repeated"),
@@ -408,7 +417,9 @@ impl FractalApp {
         let (blueprint_vectors, color_offset) = if self.animation_state == AnimationState::Stopped {
             (global_design_vectors, 0)
         } else {
-            painter.ctx().request_repaint();
+            if self.animation_state.is_playing() {
+                painter.ctx().request_repaint();
+            }
             // move to own function?
             let elapsed_time = self.animation_state.elapsed();
             progress = elapsed_time.as_secs_f32()
