@@ -21,6 +21,7 @@ use animation::{
     animation_tools::find_animation_rotation_center,
     scale_and_rotate_vectored_lines_around_rotation_center,
 };
+#[expect(unused)]
 use bench_helpers::save_bench_prep_parallel_struct_to_json;
 use design_helpers::{
     handle_line_style_change, paint_directed_line_segment, reversible_lines_to_global_line_vectors,
@@ -34,10 +35,7 @@ use structs_and_enums::{
 use tools::max_depth_with_branches;
 
 use crate::{
-    fractal_app::animation::{
-        animation_structs_and_enums::AnimationProgress,
-        design_to_frame_scale_rotation_and_repeated_cycles,
-    },
+    fractal_app::animation::animation_structs_and_enums::AnimationProgress,
     structs_and_enums::AnimationState,
 };
 
@@ -305,6 +303,7 @@ impl FractalApp {
         ));
     }
     // TODO: if not painting abc, then no self needed and this can move to own helper library
+    #[expect(clippy::needless_pass_by_value)] // We want to consume the input vector, to force a more functional programming style. This is a design choice, not a performance choice.
     fn animation_paint_vectors_and_progress(
         &mut self,
         gdvs: Vec<VectoredLine>, // global design vectors, consumed.
@@ -330,12 +329,12 @@ impl FractalApp {
         self.a_b_c = Some((rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), b, c));
 
         let scale = cycle_scale.powf(progress.elapsed_wrapped);
-        let rotation: Rot2 = Rot2::from_angle(progress.loop_repetitions as f32 * -cycle_angle);
+        let rotation = Rot2::from_angle(progress.loop_repetitions as f32 * -cycle_angle);
         // HACK, check if there is a generator line. TODO!!!!!
 
         (
             scale_and_rotate_vectored_lines_around_rotation_center(
-                gdvs,
+                &gdvs,
                 rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO
                 scale,
                 rotation,
@@ -364,7 +363,7 @@ impl FractalApp {
     fn paint_fractal(
         &mut self,
         painter: &Painter,
-        global_design_vectors: Vec<VectoredLine>,
+        global_design_vectors: &[VectoredLine],
         animation_progress: Option<AnimationProgress>,
     ) {
         let fractal = &self.fractals[self.fractal_index];
@@ -449,7 +448,7 @@ impl eframe::App for FractalApp {
                 }
                 self.animation_paint_vectors_and_progress(global_design_vectors)
             };
-            self.paint_fractal(&painter, paint_vectors, animation_progress);
+            self.paint_fractal(&painter, &paint_vectors, animation_progress);
         }
 
         // Make sure we allocate what we used (everything)
