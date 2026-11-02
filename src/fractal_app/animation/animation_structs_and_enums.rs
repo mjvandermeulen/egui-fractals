@@ -44,9 +44,9 @@ impl AnimationProgress {
                 (elapsed_cycles.floor() - loop_cycle) as usize
             },
             elapsed_wrapped: if elapsed_cycles < loop_cycle {
-                loop_cycle + phase
-            } else {
                 elapsed_cycles
+            } else {
+                loop_cycle + phase
             },
             phase,
         }
