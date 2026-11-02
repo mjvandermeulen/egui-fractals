@@ -31,8 +31,8 @@ pub fn fractals() -> Vec<Fractal> {
             fixed_final_line_width: 1.0,
             depth: 9,
             animation: Animation {
-                cycle_length: 1.5,
-                animation_repetition_cycle: 3,
+                zooms_per_minute: 1.5,
+                animation_loop_cycle: 3,
             },
         },
         Fractal {
@@ -61,8 +61,8 @@ pub fn fractals() -> Vec<Fractal> {
             fixed_final_line_width: 1.0,
             depth: 14,
             animation: Animation {
-                cycle_length: 1.5,
-                animation_repetition_cycle: 3,
+                zooms_per_minute: 1.5,
+                animation_loop_cycle: 3,
             },
         },
     ];

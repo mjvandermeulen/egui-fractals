@@ -12,7 +12,7 @@ use std::time::Instant;
 use egui::{
     Button, Color32, NumExt as _, Painter, Pos2, Rect, RichText, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
-    emath::RectTransform,
+    emath::{RectTransform, Rot2},
     pos2,
     widgets::Slider,
 };
@@ -34,7 +34,10 @@ use structs_and_enums::{
 use tools::max_depth_with_branches;
 
 use crate::{
-    fractal_app::animation::design_to_frame_scale_rotation_and_color_offset,
+    fractal_app::animation::{
+        animation_structs_and_enums::AnimationProgress,
+        design_to_frame_scale_rotation_and_repeated_cycles,
+    },
     structs_and_enums::AnimationState,
 };
 
@@ -64,17 +67,13 @@ pub struct FractalApp {
     // TODO: include LineHandles in the hovered_line.
 
     // TODO! put all animation stuff in a struct.
+    // ANIMATION
     #[serde(skip)]
     animation_state: AnimationState,
-    // TODO! progress: f32, // for animation. instead of local, so you can pause and resume.
-    #[serde(skip)]
-    animation_cycle: usize, // one cycle is when a generator line is animated to take exactly the place of the initiator.
-    #[serde(skip)]
-    new_cycle: bool,
-    #[serde(skip)]
-    animation_cycle_start_limited_depth_paint_count: usize,
     #[serde(skip)]
     a_b_c: Option<(Pos2, Pos2, Pos2)>, // for animation. HACK TEMP
+
+    // BENCHING
     #[serde(skip)]
     bench_prep: bool,
 }
@@ -92,9 +91,6 @@ impl Default for FractalApp {
             trash_line_key_down: false,
             hovered_line: None,
             animation_state: AnimationState::Stopped,
-            animation_cycle: 0,
-            new_cycle: true, // works, but semi ugly.
-            animation_cycle_start_limited_depth_paint_count: 0,
             a_b_c: None,
             bench_prep: false,
         }
@@ -252,9 +248,18 @@ impl FractalApp {
                 self.animation_state = AnimationState::Stopped;
             }
         });
+
         let fractal = &mut self.fractals[self.fractal_index];
+
         ui.add(
-            Slider::new(&mut fractal.animation.animation_repetition_cycle, 0..=10)
+            egui::Slider::new(&mut fractal.animation.zooms_per_minute, 0.00001..=100.0)
+                .text("Animation Zooms per minutes"),
+        )
+        .on_hover_text("After one zoom the fractal doubles in size.");
+
+        // TODO!!!! see project.md: change this to "repeat when showing" (Tool tip: percentage of length showing when repetition can start):
+        ui.add(
+            Slider::new(&mut fractal.animation.animation_loop_cycle, 0..=10)
                 .text("cycle that can be repeated"),
         );
 
@@ -300,14 +305,20 @@ impl FractalApp {
         ));
     }
     // TODO: if not painting abc, then no self needed and this can move to own helper library
-    fn animation_frame_vectors(
+    fn animation_paint_vectors_and_progress(
         &mut self,
-        gdvs: Vec<VectoredLine>, // global design vectors
-        progress: f32,
-        repetition_cycle: usize,
-    ) -> (Vec<VectoredLine>, usize) {
+        gdvs: Vec<VectoredLine>, // global design vectors, consumed.
+    ) -> (Vec<VectoredLine>, Option<AnimationProgress>) {
+        // return owned vector, because we consumed the input vector.
+        let animation = &self.fractals[self.fractal_index].animation;
         let cycle_angle = gdvs[0].vec.angle() - gdvs[1].vec.angle();
         let cycle_scale = gdvs[0].vec.length() / gdvs[1].vec.length();
+
+        let progress = AnimationProgress::new_from_elapsed_time(
+            self.animation_state.elapsed(),
+            cycle_scale,
+            animation,
+        );
 
         // TODO: better naming
         // HACK, check if there is a generator line. TODO!!!!!
@@ -318,12 +329,8 @@ impl FractalApp {
         // To VISUALIZE the a b c triangle:
         self.a_b_c = Some((rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), b, c));
 
-        let (scale, rotation, color_offset) = design_to_frame_scale_rotation_and_color_offset(
-            cycle_angle,
-            cycle_scale,
-            progress,
-            repetition_cycle,
-        );
+        let scale = cycle_scale.powf(progress.elapsed_wrapped);
+        let rotation: Rot2 = Rot2::from_angle(progress.loop_repetitions as f32 * -cycle_angle);
         // HACK, check if there is a generator line. TODO!!!!!
 
         (
@@ -333,7 +340,7 @@ impl FractalApp {
                 scale,
                 rotation,
             ),
-            color_offset,
+            Some(progress),
         )
     }
 
@@ -354,92 +361,17 @@ impl FractalApp {
         });
     }
 
-    // TODO remove
-    fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredLine]) {
-        let fractal = &self.fractals[self.fractal_index];
-        let debug_assert_max_depth = max_depth_with_branches(
-            MAX_PAINTED_LINE_COUNT,
-            vectored_design_lines.len() - 1,
-            fractal.mirror,
-            fractal.replace_line,
-        );
-        debug_assert!(
-            fractal.depth <= debug_assert_max_depth,
-            "fractal.depth = {}, max_depth_with_branches(...) = {debug_assert_max_depth}",
-            fractal.depth
-        );
-        let rect = painter.clip_rect();
-
-        let initiator = vectored_design_lines[0];
-        let transformations: Vec<LineTransform> = vectored_design_lines[1..]
-            .iter()
-            .flat_map(|line| {
-                let mut line_transforms: Vec<LineTransform> =
-                    vec![LineTransform::from_design_vector(&initiator, *line, false)];
-                if fractal.mirror {
-                    line_transforms
-                        .push(LineTransform::from_design_vector(&initiator, *line, true));
-                }
-                line_transforms
-            })
-            .collect();
-
-        if self.bench_prep {
-            self.bench_prep = false;
-            save_bench_prep_parallel_struct_to_json(
-                rect,
-                &initiator,
-                fractal,
-                &transformations,
-                fractal.depth,
-            )
-            .expect("Expected save_bench_prep_parallel_struct_to_json not to cause any trouble");
-        }
-
-        let shapes = paint_fractal_lines(
-            rect,
-            &Branch::from_vectored_line(initiator),
-            fractal,
-            &transformations,
-            fractal.depth,
-            None,
-            0,
-        );
-        self.line_count = shapes.len();
-        // TODO!!!!: Bench and try to avoid `let shapes`, just push to painter...
-        // ~~never mind: the std::mem::swap trick won't work.~~ HA HA: That's for the branches. It will work!!!!
-        painter.extend(shapes);
-    }
-
-    // TODO rename to paint_fractal
-    fn animate(&mut self, painter: &Painter, global_design_vectors: Vec<VectoredLine>) {
-        let mut progress = 0.0;
-        let (blueprint_vectors, color_offset) = if self.animation_state == AnimationState::Stopped {
-            (global_design_vectors, 0)
-        } else {
-            if self.animation_state.is_playing() {
-                painter.ctx().request_repaint();
-            }
-            // move to own function?
-            let elapsed_time = self.animation_state.elapsed();
-            progress = elapsed_time.as_secs_f32()
-                / self.fractals[self.fractal_index].animation.cycle_length;
-
-            // This is where the animation happens:
-            self.animation_frame_vectors(
-                global_design_vectors,
-                progress,
-                self.fractals[self.fractal_index]
-                    .animation
-                    .animation_repetition_cycle,
-            )
-        };
-
+    fn paint_fractal(
+        &mut self,
+        painter: &Painter,
+        global_design_vectors: Vec<VectoredLine>,
+        animation_progress: Option<AnimationProgress>,
+    ) {
         let fractal = &self.fractals[self.fractal_index];
         let rect = painter.clip_rect();
 
-        let initiator = blueprint_vectors[0];
-        let transformations: Vec<LineTransform> = blueprint_vectors[1..]
+        let initiator = global_design_vectors[0];
+        let transformations: Vec<LineTransform> = global_design_vectors[1..]
             .iter()
             .flat_map(|line| {
                 let mut line_transforms: Vec<LineTransform> =
@@ -458,8 +390,7 @@ impl FractalApp {
             fractal,
             &transformations,
             fractal.depth,
-            Some(progress),
-            color_offset,
+            animation_progress,
         );
 
         self.line_count = shapes.len();
@@ -510,16 +441,21 @@ impl eframe::App for FractalApp {
         if self.show_design_only {
             self.paint_design(&painter, &global_design_vectors);
         } else {
-            self.animate(&painter, global_design_vectors);
-            if let Some((a, b, c)) = self.a_b_c {
-                painter.line_segment([a, b], Stroke::new(2.0, Color32::RED));
-                painter.line_segment([a, c], Stroke::new(2.0, Color32::GREEN));
-            }
+            let (paint_vectors, animation_progress) = if self.animation_state.is_stopped() {
+                (global_design_vectors, None)
+            } else {
+                if self.animation_state.is_playing() {
+                    painter.ctx().request_repaint();
+                }
+                self.animation_paint_vectors_and_progress(global_design_vectors)
+            };
+            self.paint_fractal(&painter, paint_vectors, animation_progress);
         }
 
         // Make sure we allocate what we used (everything)
         ui.expand_to_include_rect(painter.clip_rect());
 
+        // HACK: Move lines_style check to options_ui. See Claude Rust group "Checking line style changes in Rust" tab.
         let lines_style = self.fractals[self.fractal_index].lines_style;
         Frame::popup(ui.style())
             .stroke(Stroke::NONE)

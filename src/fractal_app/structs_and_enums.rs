@@ -55,6 +55,9 @@ impl AnimationState {
     pub fn is_playing(&self) -> bool {
         matches!(self, Self::Playing { .. } | Self::PlayingReverse { .. })
     }
+    pub fn is_stopped(&self) -> bool {
+        matches!(self, Self::Stopped)
+    }
 }
 
 // Fractal struct

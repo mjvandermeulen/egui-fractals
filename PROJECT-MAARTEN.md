@@ -46,9 +46,10 @@ removed, since no improvement found: reason: long Shapes Vecs?
 
 ## NOW
 
-- [ ] Add Pause Animation (MOVING ALL PAINT CODE INTO ANIMATION FOR NOW. FIX LATER!)
+- [x] Add Pause Animation (MOVING ALL PAINT CODE INTO ANIMATION FOR NOW.
+- [ ] FIX wrong name for paint_fractal (currently "animate")
 - [ ] Set speed in "2x zoom per minute" (currently seconds/cycles)
-
+- [ ] UI change of `animation_repetition_cycle` => "repeat when showing" (Tool tip: percentage of length showing when repetition can start)
 - [x] FIX: animation rainbow.
 - [x] Replace Line animation: Don't fade
 - [x] **FIX REPLACE LINE!**

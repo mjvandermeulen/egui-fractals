@@ -6,7 +6,8 @@ use super::structs_and_enums::VectoredLine;
 pub mod animation_structs_and_enums;
 pub mod animation_tools;
 
-pub fn design_to_frame_scale_rotation_and_color_offset(
+#[expect(unused)]
+pub fn design_to_frame_scale_rotation_and_repeated_cycles(
     cycle_angle: f32,
     cycle_scale: f32,
     progress: f32,
@@ -23,7 +24,7 @@ pub fn design_to_frame_scale_rotation_and_color_offset(
         (
             cycle_scale.powf(r_cycle as f32 + progress.fract()), // scale
             Rot2::from_angle(repeated_cycles * -cycle_angle),    // rotation
-            repeated_cycles as usize,                            // color_offset
+            repeated_cycles as usize,                            // for color_offset used later
         )
     }
 }

@@ -1,5 +1,7 @@
 use egui::{Color32, Pos2, Rect, Shape, Vec2};
 
+use crate::fractal_app::animation::animation_structs_and_enums::AnimationProgress;
+
 use super::structs_and_enums::{Branch, Fractal, LineTransform};
 
 const RAINBOW_COLORS: [Color32; 6] = [
@@ -65,6 +67,7 @@ pub fn construct_current_branch_and_line(
 // starting AFTER the initiator line, applying the given transformations up to the specified max_depth.
 // Aug 30th: This needs to take a closure, since that closure is used in the parallel version and in fractal_app (when bypassing parallelization).
 // Oct 9th: bypassing parallelization is still not implemented yet :)
+// Nov 1 2026: parallelization has been removed. No increase in speed.
 #[must_use]
 pub fn paint_fractal_lines(
     rect: Rect,
@@ -72,10 +75,13 @@ pub fn paint_fractal_lines(
     fractal: &Fractal,
     transformations: &Vec<LineTransform>,
     max_depth: usize,
-    opacity_progress: Option<f32>,
-    color_offset: usize,
+    animation_progress: Option<AnimationProgress>,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
+    let color_offset = match animation_progress {
+        Some(progress) => progress.loop_repetitions,
+        None => 0,
+    };
     {
         // avoid having to drop the paint_line by indenting. LEARN
         let mut paint_line = paint_line_generator(
@@ -99,10 +105,10 @@ pub fn paint_fractal_lines(
     for d in 1..=max_depth {
         let mut color = line_color(d, color_offset, fractal);
         if d == max_depth
-            && let Some(progress) = opacity_progress
+            && let Some(animation_progress) = animation_progress
             && !fractal.replace_line
         {
-            let p = progress.fract();
+            let p = animation_progress.phase;
             color = color.gamma_multiply(p.powf(1.5)); // TODO play with this. Maybe just p * p or just p?
         }
         let mut paint_line = paint_line_generator(&mut shapes, rect, fractal, color, d, max_depth);
