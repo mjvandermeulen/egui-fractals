@@ -250,7 +250,7 @@ impl FractalApp {
         let fractal = &mut self.fractals[self.fractal_index];
 
         ui.add(
-            egui::Slider::new(&mut fractal.animation.zooms_per_minute, 0.00001..=100.0)
+            egui::Slider::new(&mut fractal.animation.zooms_per_minute, 5.0..=180.0)
                 .text("Animation Zooms per minutes"),
         )
         .on_hover_text("After one zoom the fractal doubles in size.");
