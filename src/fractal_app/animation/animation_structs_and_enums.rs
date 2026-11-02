@@ -12,7 +12,7 @@ pub struct Animation {
 
 impl Animation {
     pub fn ln_scale_per_second(&self) -> f32 {
-        self.zooms_per_minute.ln() / 60.0
+        self.zooms_per_minute * 2.0_f32.ln() / 60.0
     }
 }
 
