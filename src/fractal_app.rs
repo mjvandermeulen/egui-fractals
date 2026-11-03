@@ -261,6 +261,11 @@ impl FractalApp {
                 .text("cycle that can be repeated"),
         );
 
+        ui.checkbox(
+            &mut fractal.animation.zoom_child_to_parent,
+            "Zoom child to parent",
+        );
+
         // if let Some(animation) = &mut fractal.animation { TODO
         // ui.add(
         //     Slider::new(&mut fractal.animation.length, 0.5..=30.0)
@@ -329,7 +334,12 @@ impl FractalApp {
         self.a_b_c = Some((rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), b, c));
 
         let scale = cycle_scale.powf(progress.elapsed_wrapped);
-        let rotation = Rot2::from_angle(progress.loop_repetitions as f32 * -cycle_angle);
+        let rotattion_angle = if animation.zoom_child_to_parent {
+            progress.elapsed_wrapped * cycle_angle
+        } else {
+            progress.loop_repetitions as f32 * -cycle_angle
+        };
+        let rotation = Rot2::from_angle(rotattion_angle);
         // HACK, check if there is a generator line. TODO!!!!!
 
         (

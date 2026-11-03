@@ -8,6 +8,7 @@ pub struct Animation {
     //   the cycle that can be looped to give illusion of infinite animation.
     //   first cycle = 0. (progress.floor() matches the cycle)
     //   e.g.: 3: loop the 4th cycle
+    pub zoom_child_to_parent: bool, // if true, the animation will scale and rotate the child branch to match the parent branch. If false, it will zoom in without rotation.
 }
 
 impl Animation {
