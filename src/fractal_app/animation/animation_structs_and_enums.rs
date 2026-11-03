@@ -52,4 +52,8 @@ impl AnimationProgress {
             phase,
         }
     }
+
+    pub fn looping_started(&self) -> bool {
+        self.elapsed > self.elapsed_wrapped
+    }
 }
