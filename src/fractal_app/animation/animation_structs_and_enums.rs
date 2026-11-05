@@ -3,7 +3,7 @@ use std::time::Duration;
 #[derive(Debug, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Animation {
     // TODO: usize: zoom focus branch.
-    pub zooms_per_minute: f32, // NOTE: it could be nice if this is not pub, and only has a setter.
+    pub ln_scale_per_second: f32, // NOTE: it could be nice if this is not pub, and only has a setter.
     pub animation_loop_cycle: usize,
     //   the cycle that can be looped to give illusion of infinite animation.
     //   first cycle = 0. (progress.floor() matches the cycle)
@@ -11,9 +11,10 @@ pub struct Animation {
     pub zoom_child_to_parent: bool, // if true, the animation will scale and rotate the child branch to match the parent branch. If false, it will zoom in without rotation.
 }
 
+// TODO!!!!!!!!!!!!
 impl Animation {
     pub fn ln_scale_per_second(&self) -> f32 {
-        self.zooms_per_minute * 2.0_f32.ln() / 60.0
+        self.ln_scale_per_second
     }
 }
 

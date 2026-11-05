@@ -1,3 +1,5 @@
+use std::f32::consts::LN_2;
+
 use egui::pos2;
 
 use super::{
@@ -31,7 +33,7 @@ pub fn fractals() -> Vec<Fractal> {
             fixed_final_line_width: 1.0,
             depth: 9,
             animation: Animation {
-                zooms_per_minute: 60.0,
+                ln_scale_per_second: LN_2 / 2.0,
                 animation_loop_cycle: 3,
                 zoom_child_to_parent: false,
             },
@@ -62,7 +64,7 @@ pub fn fractals() -> Vec<Fractal> {
             fixed_final_line_width: 1.0,
             depth: 14,
             animation: Animation {
-                zooms_per_minute: 60.0,
+                ln_scale_per_second: LN_2 / 2.0,
                 animation_loop_cycle: 3,
                 zoom_child_to_parent: false,
             },

@@ -7,7 +7,7 @@ pub mod paint_fractal_helpers; // pub for benching check if needed
 pub mod structs_and_enums; // pub for benching TODO check if needed
 mod tools;
 
-use std::time::Instant;
+use std::{f32::consts::LN_2, time::Instant};
 
 use egui::{
     Button, Color32, NumExt as _, Painter, Pos2, Rect, RichText, Stroke, Ui,
@@ -18,7 +18,7 @@ use egui::{
 };
 
 use animation::{
-    animation_tools::find_animation_rotation_center,
+    animation_helpers::find_animation_rotation_center,
     scale_and_rotate_vectored_lines_around_rotation_center,
 };
 #[expect(unused)]
@@ -249,11 +249,15 @@ impl FractalApp {
 
         let fractal = &mut self.fractals[self.fractal_index];
 
-        ui.add(
-            egui::Slider::new(&mut fractal.animation.zooms_per_minute, 5.0..=180.0)
-                .text("Animation Zooms per minutes"),
-        )
-        .on_hover_text("After one zoom the fractal doubles in size.");
+        // NOTE: egui has a built in way to do this, but it's not as straightforward: `from_get_set`
+        let mut zpm = fractal.animation.ln_scale_per_second * 60.0 / LN_2;
+        if ui
+            .add(egui::Slider::new(&mut zpm, 5.0..=180.0).text("Animation Zooms per minutes"))
+            .on_hover_text("After one zoom the fractal doubles in size.")
+            .changed()
+        {
+            fractal.animation.ln_scale_per_second = zpm * LN_2 / 60.0;
+        }
 
         // TODO!!!! see project.md: change this to "repeat when showing" (Tool tip: percentage of length showing when repetition can start):
         ui.add(
