@@ -4,18 +4,13 @@ use std::time::Duration;
 pub struct Animation {
     // TODO: usize: zoom focus branch.
     pub ln_scale_per_second: f32, // NOTE: it could be nice if this is not pub, and only has a setter.
-    pub animation_loop_cycle: usize,
-    //   the cycle that can be looped to give illusion of infinite animation.
-    //   first cycle = 0. (progress.floor() matches the cycle)
-    //   e.g.: 3: loop the 4th cycle
+    pub animation_loop_cycle: usize, // the cycle that can be looped to give illusion of infinite animation.
     pub zoom_child_to_parent: bool, // if true, the animation will scale and rotate the child branch to match the parent branch. If false, it will zoom in without rotation.
-}
 
-// TODO!!!!!!!!!!!!
-impl Animation {
-    pub fn ln_scale_per_second(&self) -> f32 {
-        self.ln_scale_per_second
-    }
+                                    // TODO!!!!!!!!!: MOVE AnimationState in here!
+                                    // - so it can be serialized/deserialized with the fractal settings.
+                                    // - so it can be used in the animation system without needing to pass around a separate AnimationState.
+                                    // - so when changing the ln_scale_per_second, the animation state can be updated to the new scale/sec.
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -33,7 +28,7 @@ impl AnimationProgress {
         cycle_scale: f32,
         animation: &Animation,
     ) -> Self {
-        let seconds_per_cycle = cycle_scale.ln() / animation.ln_scale_per_second();
+        let seconds_per_cycle = cycle_scale.ln() / animation.ln_scale_per_second;
 
         let elapsed_cycles = elapsed_time.as_secs_f32() / seconds_per_cycle;
         let phase = elapsed_cycles.fract();
