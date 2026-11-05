@@ -14,6 +14,10 @@ pub enum AnimationState {
         previously_elapsed_time: Duration,
         start_time: Instant,
     },
+    PlayingInfiniteReverse {
+        previously_elapsed_time: Duration,
+        start_time: Instant,
+    },
     Paused {
         elapsed: Duration,
     },
@@ -30,6 +34,10 @@ impl AnimationState {
             Self::PlayingReverse {
                 previously_elapsed_time,
                 start_time,
+            }
+            | Self::PlayingInfiniteReverse {
+                previously_elapsed_time,
+                start_time,
             } => {
                 // saturating_sub clamps at ZERO instead of panicking on underflow
                 previously_elapsed_time.saturating_sub(start_time.elapsed())
@@ -42,13 +50,27 @@ impl AnimationState {
     /// Call once per frame, before reading the time. Switches to Stopped
     /// when reverse playback reaches the beginning.
     pub fn update(&mut self) {
-        if let Self::PlayingReverse {
-            previously_elapsed_time,
-            start_time,
-        } = *self
-            && start_time.elapsed() >= previously_elapsed_time
-        {
-            *self = Self::Stopped;
+        match *self {
+            Self::PlayingReverse {
+                previously_elapsed_time,
+                start_time,
+            } => {
+                if start_time.elapsed() >= previously_elapsed_time {
+                    *self = Self::Stopped;
+                }
+            }
+            Self::PlayingInfiniteReverse {
+                previously_elapsed_time,
+                start_time,
+            } => {
+                if let  =  {
+                    LEFT OFF HERE:
+                    i dont' have cycle length.
+                    could it be added to AnimationState? or should it be passed in as a parameter to update()?
+                    
+                }
+            }
+            _ => {}
         }
     }
 
