@@ -56,7 +56,8 @@ impl AnimationState {
         matches!(self, Self::Playing { .. } | Self::PlayingReverse { .. })
     }
     pub fn is_stopped(&self) -> bool {
-        matches!(self, Self::Stopped)
+        *self == Self::Stopped //*self == ... is the usual form for &self.
+        // matches!(self, Self::Stopped) // alternative Claude way
     }
 }
 
