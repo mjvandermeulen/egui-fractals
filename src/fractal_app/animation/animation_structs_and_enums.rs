@@ -1,4 +1,7 @@
-use std::time::Duration;
+#[expect(unused_imports)]
+use std::{f32::consts::LN_2, time::Duration};
+
+use crate::structs_and_enums::PlayerState;
 
 #[derive(Debug, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Animation {
@@ -7,10 +10,11 @@ pub struct Animation {
     pub animation_loop_cycle: usize, // the cycle that can be looped to give illusion of infinite animation.
     pub zoom_child_to_parent: bool, // if true, the animation will scale and rotate the child branch to match the parent branch. If false, it will zoom in without rotation.
 
-                                    // TODO!!!!!!!!!: MOVE AnimationState in here!
-                                    // - so it can be serialized/deserialized with the fractal settings.
-                                    // - so it can be used in the animation system without needing to pass around a separate AnimationState.
-                                    // - so when changing the ln_scale_per_second, the animation state can be updated to the new scale/sec.
+    // TODO!!!!!!!!!: MOVE AnimationState in here!
+    // - so it can be serialized/deserialized with the fractal settings.
+    // - so it can be used in the animation system without needing to pass around a separate AnimationState.
+    // - so when changing the ln_scale_per_second, the animation state can be updated to the new scale/sec.
+    pub player_state: PlayerState,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]

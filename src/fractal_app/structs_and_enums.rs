@@ -4,14 +4,16 @@ use super::animation::animation_structs_and_enums::Animation;
 use egui::{Pos2, Vec2, emath::RectTransform};
 use serde::{Deserialize, Serialize};
 
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum AnimationState {
+#[derive(Debug, PartialEq, Eq, Clone, serde::Deserialize, serde::Serialize)]
+pub enum PlayerState {
     Playing {
         previously_elapsed_time: Duration,
+        #[serde(skip, default = "Instant::now")]
         start_time: Instant,
     },
     PlayingReverse {
         previously_elapsed_time: Duration,
+        #[serde(skip, default = "Instant::now")]
         start_time: Instant,
     },
     Paused {
@@ -20,7 +22,14 @@ pub enum AnimationState {
     Stopped,
 }
 
-impl AnimationState {
+// NOTE: Not needed i think: the default is set in the Fractal Default impl.
+impl Default for PlayerState {
+    fn default() -> Self {
+        Self::Stopped
+    }
+}
+
+impl PlayerState {
     pub fn elapsed(&self) -> Duration {
         match *self {
             Self::Playing {

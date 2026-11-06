@@ -2,6 +2,8 @@ use std::f32::consts::LN_2;
 
 use egui::pos2;
 
+use crate::structs_and_enums::PlayerState;
+
 use super::{
     animation::animation_structs_and_enums::Animation,
     structs_and_enums::{Fractal, LinesStyle, ReversibleLine},
@@ -36,6 +38,7 @@ pub fn fractals() -> Vec<Fractal> {
                 ln_scale_per_second: LN_2 / 2.0,
                 animation_loop_cycle: 3,
                 zoom_child_to_parent: false,
+                player_state: PlayerState::Stopped,
             },
         },
         Fractal {
@@ -67,6 +70,7 @@ pub fn fractals() -> Vec<Fractal> {
                 ln_scale_per_second: LN_2 / 2.0,
                 animation_loop_cycle: 3,
                 zoom_child_to_parent: false,
+                player_state: PlayerState::Stopped,
             },
         },
     ];

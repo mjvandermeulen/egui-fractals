@@ -36,7 +36,7 @@ use tools::max_depth_with_branches;
 
 use crate::{
     fractal_app::animation::animation_structs_and_enums::AnimationProgress,
-    structs_and_enums::AnimationState,
+    structs_and_enums::PlayerState,
 };
 
 // TODO: find the error that pops op when the vec gets too large.
@@ -67,8 +67,6 @@ pub struct FractalApp {
     // TODO! put all animation stuff in a struct.
     // ANIMATION
     #[serde(skip)]
-    animation_state: AnimationState,
-    #[serde(skip)]
     a_b_c: Option<(Pos2, Pos2, Pos2)>, // for animation. HACK TEMP
 
     // BENCHING
@@ -88,7 +86,6 @@ impl Default for FractalApp {
             new_line_key_down: false,
             trash_line_key_down: false,
             hovered_line: None,
-            animation_state: AnimationState::Stopped,
             a_b_c: None,
             bench_prep: false,
         }
@@ -187,15 +184,19 @@ impl FractalApp {
 
         // ---------------------------------------------------------------------
         ui.separator();
+        let fractal = &mut self.fractals[self.fractal_index];
 
-        self.animation_state.update();
+        fractal.animation.player_state.update();
 
         ui.horizontal(|ui| {
-            let state = self.animation_state;
-            let is_forward = matches!(state, AnimationState::Playing { .. });
-            let is_reverse = matches!(state, AnimationState::PlayingReverse { .. });
-            let is_stopped = matches!(state, AnimationState::Stopped);
-
+            // TODO!!!!! this indentation may not be needed.
+            let (is_forward, is_reverse, is_stopped) = {
+                let state = &mut fractal.animation.player_state;
+                let is_forward = matches!(state, PlayerState::Playing { .. });
+                let is_reverse = matches!(state, PlayerState::PlayingReverse { .. });
+                let is_stopped = matches!(state, PlayerState::Stopped);
+                (is_forward, is_reverse, is_stopped)
+            };
             // Reverse: disabled while already reversing, or at the beginning (nothing to rewind)
             if ui
                 .add_enabled(
@@ -205,8 +206,8 @@ impl FractalApp {
                 .on_hover_text("Play in reverse")
                 .clicked()
             {
-                self.animation_state = AnimationState::PlayingReverse {
-                    previously_elapsed_time: state.elapsed(),
+                fractal.animation.player_state = PlayerState::PlayingReverse {
+                    previously_elapsed_time: fractal.animation.player_state.elapsed(),
                     start_time: Instant::now(),
                 };
             }
@@ -214,14 +215,14 @@ impl FractalApp {
             // Pause
             if ui
                 .add_enabled(
-                    state.is_playing(),
+                    fractal.animation.player_state.is_playing(),
                     Button::new(RichText::new("⏸").size(18.0)),
                 )
                 .on_hover_text("Pause")
                 .clicked()
             {
-                self.animation_state = AnimationState::Paused {
-                    elapsed: state.elapsed(),
+                fractal.animation.player_state = PlayerState::Paused {
+                    elapsed: fractal.animation.player_state.elapsed(),
                 };
             }
 
@@ -231,8 +232,8 @@ impl FractalApp {
                 .on_hover_text("Play")
                 .clicked()
             {
-                self.animation_state = AnimationState::Playing {
-                    previously_elapsed_time: state.elapsed(), // ZERO from Stopped
+                fractal.animation.player_state = PlayerState::Playing {
+                    previously_elapsed_time: fractal.animation.player_state.elapsed(), // ZERO from Stopped
                     start_time: Instant::now(),
                 };
             }
@@ -243,7 +244,7 @@ impl FractalApp {
                 .on_hover_text("Stop (reset the animation)")
                 .clicked()
             {
-                self.animation_state = AnimationState::Stopped;
+                fractal.animation.player_state = PlayerState::Stopped;
             }
         });
 
@@ -323,7 +324,7 @@ impl FractalApp {
         let cycle_scale = gdvs[0].vec.length() / gdvs[1].vec.length();
 
         let progress = AnimationProgress::new_from_elapsed_time(
-            self.animation_state.elapsed(),
+            animation.player_state.elapsed(),
             cycle_scale,
             animation,
         );
@@ -454,10 +455,11 @@ impl eframe::App for FractalApp {
         if self.show_design_only {
             self.paint_design(&painter, &global_design_vectors);
         } else {
-            let (paint_vectors, animation_progress) = if self.animation_state.is_stopped() {
+            let (paint_vectors, animation_progress) = if fractal.animation.player_state.is_stopped()
+            {
                 (global_design_vectors, None)
             } else {
-                if self.animation_state.is_playing() {
+                if fractal.animation.player_state.is_playing() {
                     painter.ctx().request_repaint();
                 }
                 self.animation_paint_vectors_and_progress(global_design_vectors)
