@@ -48,6 +48,38 @@ impl PlayerState {
         }
     }
 
+    //       LEFT OFF HERE:
+    //       "current ln_scale" is a "future" value. ;)
+    //       this is calculated from  start_time and previous "ln_scale" (which is stored now as previously_elapsed_time)
+    // SIMPLE: MAKE THIS WORK FOR THE CURRENT SITUATION ON CLOSING FIRST!!!!
+
+    // TEST TO SEE IF IT WORKS: RUN FOR A WHILE, THEN CLOSE, THEN REOPEN, THEN RUN FOR A WHILE THEN IT SHOULD RUN FOR A WHILE BACKWARDS
+
+    pub fn set_current_ln_scale(&mut self) {
+        match *self {
+            Self::Playing {
+                previously_elapsed_time,
+                start_time,
+            } => {
+                *self = Self::Playing {
+                    previously_elapsed_time: previously_elapsed_time + start_time.elapsed(),
+                    start_time: Instant::now(),
+                }
+            }
+            Self::PlayingReverse {
+                previously_elapsed_time,
+                start_time,
+            } => {
+                *self = Self::PlayingReverse {
+                    previously_elapsed_time: previously_elapsed_time
+                        .saturating_sub(start_time.elapsed()),
+                    start_time: Instant::now(),
+                }
+            }
+            _ => {}
+        }
+    }
+
     /// Call once per frame, before reading the time. Switches to Stopped
     /// when reverse playback reaches the beginning.
     pub fn update(&mut self) {

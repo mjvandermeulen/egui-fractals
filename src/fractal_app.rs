@@ -415,6 +415,10 @@ impl FractalApp {
 impl eframe::App for FractalApp {
     /// Called by the framework to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        self.fractals[self.fractal_index]
+            .animation
+            .player_state
+            .set_current_ln_scale();
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
 
