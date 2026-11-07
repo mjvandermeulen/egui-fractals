@@ -1,3 +1,4 @@
+use std::time::Instant;
 #[expect(unused_imports)]
 use std::{f32::consts::LN_2, time::Duration};
 
@@ -17,6 +18,39 @@ pub struct Animation {
     pub player_state: PlayerState,
 }
 
+impl Animation {
+    pub fn current_ln_scale(&self) -> f32 {
+        match self.player_state {
+            PlayerState::Playing {
+                ln_scale_at_time_stamp: ln_scale,
+                time_stamp,
+            } => ln_scale + time_stamp.elapsed().as_secs_f32() * self.ln_scale_per_second,
+            PlayerState::PlayingReverse {
+                ln_scale_at_time_stamp: ln_scale,
+                time_stamp,
+            } => {
+                // saturating_sub clamps at ZERO instead of panicking on underflow
+                ln_scale - time_stamp.elapsed().as_secs_f32() * self.ln_scale_per_second
+            }
+            PlayerState::Paused { ln_scale } => ln_scale,
+            PlayerState::Stopped => 0.0,
+        }
+    }
+
+    pub fn set_current_ln_scale(&mut self) {
+        match self.player_state {
+            PlayerState::Playing { .. } | PlayerState::PlayingReverse { .. } => {
+                self.player_state = PlayerState::Playing {
+                    ln_scale_at_time_stamp: self.current_ln_scale(),
+                    time_stamp: Instant::now(),
+                }
+            }
+            // NOTE: Paused and Stopped states do not need to update the ln_scale, as they are not changing over time.
+            _ => {}
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 // All in units of 1 cycle
 pub struct AnimationProgress {
@@ -27,14 +61,8 @@ pub struct AnimationProgress {
 }
 
 impl AnimationProgress {
-    pub fn new_from_elapsed_time(
-        elapsed_time: Duration,
-        cycle_scale: f32,
-        animation: &Animation,
-    ) -> Self {
-        let seconds_per_cycle = cycle_scale.ln() / animation.ln_scale_per_second;
-
-        let elapsed_cycles = elapsed_time.as_secs_f32() / seconds_per_cycle;
+    pub fn new_from_ln_scale(ln_scale: f32, cycle_scale: f32, animation: &Animation) -> Self {
+        let elapsed_cycles = ln_scale / cycle_scale.ln(); // convert ln_scale to elapsed_cycles
         let phase = elapsed_cycles.fract();
         let loop_cycle = animation.animation_loop_cycle as f32;
         Self {

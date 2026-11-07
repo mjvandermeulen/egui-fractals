@@ -1,94 +1,42 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use super::animation::animation_structs_and_enums::Animation;
 use egui::{Pos2, Vec2, emath::RectTransform};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Eq, Clone, serde::Deserialize, serde::Serialize, Default)]
+#[derive(Debug, PartialEq, Clone, serde::Deserialize, serde::Serialize, Default)]
 pub enum PlayerState {
     Playing {
-        previously_elapsed_time: Duration,
+        ln_scale_at_time_stamp: f32,
         #[serde(skip, default = "Instant::now")]
-        start_time: Instant,
+        time_stamp: Instant,
     },
     PlayingReverse {
-        previously_elapsed_time: Duration,
+        ln_scale_at_time_stamp: f32,
         #[serde(skip, default = "Instant::now")]
-        start_time: Instant,
+        time_stamp: Instant,
     },
     Paused {
-        elapsed: Duration,
+        ln_scale: f32,
     },
     #[default] // NOTE: This may not be needed, and may conflict with the Default impl for Fractal.
     Stopped,
 }
 
-// NOTE: Not needed i think: the default is set in the Fractal Default impl.
-
 impl PlayerState {
-    pub fn elapsed(&self) -> Duration {
-        match *self {
-            Self::Playing {
-                previously_elapsed_time,
-                start_time,
-            } => previously_elapsed_time + start_time.elapsed(),
-            Self::PlayingReverse {
-                previously_elapsed_time,
-                start_time,
-            } => {
-                // saturating_sub clamps at ZERO instead of panicking on underflow
-                previously_elapsed_time.saturating_sub(start_time.elapsed())
-            }
-            Self::Paused { elapsed } => elapsed,
-            Self::Stopped => Duration::ZERO,
-        }
-    }
-
-    //       LEFT OFF HERE:
-    //       "current ln_scale" is a "future" value. ;)
-    //       this is calculated from  start_time and previous "ln_scale" (which is stored now as previously_elapsed_time)
-    // SIMPLE: MAKE THIS WORK FOR THE CURRENT SITUATION ON CLOSING FIRST!!!!
-
-    // TEST TO SEE IF IT WORKS: RUN FOR A WHILE, THEN CLOSE, THEN REOPEN, THEN RUN FOR A WHILE THEN IT SHOULD RUN FOR A WHILE BACKWARDS
-
-    pub fn set_current_ln_scale(&mut self) {
-        match *self {
-            Self::Playing {
-                previously_elapsed_time,
-                start_time,
-            } => {
-                *self = Self::Playing {
-                    previously_elapsed_time: previously_elapsed_time + start_time.elapsed(),
-                    start_time: Instant::now(),
-                }
-            }
-            Self::PlayingReverse {
-                previously_elapsed_time,
-                start_time,
-            } => {
-                *self = Self::PlayingReverse {
-                    previously_elapsed_time: previously_elapsed_time
-                        .saturating_sub(start_time.elapsed()),
-                    start_time: Instant::now(),
-                }
-            }
-            _ => {}
-        }
-    }
-
-    /// Call once per frame, before reading the time. Switches to Stopped
-    /// when reverse playback reaches the beginning.
-    pub fn update(&mut self) {
-        if let Self::PlayingReverse {
-            previously_elapsed_time,
-            start_time,
-        } = *self
-            && start_time.elapsed() >= previously_elapsed_time
-        {
-            *self = Self::Stopped;
-        }
-    }
-
+    // Call once per frame, before reading the time. Switches to Stopped
+    // when reverse playback reaches the beginning.
+    // TODO!!!!!!!!!! move? where?
+    // pub fn update(&mut self) {
+    //     if let Self::PlayingReverse {
+    //         previously_elapsed_time,
+    //         start_time,
+    //     } = *self
+    //         && start_time.elapsed() >= previously_elapsed_time
+    //     {
+    //         *self = Self::Stopped;
+    //     }
+    // }
     pub fn is_playing(&self) -> bool {
         matches!(self, Self::Playing { .. } | Self::PlayingReverse { .. })
     }

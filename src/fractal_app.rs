@@ -186,7 +186,7 @@ impl FractalApp {
         ui.separator();
         let fractal = &mut self.fractals[self.fractal_index];
 
-        fractal.animation.player_state.update();
+        // fractal.animation.player_state.update(); see notes in player_state update() commented. TODO!!!!!!!
 
         ui.horizontal(|ui| {
             // TODO!!!!! this indentation may not be needed.
@@ -207,8 +207,8 @@ impl FractalApp {
                 .clicked()
             {
                 fractal.animation.player_state = PlayerState::PlayingReverse {
-                    previously_elapsed_time: fractal.animation.player_state.elapsed(),
-                    start_time: Instant::now(),
+                    ln_scale_at_time_stamp: fractal.animation.current_ln_scale(),
+                    time_stamp: Instant::now(),
                 };
             }
 
@@ -222,7 +222,7 @@ impl FractalApp {
                 .clicked()
             {
                 fractal.animation.player_state = PlayerState::Paused {
-                    elapsed: fractal.animation.player_state.elapsed(),
+                    ln_scale: fractal.animation.current_ln_scale(),
                 };
             }
 
@@ -233,8 +233,8 @@ impl FractalApp {
                 .clicked()
             {
                 fractal.animation.player_state = PlayerState::Playing {
-                    previously_elapsed_time: fractal.animation.player_state.elapsed(), // ZERO from Stopped
-                    start_time: Instant::now(),
+                    ln_scale_at_time_stamp: fractal.animation.current_ln_scale(),
+                    time_stamp: Instant::now(),
                 };
             }
 
@@ -323,8 +323,8 @@ impl FractalApp {
         let cycle_angle = gdvs[0].vec.angle() - gdvs[1].vec.angle();
         let cycle_scale = gdvs[0].vec.length() / gdvs[1].vec.length();
 
-        let progress = AnimationProgress::new_from_elapsed_time(
-            animation.player_state.elapsed(),
+        let progress = AnimationProgress::new_from_ln_scale(
+            animation.current_ln_scale(),
             cycle_scale,
             animation,
         );
@@ -417,7 +417,6 @@ impl eframe::App for FractalApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         self.fractals[self.fractal_index]
             .animation
-            .player_state
             .set_current_ln_scale();
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
