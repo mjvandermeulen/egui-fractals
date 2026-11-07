@@ -4,46 +4,14 @@ use super::animation::animation_structs_and_enums::Animation;
 use egui::{Pos2, Vec2, emath::RectTransform};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Clone, serde::Deserialize, serde::Serialize, Default)]
+// TODO!!!!! move to animation_structs_and_enums.rs, CLAUDE???: and remove the pub from AnimationState, and make it a field of Animation
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PlayerState {
-    Playing {
-        ln_scale_at_time_stamp: f32,
-        #[serde(skip, default = "Instant::now")]
-        time_stamp: Instant,
-    },
-    PlayingReverse {
-        ln_scale_at_time_stamp: f32,
-        #[serde(skip, default = "Instant::now")]
-        time_stamp: Instant,
-    },
-    Paused {
-        ln_scale: f32,
-    },
-    #[default] // NOTE: This may not be needed, and may conflict with the Default impl for Fractal.
     Stopped,
-}
-
-impl PlayerState {
-    // Call once per frame, before reading the time. Switches to Stopped
-    // when reverse playback reaches the beginning.
-    // TODO!!!!!!!!!! move? where?
-    // pub fn update(&mut self) {
-    //     if let Self::PlayingReverse {
-    //         previously_elapsed_time,
-    //         start_time,
-    //     } = *self
-    //         && start_time.elapsed() >= previously_elapsed_time
-    //     {
-    //         *self = Self::Stopped;
-    //     }
-    // }
-    pub fn is_playing(&self) -> bool {
-        matches!(self, Self::Playing { .. } | Self::PlayingReverse { .. })
-    }
-    pub fn is_stopped(&self) -> bool {
-        *self == Self::Stopped //*self == ... is the usual form for &self.
-        // matches!(self, Self::Stopped) // alternative Claude way
-    }
+    Paused,
+    Playing,
+    PlayingReverse,         // stops when ln_scale reaches 0
+    PlayingReverseInfinite, // keeps zooming out past 0
 }
 
 // Fractal struct

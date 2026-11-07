@@ -184,82 +184,81 @@ impl FractalApp {
 
         // ---------------------------------------------------------------------
         ui.separator();
-        let fractal = &mut self.fractals[self.fractal_index];
 
-        // fractal.animation.player_state.update(); see notes in player_state update() commented. TODO!!!!!!!
+        let state = self.fractals[self.fractal_index].animation.player_state;
+        let at_start = self.fractals[self.fractal_index]
+            .animation
+            .current_ln_scale()
+            <= 0.0;
 
         ui.horizontal(|ui| {
-            // TODO!!!!! this indentation may not be needed.
-            let (is_forward, is_reverse, is_stopped) = {
-                let state = &mut fractal.animation.player_state;
-                let is_forward = matches!(state, PlayerState::Playing { .. });
-                let is_reverse = matches!(state, PlayerState::PlayingReverse { .. });
-                let is_stopped = matches!(state, PlayerState::Stopped);
-                (is_forward, is_reverse, is_stopped)
-            };
-            // Reverse: disabled while already reversing, or at the beginning (nothing to rewind)
             if ui
                 .add_enabled(
-                    !is_reverse && !is_stopped,
-                    Button::new(RichText::new("◀").size(18.0)),
+                    state != PlayerState::PlayingReverseInfinite,
+                    Button::new(RichText::new("◀∞").size(18.0)),
                 )
-                .on_hover_text("Play in reverse")
+                .on_hover_text("Zoom out forever (reverse past the start)")
                 .clicked()
             {
-                fractal.animation.player_state = PlayerState::PlayingReverse {
-                    ln_scale_at_time_stamp: fractal.animation.current_ln_scale(),
-                    time_stamp: Instant::now(),
-                };
+                self.fractals[self.fractal_index]
+                    .animation
+                    .play_reverse_infinite();
             }
-
-            // Pause
             if ui
                 .add_enabled(
-                    fractal.animation.player_state.is_playing(),
+                    state != PlayerState::PlayingReverse && !at_start,
+                    Button::new(RichText::new("◀").size(18.0)),
+                )
+                .on_hover_text("Play in reverse (stops at the start)")
+                .clicked()
+            {
+                self.fractals[self.fractal_index].animation.play_reverse();
+            }
+            if ui
+                .add_enabled(
+                    self.fractals[self.fractal_index].animation.is_playing(),
                     Button::new(RichText::new("⏸").size(18.0)),
                 )
                 .on_hover_text("Pause")
                 .clicked()
             {
-                fractal.animation.player_state = PlayerState::Paused {
-                    ln_scale: fractal.animation.current_ln_scale(),
-                };
+                self.fractals[self.fractal_index].animation.pause();
             }
-
-            // Play (forward)
             if ui
-                .add_enabled(!is_forward, Button::new(RichText::new("▶").size(18.0)))
+                .add_enabled(
+                    state != PlayerState::Playing,
+                    Button::new(RichText::new("▶").size(18.0)),
+                )
                 .on_hover_text("Play")
                 .clicked()
             {
-                fractal.animation.player_state = PlayerState::Playing {
-                    ln_scale_at_time_stamp: fractal.animation.current_ln_scale(),
-                    time_stamp: Instant::now(),
-                };
+                self.fractals[self.fractal_index].animation.play();
             }
-
-            // Stop
             if ui
-                .add_enabled(!is_stopped, Button::new(RichText::new("⏹").size(18.0)))
+                .add_enabled(
+                    state != PlayerState::Stopped
+                        || self.fractals[self.fractal_index]
+                            .animation
+                            .current_ln_scale()
+                            != 0.0,
+                    Button::new(RichText::new("⏹").size(18.0)),
+                )
                 .on_hover_text("Stop (reset the animation)")
                 .clicked()
             {
-                fractal.animation.player_state = PlayerState::Stopped;
+                self.fractals[self.fractal_index].animation.stop();
             }
         });
-
         let fractal = &mut self.fractals[self.fractal_index];
 
         // NOTE: egui has a built in way to do this, but it's not as straightforward: `from_get_set`
-        let mut zpm = fractal.animation.ln_scale_per_second * 60.0 / LN_2;
+        let mut zpm = fractal.animation.ln_scale_per_second() * 60.0 / LN_2;
         if ui
             .add(egui::Slider::new(&mut zpm, 5.0..=180.0).text("Animation Zooms per minutes"))
             .on_hover_text("After one zoom the fractal doubles in size.")
             .changed()
         {
-            fractal
-                .animation
-                .update_ln_scale_per_second(zpm * LN_2 / 60.0);
+            fractal.animation.set_ln_scale_per_second(zpm * LN_2 / 60.0);
         }
 
         // TODO!!!! see project.md: change this to "repeat when showing" (Tool tip: percentage of length showing when repetition can start):
@@ -327,7 +326,7 @@ impl FractalApp {
 
         let progress = AnimationProgress::new_from_ln_scale(
             animation.current_ln_scale(),
-            cycle_scale,
+            cycle_scale as f64, // ugly
             animation,
         );
 
@@ -417,9 +416,10 @@ impl FractalApp {
 impl eframe::App for FractalApp {
     /// Called by the framework to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        self.fractals[self.fractal_index]
-            .animation
-            .update_current_ln_scale();
+        // no longer needed with Claude rfactor to use egui.stable_dt
+        // self.fractals[self.fractal_index]
+        //     .animation
+        //     .update_current_ln_scale();
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
 
@@ -431,6 +431,9 @@ impl eframe::App for FractalApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let fractal = &mut self.fractals[self.fractal_index];
+
+        let dt = ui.ctx().input(|i| i.stable_dt);
+        fractal.animation.update(dt);
 
         fractal.depth = fractal.depth.at_most(max_depth_with_branches(
             // TODO move this to end of design. Add it to paint_fractal as a dbg assert
@@ -460,11 +463,10 @@ impl eframe::App for FractalApp {
         if self.show_design_only {
             self.paint_design(&painter, &global_design_vectors);
         } else {
-            let (paint_vectors, animation_progress) = if fractal.animation.player_state.is_stopped()
-            {
+            let (paint_vectors, animation_progress) = if fractal.animation.is_stopped() {
                 (global_design_vectors, None)
             } else {
-                if fractal.animation.player_state.is_playing() {
+                if fractal.animation.is_playing() {
                     painter.ctx().request_repaint();
                 }
                 self.animation_paint_vectors_and_progress(global_design_vectors)
