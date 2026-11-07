@@ -257,7 +257,9 @@ impl FractalApp {
             .on_hover_text("After one zoom the fractal doubles in size.")
             .changed()
         {
-            fractal.animation.ln_scale_per_second = zpm * LN_2 / 60.0;
+            fractal
+                .animation
+                .update_ln_scale_per_second(zpm * LN_2 / 60.0);
         }
 
         // TODO!!!! see project.md: change this to "repeat when showing" (Tool tip: percentage of length showing when repetition can start):
@@ -417,7 +419,7 @@ impl eframe::App for FractalApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         self.fractals[self.fractal_index]
             .animation
-            .set_current_ln_scale();
+            .update_current_ln_scale();
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
 

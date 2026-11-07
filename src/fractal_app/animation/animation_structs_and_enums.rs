@@ -7,18 +7,18 @@ use crate::structs_and_enums::PlayerState;
 #[derive(Debug, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Animation {
     // TODO: usize: zoom focus branch.
-    pub ln_scale_per_second: f32, // NOTE: it could be nice if this is not pub, and only has a setter.
+    pub ln_scale_per_second: f32,
     pub animation_loop_cycle: usize, // the cycle that can be looped to give illusion of infinite animation.
     pub zoom_child_to_parent: bool, // if true, the animation will scale and rotate the child branch to match the parent branch. If false, it will zoom in without rotation.
-
-    // TODO!!!!!!!!!: MOVE AnimationState in here!
-    // - so it can be serialized/deserialized with the fractal settings.
-    // - so it can be used in the animation system without needing to pass around a separate AnimationState.
-    // - so when changing the ln_scale_per_second, the animation state can be updated to the new scale/sec.
     pub player_state: PlayerState,
 }
 
 impl Animation {
+    pub fn update_ln_scale_per_second(&mut self, ln_scale_per_second: f32) {
+        self.update_current_ln_scale();
+        self.ln_scale_per_second = ln_scale_per_second;
+    }
+
     pub fn current_ln_scale(&self) -> f32 {
         match self.player_state {
             PlayerState::Playing {
@@ -37,10 +37,16 @@ impl Animation {
         }
     }
 
-    pub fn set_current_ln_scale(&mut self) {
+    pub fn update_current_ln_scale(&mut self) {
         match self.player_state {
-            PlayerState::Playing { .. } | PlayerState::PlayingReverse { .. } => {
+            PlayerState::Playing { .. } => {
                 self.player_state = PlayerState::Playing {
+                    ln_scale_at_time_stamp: self.current_ln_scale(),
+                    time_stamp: Instant::now(),
+                }
+            }
+            PlayerState::PlayingReverse { .. } => {
+                self.player_state = PlayerState::PlayingReverse {
                     ln_scale_at_time_stamp: self.current_ln_scale(),
                     time_stamp: Instant::now(),
                 }
