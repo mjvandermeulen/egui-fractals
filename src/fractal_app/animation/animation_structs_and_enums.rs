@@ -124,7 +124,7 @@ pub struct AnimationProgress {
 impl AnimationProgress {
     pub fn new_from_ln_scale(ln_scale: f64, cycle_scale: f64, animation: &Animation) -> Self {
         let elapsed_cycles = ln_scale / cycle_scale.ln(); // convert ln_scale to elapsed_cycles
-        let phase: f32 = elapsed_cycles.fract() as f32;
+        let phase: f32 = elapsed_cycles.rem_euclid(1.0) as f32; // NOTE: -4.3.fract = -0.3 which is wrong.
         let loop_cycle = animation.animation_loop_cycle as f64;
 
         if elapsed_cycles < loop_cycle && !animation.reversed_inifinite {
@@ -143,7 +143,7 @@ impl AnimationProgress {
     }
 
     pub fn phase(&self) -> f32 {
-        self.elapsed_cycles.fract() as f32
+        self.elapsed_cycles.rem_euclid(1.0) as f32
     }
 
     pub fn looping_started(&self) -> bool {
