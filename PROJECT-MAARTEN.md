@@ -1,30 +1,29 @@
 # Animation no rotation:
 
-## Thoughts
+## infinite reverse scaling (zoom) animation:
 
-When not rotating the fractal, the total progress is important, to determine the "fake (zoom) rotation". Scaling will stop and be put on repeat, but the zoom rotation will always continue.
+There is a three way now:
 
-## BIG IDEA
+```
+                                              ┌────────────────┐
+                                              │   start zoom   │
+                                              │   scale 0.0    │
+                                              └────────────────┘
+                                                      ▲  play reverse
+                                                      │  initial_scale_up
+                                                      ▼  play
+┌────────────────┐                            ┌────────────────┐                            ┌────────────────┐
+│    zoom out    │◄─ play infinite reverse ───│  repeat cycle  │◄─ play (inf or normal) ────│     zoom in    │
+│ negative scale │     infinite_scale_down    │     scale      │     infinite_scale_up      │ positive scale │
+└────────────────┘── play ───────────────────►└────────────────┘── play ───────────────────►└────────────────┘
+```
 
-_When reaching the `fractal.animation_repetition_cycle` start rotating backwards and **reset the scaling every cycle**_
+Thoughts:
+enum with three stages:
 
-## Terminology
-
-`f32`
-
-- progress: The full progress: Time elapsed / fractal.animation.cycle_length
-
-Whole cycles:
-
-- `progress.floor()`: the number of cycles since the start.
-- `fractal.animation_repetition_cycle`: The cycle that will be repeated to create an illusion of infinite zooming.
-- `cycles_since_repetition` = `progress.floor()` - `fractal.animation_repetition_cycle`.
-  **This determines how much to rotate to give illusion of zooming**
-
-to create a blueprint we need:
-
-- `progress`
-- `fractal.animation_repetition_cycle`
+- initial_scale_up
+- infinite_scale_up
+- infinite_scale_down
 
 # NOTE:
 

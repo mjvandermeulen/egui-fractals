@@ -7,7 +7,7 @@ pub mod paint_fractal_helpers; // pub for benching check if needed
 pub mod structs_and_enums; // pub for benching TODO check if needed
 mod tools;
 
-use std::{f32::consts::LN_2, time::Instant};
+use std::f32::consts::LN_2;
 
 use egui::{
     Button, Color32, NumExt as _, Painter, Pos2, Rect, RichText, Stroke, Ui,
@@ -182,7 +182,7 @@ impl FractalApp {
 
         egui::reset_button(ui, self, "Full Reset"); // NOTE: will not look disabled, because of self.line_count
 
-        // ---------------------------------------------------------------------
+        // ---------------------- ANIMATION-----------------------------------------------
         ui.separator();
 
         let state = self.fractals[self.fractal_index].animation.player_state;

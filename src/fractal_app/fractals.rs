@@ -40,6 +40,7 @@ pub fn fractals() -> Vec<Fractal> {
                 animation_loop_cycle: 3,
                 zoom_child_to_parent: false,
                 player_state: PlayerState::Stopped,
+                reversed_inifinite: false,
             },
         },
         Fractal {
@@ -73,6 +74,7 @@ pub fn fractals() -> Vec<Fractal> {
                 animation_loop_cycle: 3,
                 zoom_child_to_parent: false,
                 player_state: PlayerState::Stopped,
+                reversed_inifinite: false,
             },
         },
     ];

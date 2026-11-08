@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use super::animation::animation_structs_and_enums::Animation;
 use egui::{Pos2, Vec2, emath::RectTransform};
 use serde::{Deserialize, Serialize};

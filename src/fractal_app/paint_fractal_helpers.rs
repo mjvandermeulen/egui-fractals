@@ -14,7 +14,7 @@ const RAINBOW_COLORS: [Color32; 6] = [
 ];
 // const OLD_RAINBOW_COLORS: [Color32; 6] = [Color32::RED,Color32::ORANGE,Color32::YELLOW,Color32::GREEN,Color32::BLUE,Color32::MAGENTA];
 #[must_use]
-pub fn line_color(depth: usize, color_offset: usize, fractal: &Fractal) -> Color32 {
+pub fn line_color(depth: usize, color_offset: i128, fractal: &Fractal) -> Color32 {
     if !fractal.rainbow {
         return Color32::BLACK;
     }
@@ -23,7 +23,7 @@ pub fn line_color(depth: usize, color_offset: usize, fractal: &Fractal) -> Color
     } else {
         color_offset
     };
-    RAINBOW_COLORS[(depth + offset) % RAINBOW_COLORS.len()]
+    RAINBOW_COLORS[(depth as i128 + offset).rem_euclid(RAINBOW_COLORS.len() as i128) as usize]
 }
 
 pub fn paint_line_generator(
@@ -109,7 +109,7 @@ pub fn paint_fractal_lines(
             && animation_progress.looping_started()
             && !fractal.replace_line
         {
-            let p = animation_progress.phase;
+            let p = animation_progress.phase();
             color = color.gamma_multiply(p * p); // TODO play with this. Maybe just p * p or just p or p.powf(1.5)?
         }
         let mut paint_line = paint_line_generator(&mut shapes, rect, fractal, color, d, max_depth);
