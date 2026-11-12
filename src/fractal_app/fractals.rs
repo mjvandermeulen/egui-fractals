@@ -2,7 +2,7 @@ use std::f32::consts::LN_2;
 
 use egui::pos2;
 
-use crate::structs_and_enums::PlayerState;
+use crate::fractal_app::animation::player_state::PlayerState;
 
 use super::{
     animation::animation_structs_and_enums::Animation,
@@ -40,7 +40,7 @@ pub fn fractals() -> Vec<Fractal> {
                 animation_loop_cycle: 3,
                 zoom_child_to_parent: false,
                 player_state: PlayerState::Stopped,
-                reversed_inifinite: false,
+                loop_scale_reached: false,
             },
         },
         Fractal {
@@ -74,7 +74,7 @@ pub fn fractals() -> Vec<Fractal> {
                 animation_loop_cycle: 3,
                 zoom_child_to_parent: false,
                 player_state: PlayerState::Stopped,
-                reversed_inifinite: false,
+                loop_scale_reached: false,
             },
         },
     ];

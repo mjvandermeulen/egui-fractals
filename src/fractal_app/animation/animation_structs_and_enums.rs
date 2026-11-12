@@ -3,8 +3,24 @@ use std::{f32::consts::LN_2, time::Duration};
 
 use egui::NumExt as _;
 
-use crate::structs_and_enums::PlayerState;
+use crate::fractal_app::animation::player_state::{PlayerState, ReverseMode};
 
+//
+// the boundary between left and right:        scale = loop_cycle_scale
+//                                                   |
+//             ┌────────────────────────────────────┐┌────────────────────────────────────┐
+//             │ 0.0 <= scale < loop_cycle_scale    ││ scale >= loop_cycle_scale          │
+//             │◄─ play reverse ────────────────────││◄─ play reverse ────────────────────│
+//             │── play ───────────────────────────►││── play ───────────────────────────►│
+//             └────────────────────────────────────┘│                                    │
+//                                                   │------------------------------------│
+// ┌────────────────────────────────────────────────┐│                                    │
+// │ scale < loop_cycle_scale                       ││ scale >= loop_cycle_scale          │
+// │◄─ play infinite reverse ───────────────────────││◄─ play infinite reverse ───────────│
+// │── play ───────────────────────────────────────►││── play ───────────────────────────►│
+// └────────────────────────────────────────────────┘└────────────────────────────────────┘
+//
+//
 #[derive(PartialEq, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Animation {
     // IDEA: usize: zoom focus branch.
@@ -15,21 +31,20 @@ pub struct Animation {
     pub animation_loop_cycle: usize, // the cycle that can be looped to give illusion of infinite animation.
     pub zoom_child_to_parent: bool, // true: scale and rotate child branch to match parent. false: zoom in without rotation.
     pub player_state: PlayerState,
-    pub reversed_inifinite: bool,
+    pub loop_scale_reached: bool, // ugly: this is a calculated value.
 }
 
 impl Animation {
     // TODO!!!: not used
-    pub fn new(ln_scale_per_second: f32) -> Self {
-        Self {
-            ln_scale: 0.0,
-            ln_scale_per_second,
-            animation_loop_cycle: 0,
-            zoom_child_to_parent: true,
-            player_state: PlayerState::Stopped,
-            reversed_inifinite: false, // was the most recent reverse an infinite reverse?
-        }
-    }
+    // pub fn new(ln_scale_per_second: f32) -> Self {
+    //     Self {
+    //         ln_scale: 0.0,
+    //         ln_scale_per_second,
+    //         animation_loop_cycle: 0,
+    //         zoom_child_to_parent: true,
+    //         player_state: PlayerState::Stopped,
+    //     }
+    // }
 
     /// Call once per frame with `ctx.input(|i| i.stable_dt)`.
     pub fn update(&mut self, dt: f32) {
@@ -38,9 +53,8 @@ impl Animation {
         let step = f64::from(self.ln_scale_per_second) * dt;
 
         match self.player_state {
-            PlayerState::Playing => self.ln_scale += step,
+            PlayerState::Playing(_) => self.ln_scale += step,
             PlayerState::PlayingReverse => {
-                self.reversed_inifinite = false; // move all these to pub fn play_reverse() etc. TODO !!!!!
                 self.ln_scale -= step;
                 if self.ln_scale <= 0.0 {
                     self.ln_scale = 0.0;
@@ -48,20 +62,16 @@ impl Animation {
                 }
             }
             PlayerState::PlayingReverseInfinite => {
-                self.reversed_inifinite = true;
                 self.ln_scale -= step;
             }
-            PlayerState::Paused => {}
-            PlayerState::Stopped => {
-                self.reversed_inifinite = false;
-            }
+            PlayerState::Paused(_) | PlayerState::Stopped => {}
         }
     }
 
     pub fn is_playing(&self) -> bool {
         matches!(
             self.player_state,
-            PlayerState::Playing
+            PlayerState::Playing(_)
                 | PlayerState::PlayingReverse
                 | PlayerState::PlayingReverseInfinite
         )
@@ -88,7 +98,7 @@ impl Animation {
     }
 
     pub fn play(&mut self) {
-        self.player_state = PlayerState::Playing;
+        self.player_state = PlayerState::Playing(self.player_state.reversing_mode());
     }
 
     pub fn play_reverse(&mut self) {
@@ -104,7 +114,7 @@ impl Animation {
 
     pub fn pause(&mut self) {
         if self.is_playing() {
-            self.player_state = PlayerState::Paused;
+            self.player_state = PlayerState::Paused(self.player_state.reversing_mode());
         }
     }
 
@@ -115,6 +125,9 @@ impl Animation {
 }
 #[derive(Debug, PartialEq, Clone, Copy)]
 // All in units of 1 cycle
+// TODO!!!!! this needs to be run every frame, in case the user changes the cycle_scale
+//   and the buttons need to be updated.
+//   make progress part of the Animation? combine with Animation::update...
 pub struct AnimationProgress {
     pub elapsed_cycles: f64, // elapsed cycles, including the fractional part of the current cycle. Claude recommends f64 for this, because it can be large and we want to avoid rounding errors. The fractional part is the phase of the current cycle.
     pub loop_repetitions: i128, // how many times the loop_cycle has been completed. // could be negative, scaling down.
@@ -122,12 +135,16 @@ pub struct AnimationProgress {
 }
 
 impl AnimationProgress {
-    pub fn new_from_ln_scale(ln_scale: f64, cycle_scale: f64, animation: &Animation) -> Self {
-        let elapsed_cycles = ln_scale / cycle_scale.ln(); // convert ln_scale to elapsed_cycles
+    pub fn new_from_cycle_scale(cycle_scale: f64, animation: &mut Animation) -> Self {
+        let elapsed_cycles = animation.ln_scale / cycle_scale.ln(); // convert ln_scale to elapsed_cycles
         let phase: f32 = elapsed_cycles.rem_euclid(1.0) as f32; // NOTE: -4.3.fract = -0.3 which is wrong.
         let loop_cycle = animation.animation_loop_cycle as f64;
 
-        if elapsed_cycles < loop_cycle && !animation.reversed_inifinite {
+        animation.loop_scale_reached = elapsed_cycles < loop_cycle;
+
+        if animation.loop_scale_reached
+            && animation.player_state.reversing_mode() == ReverseMode::Reverse
+        {
             Self {
                 elapsed_cycles,
                 loop_repetitions: 0,
@@ -148,8 +165,5 @@ impl AnimationProgress {
 
     pub fn looping_started(&self) -> bool {
         self.elapsed_cycles > self.elapsed_wrapped as f64
-    }
-    pub fn loop_cycle_reached(&self) -> bool {
-        self.elapsed_cycles >= self.elapsed_wrapped as f64
     }
 }

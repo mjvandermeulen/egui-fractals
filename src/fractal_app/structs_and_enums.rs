@@ -2,16 +2,6 @@ use super::animation::animation_structs_and_enums::Animation;
 use egui::{Pos2, Vec2, emath::RectTransform};
 use serde::{Deserialize, Serialize};
 
-// TODO!!!!! move to animation_structs_and_enums.rs, CLAUDE???: and remove the pub from AnimationState, and make it a field of Animation
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PlayerState {
-    Stopped,
-    Paused,
-    Playing,
-    PlayingReverse,         // stops when ln_scale reaches 0
-    PlayingReverseInfinite, // keeps zooming out past 0
-}
-
 // Fractal struct
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize, Serialize)]

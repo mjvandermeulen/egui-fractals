@@ -8,5 +8,5 @@ pub use fractal_app::FractalApp;
 
 // For Benching.
 // So only these are pub:
-pub use fractal_app::paint_fractal_helpers;
-pub use fractal_app::structs_and_enums;
+// pub use fractal_app::paint_fractal_helpers;
+// pub use fractal_app::structs_and_enums;

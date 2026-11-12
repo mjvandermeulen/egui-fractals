@@ -32,9 +32,9 @@ web-sys = "0.3.70"              # to access the DOM (to hide the loading text)
 [dev-dependencies]
 criterion = "0.5"
 
-[[bench]]
-name = "paint_benches"
-harness = false
+# [[bench]]
+# name = "paint_benches"
+# harness = false
 
 [profile.release]
 opt-level = 2 # fast and small wasm

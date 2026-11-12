@@ -1,89 +1,90 @@
-#![allow(warnings)] // TODO
-use std::{error::Error, fs::File, io::BufReader};
+// uncomment bench settings in Cargo.toml
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use egui::Rect;
+// use std::{error::Error, fs::File, io::BufReader};
 
-use egui_fractals::{
-    paint_fractal_helpers::paint_fractal_lines,
-    structs_and_enums::{Fractal, LineTransform, VectoredLine},
-};
-use serde::{Deserialize, Serialize};
+// use criterion::{Criterion, black_box, criterion_group, criterion_main};
+// use egui::Rect;
 
-// USAGE:
-// cargo bench
-// cargo bench "seq.*tree" # only run benches that match regex "seq.*tree"
-// TODO: better grouping. Ask Claude.
+// use egui_fractals::{
+//     paint_fractal_helpers::paint_fractal_lines,
+//     structs_and_enums::{Fractal, LineTransform, VectoredLine},
+// };
+// use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
-struct BenchParallelPaintFractalLinesOwned {
-    rect: Rect,
-    initiator: VectoredLine,
-    fractal: Fractal,
-    transformations: Vec<LineTransform>,
-    max_depth: usize,
-}
+// // USAGE:
+// // cargo bench
+// // cargo bench "seq.*tree" # only run benches that match regex "seq.*tree"
+// // TODO: better grouping. Ask Claude.
 
-fn read_bench_prep_parallel_struct_from_json(
-    path: &'static str,
-) -> Result<BenchParallelPaintFractalLinesOwned, Box<dyn Error>> {
-    let reader = BufReader::new(File::open(path)?);
-    let loaded: BenchParallelPaintFractalLinesOwned = serde_json::from_reader(reader)?;
-    Ok(loaded)
-}
+// #[derive(Debug, Serialize, Deserialize)]
+// struct BenchParallelPaintFractalLinesOwned {
+//     rect: Rect,
+//     initiator: VectoredLine,
+//     fractal: Fractal,
+//     transformations: Vec<LineTransform>,
+//     max_depth: usize,
+// }
 
-fn bench_paint(c: &mut Criterion) {
-    let mut loaded_binary_fractal =
-        read_bench_prep_parallel_struct_from_json("bench_prep_bin_tree_parallel_struct.json")
-            .expect("MAARTEN SAYS: expect bench_parallel json read and parse to succeed.");
+// fn read_bench_prep_parallel_struct_from_json(
+//     path: &'static str,
+// ) -> Result<BenchParallelPaintFractalLinesOwned, Box<dyn Error>> {
+//     let reader = BufReader::new(File::open(path)?);
+//     let loaded: BenchParallelPaintFractalLinesOwned = serde_json::from_reader(reader)?;
+//     Ok(loaded)
+// }
 
-    // #########################################################################
-    // NOTE: max_depth increased for testing
-    // #########################################################################
+// fn bench_paint(c: &mut Criterion) {
+//     let mut loaded_binary_fractal =
+//         read_bench_prep_parallel_struct_from_json("bench_prep_bin_tree_parallel_struct.json")
+//             .expect("MAARTEN SAYS: expect bench_parallel json read and parse to succeed.");
 
-    loaded_binary_fractal.max_depth += 2;
+//     // #########################################################################
+//     // NOTE: max_depth increased for testing
+//     // #########################################################################
 
-    // c.bench_function("paint_fractal_lines_bin_tree", |b| {
-    //     b.iter(|| {
-    //         paint_fractal_lines(
-    //             black_box(loaded_binary_fractal.rect),
-    //             black_box(&loaded_binary_fractal.initiator),
-    //             black_box(&loaded_binary_fractal.fractal),
-    //             black_box(&loaded_binary_fractal.transformations),
-    //             black_box(1),
-    //             black_box(loaded_binary_fractal.max_depth),
-    //             black_box(None),
-    //         )
-    //     });
-    // });
+//     loaded_binary_fractal.max_depth += 2;
 
-    let mut loaded_multi_branch_fractal =
-        read_bench_prep_parallel_struct_from_json("bench_prep_11_branch_parallel_struct.json")
-            .expect("MAARTEN SAYS: expect bench_parallel json read and parse to succeed.");
+//     // c.bench_function("paint_fractal_lines_bin_tree", |b| {
+//     //     b.iter(|| {
+//     //         paint_fractal_lines(
+//     //             black_box(loaded_binary_fractal.rect),
+//     //             black_box(&loaded_binary_fractal.initiator),
+//     //             black_box(&loaded_binary_fractal.fractal),
+//     //             black_box(&loaded_binary_fractal.transformations),
+//     //             black_box(1),
+//     //             black_box(loaded_binary_fractal.max_depth),
+//     //             black_box(None),
+//     //         )
+//     //     });
+//     // });
 
-    // #########################################################################
-    // NOTE: max_depth increased for testing
-    // #########################################################################
+//     let mut loaded_multi_branch_fractal =
+//         read_bench_prep_parallel_struct_from_json("bench_prep_11_branch_parallel_struct.json")
+//             .expect("MAARTEN SAYS: expect bench_parallel json read and parse to succeed.");
 
-    loaded_multi_branch_fractal.max_depth += 2;
+//     // #########################################################################
+//     // NOTE: max_depth increased for testing
+//     // #########################################################################
 
-    // Hackish Claude idea to limit sample of this slow function
-    // let mut slow = c.benchmark_group("parallel_slow");
-    // slow.sample_size(20);
-    // slow.bench_function("sequential_paint_fractal_b_11", |b| {
-    //     b.iter(|| {
-    //         sequential_paint_fractal_lines(
-    //             black_box(loaded_multi_branch_fractal.rect),
-    //             black_box(&loaded_multi_branch_fractal.initiator),
-    //             black_box(&loaded_multi_branch_fractal.fractal),
-    //             black_box(&loaded_multi_branch_fractal.transformations),
-    //             black_box(1),
-    //             black_box(loaded_multi_branch_fractal.max_depth),
-    //             black_box(None),
-    //         )
-    //     });
-    // });
-}
+//     loaded_multi_branch_fractal.max_depth += 2;
 
-criterion_group!(benches, bench_paint);
-criterion_main!(benches);
+//     // Hackish Claude idea to limit sample of this slow function
+//     // let mut slow = c.benchmark_group("parallel_slow");
+//     // slow.sample_size(20);
+//     // slow.bench_function("sequential_paint_fractal_b_11", |b| {
+//     //     b.iter(|| {
+//     //         sequential_paint_fractal_lines(
+//     //             black_box(loaded_multi_branch_fractal.rect),
+//     //             black_box(&loaded_multi_branch_fractal.initiator),
+//     //             black_box(&loaded_multi_branch_fractal.fractal),
+//     //             black_box(&loaded_multi_branch_fractal.transformations),
+//     //             black_box(1),
+//     //             black_box(loaded_multi_branch_fractal.max_depth),
+//     //             black_box(None),
+//     //         )
+//     //     });
+//     // });
+// }
+
+// criterion_group!(benches, bench_paint);
+// criterion_main!(benches);

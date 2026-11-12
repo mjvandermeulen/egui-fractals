@@ -1,5 +1,11 @@
 use egui::Pos2;
 
+use crate::fractal_app::structs_and_enums::VectoredLine;
+
+pub fn scale(reference: VectoredLine, target: VectoredLine) -> f32 {
+    target.vec.length() / reference.vec.length()
+}
+
 #[expect(clippy::similar_names)]
 pub fn find_animation_rotation_center(
     b: Pos2,

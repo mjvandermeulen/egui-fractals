@@ -3,11 +3,9 @@ mod bench_helpers;
 mod design_helpers;
 mod design_input;
 mod fractals;
-pub mod paint_fractal_helpers; // pub for benching check if needed
-pub mod structs_and_enums; // pub for benching TODO check if needed
+mod paint_fractal_helpers; // pub for benching check if needed
+mod structs_and_enums; // pub for benching TODO check if needed
 mod tools;
-
-use std::f32::consts::LN_2;
 
 use egui::{
     Button, Color32, NumExt as _, Painter, Pos2, Rect, RichText, Stroke, Ui,
@@ -16,13 +14,13 @@ use egui::{
     pos2,
     widgets::Slider,
 };
+use std::f32::consts::LN_2;
 
 use animation::{
-    animation_helpers::find_animation_rotation_center,
+    animation_helpers::find_animation_rotation_center, animation_helpers::scale,
+    animation_structs_and_enums::AnimationProgress, player_state::PlayerState,
     scale_and_rotate_vectored_lines_around_rotation_center,
 };
-#[expect(unused)]
-use bench_helpers::save_bench_prep_parallel_struct_to_json;
 use design_helpers::{
     handle_line_style_change, paint_directed_line_segment, reversible_lines_to_global_line_vectors,
 };
@@ -34,10 +32,8 @@ use structs_and_enums::{
 };
 use tools::max_depth_with_branches;
 
-use crate::{
-    fractal_app::animation::animation_structs_and_enums::AnimationProgress,
-    structs_and_enums::PlayerState,
-};
+#[expect(unused)]
+use bench_helpers::save_bench_prep_parallel_struct_to_json;
 
 // TODO: find the error that pops op when the vec gets too large.
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
@@ -226,7 +222,7 @@ impl FractalApp {
             }
             if ui
                 .add_enabled(
-                    state != PlayerState::Playing,
+                    self.fractals[self.fractal_index].animation.is_playing(),
                     Button::new(RichText::new("▶").size(18.0)),
                 )
                 .on_hover_text("Play")
@@ -314,21 +310,23 @@ impl FractalApp {
         ));
     }
     // TODO: if not painting abc, then no self needed and this can move to own helper library
-    #[expect(clippy::needless_pass_by_value)] // We want to consume the input vector, to force a more functional programming style. This is a design choice, not a performance choice.
-    fn animation_paint_vectors_and_progress(
+    // TODO!!!!!!! split off the progress. Move progress into Animation struct? NOPE: It's calculated from Animation settings.
+    // SEPARATE settings and calculations.
+    // ReversePrefs does fit in Animation.
+    // ScaleState: For the playerbuttons, we need to know this (allow both reverses, or just one)
+    // #[expect(clippy::needless_pass_by_value)] // NO LONGER NEEDED, BECAUSE OF NEW CHECK WITH EARLY RETURN LEARN. We want to consume the input vector, to force a more functional programming style. This is a design choice, not a performance choice.
+    fn animation_paint_vectors(
         &mut self,
+        animation_progress: &Option<AnimationProgress>,
         gdvs: Vec<VectoredLine>, // global design vectors, consumed.
-    ) -> (Vec<VectoredLine>, Option<AnimationProgress>) {
+    ) -> Vec<VectoredLine> {
+        let Some(progress) = animation_progress else {
+            return gdvs;
+        };
         // return owned vector, because we consumed the input vector.
-        let animation = &self.fractals[self.fractal_index].animation;
+        let animation = &mut self.fractals[self.fractal_index].animation;
         let cycle_angle = gdvs[0].vec.angle() - gdvs[1].vec.angle();
         let cycle_scale = gdvs[0].vec.length() / gdvs[1].vec.length();
-
-        let progress = AnimationProgress::new_from_ln_scale(
-            animation.current_ln_scale(),
-            cycle_scale as f64, // ugly
-            animation,
-        );
 
         // TODO: better naming
         // HACK, check if there is a generator line. TODO!!!!!
@@ -348,14 +346,11 @@ impl FractalApp {
         let rotation = Rot2::from_angle(rotattion_angle);
         // HACK, check if there is a generator line. TODO!!!!!
 
-        (
-            scale_and_rotate_vectored_lines_around_rotation_center(
-                &gdvs,
-                rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO
-                scale,
-                rotation,
-            ),
-            Some(progress),
+        scale_and_rotate_vectored_lines_around_rotation_center(
+            &gdvs,
+            rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO
+            scale,
+            rotation,
         )
     }
 
@@ -463,13 +458,20 @@ impl eframe::App for FractalApp {
         if self.show_design_only {
             self.paint_design(&painter, &global_design_vectors);
         } else {
-            let (paint_vectors, animation_progress) = if fractal.animation.is_stopped() {
-                (global_design_vectors, None)
+            let mut animation_progress: Option<AnimationProgress> = None;
+            let paint_vectors = if fractal.animation.is_stopped() {
+                global_design_vectors
             } else {
                 if fractal.animation.is_playing() {
                     painter.ctx().request_repaint();
                 }
-                self.animation_paint_vectors_and_progress(global_design_vectors)
+                // CALC CYCLE SCALE
+                let cycle_scale = scale(global_design_vectors[1], global_design_vectors[0]);
+                animation_progress = Some(AnimationProgress::new_from_cycle_scale(
+                    cycle_scale as f64,
+                    &mut fractal.animation,
+                ));
+                self.animation_paint_vectors(&animation_progress, global_design_vectors)
             };
             self.paint_fractal(&painter, &paint_vectors, animation_progress);
         }

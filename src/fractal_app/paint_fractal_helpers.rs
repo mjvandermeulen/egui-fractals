@@ -110,6 +110,7 @@ pub fn paint_fractal_lines(
             && !fractal.replace_line
         {
             let p = animation_progress.phase();
+            // TODO!!!!! This doesn't seem to be working.
             color = color.gamma_multiply(p * p); // TODO play with this. Maybe just p * p or just p or p.powf(1.5)?
         }
         let mut paint_line = paint_line_generator(&mut shapes, rect, fractal, color, d, max_depth);

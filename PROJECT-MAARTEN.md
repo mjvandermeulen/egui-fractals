@@ -4,26 +4,14 @@
 
 There is a three way now:
 
-```
-                                              ┌────────────────┐
-                                              │   start zoom   │
-                                              │   scale 0.0    │
-                                              └────────────────┘
-                                                      ▲  play reverse
-                                                      │  initial_scale_up
-                                                      ▼  play
-┌────────────────┐                            ┌────────────────┐                            ┌────────────────┐
-│    zoom out    │◄─ play infinite reverse ───│  repeat cycle  │◄─ play (inf or normal) ────│     zoom in    │
-│ negative scale │     infinite_scale_down    │     scale      │     infinite_scale_up      │ positive scale │
-└────────────────┘── play ───────────────────►└────────────────┘── play ───────────────────►└────────────────┘
-```
+diagram moved into code: `animation_structs_and_enums.rs`
 
 Thoughts:
 enum with three stages:
 
-- initial_scale_up
-- infinite_scale_up
-- infinite_scale_down
+- init_scaling
+- post_scale_loop
+- pre_scale_loop
 
 # NOTE:
 
