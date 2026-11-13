@@ -35,6 +35,8 @@ use tools::max_depth_with_branches;
 #[expect(unused)]
 use bench_helpers::save_bench_prep_parallel_struct_to_json;
 
+use crate::fractal_app::animation::player_state;
+
 // TODO: find the error that pops op when the vec gets too large.
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
 
@@ -181,68 +183,61 @@ impl FractalApp {
         // ---------------------- ANIMATION-----------------------------------------------
         ui.separator();
 
-        let state = self.fractals[self.fractal_index].animation.player_state;
-        let at_start = self.fractals[self.fractal_index]
-            .animation
-            .current_ln_scale()
-            <= 0.0;
+        let at_start = self.fractals[self.fractal_index].animation.ln_scale <= 0.0; // TODO!!!!! at or before start.. :)
 
         ui.horizontal(|ui| {
+            let fractal = &mut self.fractals[self.fractal_index];
+
             if ui
                 .add_enabled(
-                    state != PlayerState::PlayingReverseInfinite,
+                    fractal.animation.player_state != PlayerState::PlayingReverseInfinite,
                     Button::new(RichText::new("◀∞").size(18.0)),
                 )
                 .on_hover_text("Zoom out forever (reverse past the start)")
                 .clicked()
             {
-                self.fractals[self.fractal_index]
-                    .animation
-                    .play_reverse_infinite();
+                fractal.animation.play_reverse_infinite();
             }
             if ui
                 .add_enabled(
-                    state != PlayerState::PlayingReverse && !at_start,
+                    fractal.animation.player_state != PlayerState::PlayingReverse && !at_start,
                     Button::new(RichText::new("◀").size(18.0)),
                 )
                 .on_hover_text("Play in reverse (stops at the start)")
                 .clicked()
             {
-                self.fractals[self.fractal_index].animation.play_reverse();
+                fractal.animation.play_reverse();
             }
             if ui
                 .add_enabled(
-                    self.fractals[self.fractal_index].animation.is_playing(),
+                    fractal.animation.is_playing(),
                     Button::new(RichText::new("⏸").size(18.0)),
                 )
                 .on_hover_text("Pause")
                 .clicked()
             {
-                self.fractals[self.fractal_index].animation.pause();
+                fractal.animation.pause();
             }
             if ui
                 .add_enabled(
-                    self.fractals[self.fractal_index].animation.is_playing(),
+                    !fractal.animation.is_playing_forward(),
                     Button::new(RichText::new("▶").size(18.0)),
                 )
                 .on_hover_text("Play")
                 .clicked()
             {
-                self.fractals[self.fractal_index].animation.play();
+                fractal.animation.play();
             }
             if ui
                 .add_enabled(
-                    state != PlayerState::Stopped
-                        || self.fractals[self.fractal_index]
-                            .animation
-                            .current_ln_scale()
-                            != 0.0,
+                    fractal.animation.player_state != PlayerState::Stopped
+                        || fractal.animation.ln_scale != 0.0,
                     Button::new(RichText::new("⏹").size(18.0)),
                 )
                 .on_hover_text("Stop (reset the animation)")
                 .clicked()
             {
-                self.fractals[self.fractal_index].animation.stop();
+                fractal.animation.stop();
             }
         });
         let fractal = &mut self.fractals[self.fractal_index];

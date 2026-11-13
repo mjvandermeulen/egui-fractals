@@ -77,20 +77,19 @@ impl Animation {
         )
     }
 
-    pub fn is_stopped(&self) -> bool {
-        self.player_state == PlayerState::Stopped
+    pub fn is_playing_forward(&self) -> bool {
+        matches!(self.player_state, PlayerState::Playing(_))
     }
 
-    pub fn current_ln_scale(&self) -> f64 {
-        self.ln_scale
+    pub fn is_stopped(&self) -> bool {
+        self.player_state == PlayerState::Stopped
     }
 
     pub fn ln_scale_per_second(&self) -> f32 {
         self.ln_scale_per_second
     }
 
-    /// No rebasing needed: the rate only affects future frames.
-    /// Rejects non-finite or zero rates.
+    // Rejects non-finite or zero rates.
     pub fn set_ln_scale_per_second(&mut self, rate: f32) {
         if rate.is_finite() && rate != 0.0 {
             self.ln_scale_per_second = rate;
@@ -121,6 +120,14 @@ impl Animation {
     pub fn stop(&mut self) {
         self.ln_scale = 0.0;
         self.player_state = PlayerState::Stopped;
+    }
+
+    pub fn play_is_enabled(&self) -> bool {
+        !self.is_playing_forward()
+    }
+
+    pub fn pause_is_enabled(&self) -> bool {
+        !self.is_playing_forward()
     }
 }
 #[derive(Debug, PartialEq, Clone, Copy)]
