@@ -110,9 +110,7 @@ impl Animation {
         self.player_state = PlayerState::PlayingReverseInfinite;
     }
     pub fn pause(&mut self) {
-        if self.not_paused_or_stopped() {
-            self.player_state = PlayerState::Paused(self.reversing_mode());
-        }
+        self.player_state = PlayerState::Paused(self.reversing_mode());
     }
     pub fn stop(&mut self) {
         self.ln_scale = 0.0;
@@ -120,14 +118,13 @@ impl Animation {
     }
 
     // --- button enabled helpers ---
-    pub fn reverse_is_enabled(&self) -> bool {
-        self.player_state != PlayerState::PlayingReverse
-            && !(self.loop_scale_reached
-                && self.player_state == PlayerState::PlayingReverseInfinite)
-    }
     pub fn reverse_infinite_is_enabled(&self) -> bool {
         self.player_state != PlayerState::PlayingReverseInfinite
             && (self.reversing_mode() != ReverseMode::Reverse || self.loop_scale_reached)
+    }
+    pub fn reverse_is_enabled(&self) -> bool {
+        self.player_state != PlayerState::PlayingReverse
+            && (self.reversing_mode() != ReverseMode::ReverseInfinite || self.loop_scale_reached)
     }
     pub fn pause_is_enabled(&self) -> bool {
         self.not_paused_or_stopped()
@@ -158,7 +155,7 @@ impl AnimationProgress {
 
         animation.loop_scale_reached = elapsed_cycles > loop_cycle;
 
-        if animation.loop_scale_reached && animation.reversing_mode() == ReverseMode::Reverse {
+        if !animation.loop_scale_reached && animation.reversing_mode() == ReverseMode::Reverse {
             Self {
                 elapsed_cycles,
                 loop_repetitions: 0,
