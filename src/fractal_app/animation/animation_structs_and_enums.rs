@@ -31,7 +31,7 @@ pub struct Animation {
     pub animation_loop_cycle: usize, // the cycle that can be looped to give illusion of infinite animation.
     pub zoom_child_to_parent: bool, // true: scale and rotate child branch to match parent. false: zoom in without rotation.
     pub player_state: PlayerState,
-    pub loop_scale_reached: bool, // ugly: this is a calculated value.
+    pub loop_scale_reached: bool, // ugly: this is a calculated value. MAYBE TODO!!!! change to current_loop_scale?
 }
 
 impl Animation {
@@ -125,6 +125,7 @@ impl Animation {
     pub fn reverse_is_enabled(&self) -> bool {
         self.player_state != PlayerState::PlayingReverse
             && (self.reversing_mode() != ReverseMode::ReverseInfinite || self.loop_scale_reached)
+            && self.ln_scale > 0.0
     }
     pub fn pause_is_enabled(&self) -> bool {
         self.not_paused_or_stopped()
