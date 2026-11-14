@@ -18,7 +18,7 @@ use std::f32::consts::LN_2;
 
 use animation::{
     animation_helpers::find_animation_rotation_center, animation_helpers::scale,
-    animation_structs_and_enums::AnimationProgress, player_state::PlayerState,
+    animation_structs_and_enums::AnimationProgress,
     scale_and_rotate_vectored_lines_around_rotation_center,
 };
 use design_helpers::{
@@ -34,8 +34,6 @@ use tools::max_depth_with_branches;
 
 #[expect(unused)]
 use bench_helpers::save_bench_prep_parallel_struct_to_json;
-
-use crate::fractal_app::animation::player_state;
 
 // TODO: find the error that pops op when the vec gets too large.
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
@@ -183,14 +181,12 @@ impl FractalApp {
         // ---------------------- ANIMATION-----------------------------------------------
         ui.separator();
 
-        let at_start = self.fractals[self.fractal_index].animation.ln_scale <= 0.0; // TODO!!!!! at or before start.. :)
-
         ui.horizontal(|ui| {
             let fractal = &mut self.fractals[self.fractal_index];
 
             if ui
                 .add_enabled(
-                    fractal.animation.player_state != PlayerState::PlayingReverseInfinite,
+                    fractal.animation.reverse_infinite_is_enabled(),
                     Button::new(RichText::new("◀∞").size(18.0)),
                 )
                 .on_hover_text("Zoom out forever (reverse past the start)")
@@ -200,7 +196,7 @@ impl FractalApp {
             }
             if ui
                 .add_enabled(
-                    fractal.animation.player_state != PlayerState::PlayingReverse && !at_start,
+                    fractal.animation.reverse_is_enabled(),
                     Button::new(RichText::new("◀").size(18.0)),
                 )
                 .on_hover_text("Play in reverse (stops at the start)")
@@ -210,7 +206,7 @@ impl FractalApp {
             }
             if ui
                 .add_enabled(
-                    fractal.animation.is_playing(),
+                    fractal.animation.pause_is_enabled(),
                     Button::new(RichText::new("⏸").size(18.0)),
                 )
                 .on_hover_text("Pause")
@@ -220,7 +216,7 @@ impl FractalApp {
             }
             if ui
                 .add_enabled(
-                    !fractal.animation.is_playing_forward(),
+                    fractal.animation.play_forward_is_enabled(),
                     Button::new(RichText::new("▶").size(18.0)),
                 )
                 .on_hover_text("Play")
@@ -230,8 +226,7 @@ impl FractalApp {
             }
             if ui
                 .add_enabled(
-                    fractal.animation.player_state != PlayerState::Stopped
-                        || fractal.animation.ln_scale != 0.0,
+                    fractal.animation.stop_is_enabled(),
                     Button::new(RichText::new("⏹").size(18.0)),
                 )
                 .on_hover_text("Stop (reset the animation)")
@@ -406,10 +401,6 @@ impl FractalApp {
 impl eframe::App for FractalApp {
     /// Called by the framework to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        // no longer needed with Claude rfactor to use egui.stable_dt
-        // self.fractals[self.fractal_index]
-        //     .animation
-        //     .update_current_ln_scale();
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
 
@@ -446,8 +437,8 @@ impl eframe::App for FractalApp {
         );
 
         self.design(ui, to_screen, &painter);
+        let fractal = &mut self.fractals[self.fractal_index];
 
-        let fractal = &mut self.fractals[self.fractal_index]; // HACK for now. Change after self.animate is coded.
         let global_design_vectors =
             reversible_lines_to_global_line_vectors(&fractal.design_lines, to_screen);
         if self.show_design_only {
@@ -457,10 +448,9 @@ impl eframe::App for FractalApp {
             let paint_vectors = if fractal.animation.is_stopped() {
                 global_design_vectors
             } else {
-                if fractal.animation.is_playing() {
+                if fractal.animation.not_paused_or_stopped() {
                     painter.ctx().request_repaint();
                 }
-                // CALC CYCLE SCALE
                 let cycle_scale = scale(global_design_vectors[1], global_design_vectors[0]);
                 animation_progress = Some(AnimationProgress::new_from_cycle_scale(
                     cycle_scale as f64,

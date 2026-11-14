@@ -35,16 +35,12 @@ pub struct Animation {
 }
 
 impl Animation {
-    // TODO!!!: not used
-    // pub fn new(ln_scale_per_second: f32) -> Self {
-    //     Self {
-    //         ln_scale: 0.0,
-    //         ln_scale_per_second,
-    //         animation_loop_cycle: 0,
-    //         zoom_child_to_parent: true,
-    //         player_state: PlayerState::Stopped,
-    //     }
-    // }
+    // Rejects non-finite or zero rates.
+    pub fn set_ln_scale_per_second(&mut self, rate: f32) {
+        if rate.is_finite() && rate != 0.0 {
+            self.ln_scale_per_second = rate;
+        }
+    }
 
     /// Call once per frame with `ctx.input(|i| i.stable_dt)`.
     pub fn update(&mut self, dt: f32) {
@@ -53,81 +49,94 @@ impl Animation {
         let step = f64::from(self.ln_scale_per_second) * dt;
 
         match self.player_state {
-            PlayerState::Playing(_) => self.ln_scale += step,
+            PlayerState::PlayingForward(_) => self.ln_scale += step,
             PlayerState::PlayingReverse => {
                 self.ln_scale -= step;
                 if self.ln_scale <= 0.0 {
-                    self.ln_scale = 0.0;
-                    self.player_state = PlayerState::Stopped;
+                    self.stop();
                 }
             }
             PlayerState::PlayingReverseInfinite => {
                 self.ln_scale -= step;
             }
-            PlayerState::Paused(_) | PlayerState::Stopped => {}
+            PlayerState::Paused(_) => {}
         }
     }
 
-    pub fn is_playing(&self) -> bool {
-        matches!(
-            self.player_state,
-            PlayerState::Playing(_)
-                | PlayerState::PlayingReverse
-                | PlayerState::PlayingReverseInfinite
-        )
+    pub fn reversing_mode(&self) -> ReverseMode {
+        match self.player_state {
+            PlayerState::Paused(_) if self.ln_scale == 0.0 => ReverseMode::Reverse,
+            PlayerState::Paused(reversing_mode) | PlayerState::PlayingForward(reversing_mode) => {
+                reversing_mode
+            }
+            PlayerState::PlayingReverseInfinite => ReverseMode::ReverseInfinite,
+            PlayerState::PlayingReverse => ReverseMode::Reverse,
+        }
     }
 
+    // --- player state getters ---
+    /// Returns `true` if playing in any direction.
+    pub fn not_paused_or_stopped(&self) -> bool {
+        !matches!(self.player_state, PlayerState::Paused(_))
+    }
     pub fn is_playing_forward(&self) -> bool {
-        matches!(self.player_state, PlayerState::Playing(_))
+        matches!(self.player_state, PlayerState::PlayingForward(_))
     }
-
+    #[expect(unused)] // maybe needed later, to highlight button
+    pub fn is_paused(&self) -> bool {
+        matches!(self.player_state, PlayerState::Paused(_) if self.ln_scale != 0.0)
+    }
     pub fn is_stopped(&self) -> bool {
-        self.player_state == PlayerState::Stopped
+        matches!(self.player_state, PlayerState::Paused(_) if self.ln_scale == 0.0)
     }
-
     pub fn ln_scale_per_second(&self) -> f32 {
         self.ln_scale_per_second
     }
 
-    // Rejects non-finite or zero rates.
-    pub fn set_ln_scale_per_second(&mut self, rate: f32) {
-        if rate.is_finite() && rate != 0.0 {
-            self.ln_scale_per_second = rate;
-        }
-    }
-
+    // --- handle button input ---
     pub fn play(&mut self) {
-        self.player_state = PlayerState::Playing(self.player_state.reversing_mode());
+        self.player_state = PlayerState::PlayingForward(self.reversing_mode());
     }
-
     pub fn play_reverse(&mut self) {
         // Nothing to rewind at the start.
         if self.ln_scale > 0.0 {
             self.player_state = PlayerState::PlayingReverse;
+        } else {
+            log::warn!("play_reverse should not be reachable when ln_scale <= 0.0");
+            self.stop();
         }
     }
-
     pub fn play_reverse_infinite(&mut self) {
         self.player_state = PlayerState::PlayingReverseInfinite;
     }
-
     pub fn pause(&mut self) {
-        if self.is_playing() {
-            self.player_state = PlayerState::Paused(self.player_state.reversing_mode());
+        if self.not_paused_or_stopped() {
+            self.player_state = PlayerState::Paused(self.reversing_mode());
         }
     }
-
     pub fn stop(&mut self) {
         self.ln_scale = 0.0;
-        self.player_state = PlayerState::Stopped;
+        self.player_state = PlayerState::Paused(ReverseMode::Reverse);
     }
 
-    pub fn play_is_enabled(&self) -> bool {
-        !self.is_playing_forward()
+    // --- button enabled helpers ---
+    pub fn reverse_is_enabled(&self) -> bool {
+        self.player_state != PlayerState::PlayingReverse
+            && !(self.loop_scale_reached
+                && self.player_state == PlayerState::PlayingReverseInfinite)
     }
-
+    pub fn reverse_infinite_is_enabled(&self) -> bool {
+        self.player_state != PlayerState::PlayingReverseInfinite
+            && (self.reversing_mode() != ReverseMode::Reverse || self.loop_scale_reached)
+    }
     pub fn pause_is_enabled(&self) -> bool {
+        self.not_paused_or_stopped()
+    }
+    pub fn play_forward_is_enabled(&self) -> bool {
         !self.is_playing_forward()
+    }
+    pub fn stop_is_enabled(&self) -> bool {
+        !self.is_stopped()
     }
 }
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -147,11 +156,9 @@ impl AnimationProgress {
         let phase: f32 = elapsed_cycles.rem_euclid(1.0) as f32; // NOTE: -4.3.fract = -0.3 which is wrong.
         let loop_cycle = animation.animation_loop_cycle as f64;
 
-        animation.loop_scale_reached = elapsed_cycles < loop_cycle;
+        animation.loop_scale_reached = elapsed_cycles > loop_cycle;
 
-        if animation.loop_scale_reached
-            && animation.player_state.reversing_mode() == ReverseMode::Reverse
-        {
+        if animation.loop_scale_reached && animation.reversing_mode() == ReverseMode::Reverse {
             Self {
                 elapsed_cycles,
                 loop_repetitions: 0,
