@@ -46,7 +46,7 @@ pub struct FractalApp {
     #[serde(skip)]
     line_count: usize,
     #[serde(skip)]
-    fine_tune: f32, // normal 1.0, ten times (Alt) 10.0 and 100 times (Ctrl) 100.0
+    fine_tune: f32, //  1.0 (default), 10.0 times <Alt> 100.0 times <Ctrl> and 1000.0 times <Ctrl-Alt>
     #[serde(skip)]
     dragged_handles: Option<(usize, LineHandles)>, // Add option for incorrect drag. Now it catches an endpoint when dragging over it, after starting in the middle of nowhere :)
     #[serde(skip)]

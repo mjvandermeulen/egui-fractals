@@ -6,6 +6,34 @@ pub fn scale(reference: VectoredLine, target: VectoredLine) -> f32 {
     target.vec.length() / reference.vec.length()
 }
 
+/// Finds the center `a` of the spiral similarity (rotation combined with
+/// uniform scaling) that maps point `b` onto point `c`.
+///
+/// Treating points as complex numbers, this solves
+/// `c - a = m * (b - a)` for `a`, where `m = ratio_ac_ab * e^(i * angle_rad)`.
+/// Equivalently, `a` is the unique point such that:
+///
+/// - the signed angle at `a` from segment `ab` to segment `ac` is `angle_rad`, and
+/// - `|ac| / |ab| == ratio_ac_ab`.
+///
+/// So turning from `b` to `c` means rotating about `a` by `angle_rad` while
+/// scaling the distance from `a` by `ratio_ac_ab`.
+///
+/// Positive angles are counterclockwise in a y-up coordinate system. In
+/// egui's y-down screen space they appear clockwise.
+///
+/// # Arguments
+///
+/// * `b` - Start point, which the transformation moves onto `c`.
+/// * `c` - End point.
+/// * `angle_rad` - Signed rotation angle in radians, from `ab` to `ac`.
+/// * `ratio_ac_ab` - Distance ratio `|ac| / |ab|`, i.e. the scale factor.
+///
+/// # Returns
+///
+/// `None` when `m` is (nearly) 1, meaning angle ≈ 0 and ratio ≈ 1. The
+/// transformation is then a pure translation or the identity, and no
+/// finite center exists. Otherwise `Some(a)`.
 #[expect(clippy::similar_names)]
 pub fn find_animation_rotation_center(
     b: Pos2,
