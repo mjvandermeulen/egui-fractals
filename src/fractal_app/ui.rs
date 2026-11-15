@@ -1,23 +1,19 @@
 use egui::{NumExt as _, Pos2, Rect, Response, emath::RectTransform};
 
-// TODO!!: change to super::
-use crate::{
+use super::{
     FractalApp,
-    fractal_app::{
-        design_helpers::{
-            closest_line, continue_dragging_line_handle, hovered_line_handle, make_loop,
-            start_new_line,
-        },
-        structs_and_enums::LinesStyle,
-        tools::max_depth_with_branches,
+    design_helpers::{
+        closest_line, continue_dragging_line_handle, hovered_line_handle, make_loop, start_new_line,
     },
+    structs_and_enums::LinesStyle,
+    tools::max_depth_with_branches,
 };
 
 pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
-    // https://github.com/emilk/egui/discussions/1464 -> if. fine tuned with gemini. Maarten.
-    if ui.ctx().memory(|mem| mem.focused()).is_none() {
-        // TODO!!!: turn max depth into self.max_depth and calc right away
+    // https://github.com/emilk/egui/discussions/1464. fine tuned with gemini. Maarten.
+    if ui.ctx().memory(egui::Memory::focused).is_none() {
+        // TODO: turn max depth into self.max_depth and calc right away
         // NOPE: only calc max_depth once: right after the design phase
         let max_depth = max_depth_with_branches(
             super::MAX_PAINTED_LINE_COUNT,
@@ -81,10 +77,17 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
 
     // l (log a fractal dump)
     if ui.input(|i| i.key_down(egui::Key::L)) {
-        log::info!("Log a dump of the current fractal: {fractal:#?}",);
+        log::info!("Logging a dump of the current fractal:\n\n {fractal:#?}",);
     }
 
-    fractal_app.fine_tune = ui.input(|i| i.modifiers.ctrl);
+    // fine tuning (big shout shout out to Claude)
+    let (control_pressed, alt_pressed) = ui.input(|i| (i.modifiers.ctrl, i.modifiers.alt));
+    fractal_app.fine_tune = match (control_pressed, alt_pressed) {
+        (true, true) => 1000.0,
+        (true, false) => 100.0,
+        (false, true) => 10.0,
+        (false, false) => 1.0,
+    };
 }
 
 pub fn handle_mouse_input(
@@ -95,19 +98,19 @@ pub fn handle_mouse_input(
 ) {
     let from_screen = to_screen.inverse();
     let id = ui.make_persistent_id("design_painter_interaction");
-    let cd_response = ui.interact(rect, id, egui::Sense::click_and_drag());
+    let click_and_drag_response = ui.interact(rect, id, egui::Sense::click_and_drag());
 
     // check if dragging continues first
-    if let Some((line, handle)) = fractal_app.dragged_handles
-        && cd_response.is_pointer_button_down_on()
+    if let Some((line, handles)) = fractal_app.dragged_handles
+        && click_and_drag_response.is_pointer_button_down_on()
     {
         continue_dragging_line_handle(
             fractal_app,
             from_screen,
             to_screen,
-            &cd_response,
+            &click_and_drag_response,
             line,
-            &handle,
+            &handles,
         );
         return;
     }
@@ -126,7 +129,7 @@ pub fn handle_mouse_input(
 
     // CLEAN.  This is ugly. AI suggests to return an enum. ? "StartedNewLine", "NothingStarted".
     if fractal_app.new_line_key_down {
-        start_new_line(ui, fractal_app, &cd_response, from_screen);
+        start_new_line(ui, fractal_app, &click_and_drag_response, from_screen);
         return;
     }
 
@@ -134,6 +137,7 @@ pub fn handle_mouse_input(
     ui.input(|input| {
         let zoom_delta = input.zoom_delta();
         if zoom_delta != 1.0 {
+            // clippy pedantic complains and suggests an error margin, but that's not needed here.
             fractal.zoom *= zoom_delta;
             return;
         }
@@ -144,7 +148,7 @@ pub fn handle_mouse_input(
             }
         }
     });
-    handle_hovered_line_mouse_input(fractal_app, hover_pos, &cd_response);
+    handle_hovered_line_mouse_input(fractal_app, hover_pos, &click_and_drag_response);
 }
 
 pub fn handle_hovered_line_mouse_input(
@@ -153,8 +157,8 @@ pub fn handle_hovered_line_mouse_input(
     click_and_drag_response: &Response,
 ) {
     // LEARN let ... else
-    //   always needs a return
-    //   avoid heavy indentation by returning instead of skipping over an indented block
+    //   - always needs a return
+    //   - avoids heavy indentation by returning instead of skipping over an indented block
     let Some((hover_line_index, t)) = closest_line(
         local_hover_pos,
         &fractal_app.fractals[fractal_app.fractal_index].design_lines,

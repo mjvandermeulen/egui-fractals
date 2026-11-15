@@ -21,6 +21,7 @@ A simple app to desing line segment fractals.
 | 9         | set depth to max allowed                                                     |
 | Alt       | Drag 10 times more precise                                                   |
 | Ctrl      | Drag 100 times more precise                                                  |
+| Ctrl-Alt  | Drag 1000 times more precise                                                 |
 
 ### important mouse actions:
 
@@ -54,3 +55,7 @@ Push the main branch. This will trigger a rebuild on Github and Github will serv
 If changes are lagging:
 
 - Chrome Dev tools: Application -> Clear Site Data
+
+Update local settings:
+
+- `.github/workflows/pages.yml`

@@ -1,5 +1,5 @@
-use super::structs_and_enums::VectoredDesignLine;
-use super::{DesignLine, FractalApp, LineHandles, LinesStyle};
+use super::structs_and_enums::VectoredLine;
+use super::{FractalApp, LineHandles, LinesStyle, ReversibleLine};
 
 use egui::Response;
 use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
@@ -26,7 +26,7 @@ use egui::{Color32, Painter, Pos2, Stroke, emath::RectTransform};
 
 pub fn closest_line_handle(
     local_pos: Pos2,
-    dl: &DesignLine,
+    dl: &ReversibleLine,
     threshold: f32,
 ) -> Option<(usize, f32)> {
     let mut min = threshold;
@@ -48,7 +48,7 @@ pub fn hovered_line_handle(t: f32) -> LineHandles {
     }
 }
 
-pub fn closest_handle(pos: Pos2, dlines: &[DesignLine], threshold: f32) -> Option<[usize; 2]> {
+pub fn closest_handle(pos: Pos2, dlines: &[ReversibleLine], threshold: f32) -> Option<[usize; 2]> {
     let mut min = threshold;
     let mut nearest_handle: Option<[usize; 2]> = None;
     for (i, dl) in dlines.iter().enumerate() {
@@ -60,13 +60,13 @@ pub fn closest_handle(pos: Pos2, dlines: &[DesignLine], threshold: f32) -> Optio
     nearest_handle
 }
 
-pub fn design_lines_to_global_design_vectors(
-    local_canvas_lines: &[DesignLine],
+pub fn reversible_lines_to_global_line_vectors(
+    local_canvas_lines: &[ReversibleLine],
     to_screen: RectTransform,
-) -> Vec<VectoredDesignLine> {
+) -> Vec<VectoredLine> {
     local_canvas_lines
         .iter()
-        .map(|design_line| VectoredDesignLine::from_design_line(*design_line, to_screen))
+        .map(|design_line| VectoredLine::from_reversible_line(*design_line, to_screen))
         .collect()
 }
 
@@ -76,6 +76,7 @@ pub fn design_lines_to_global_design_vectors(
 //   - distance
 //   - ratio of where on the line the closest point on the segment is between a and b
 //       e.g.: a: 0.0, b: 1.0  middle: 0.5
+#[expect(clippy::many_single_char_names)] // LEARN from Claude: expect VS allow: expect will complain once the issue is fixed, and you can remove the attribute
 fn distance_to_line(p: Pos2, [a, b]: [Pos2; 2]) -> (f32, f32) {
     let v = b - a; // Segment vector
     let u = p - a; // Vector to point
@@ -100,7 +101,7 @@ fn distance_to_line(p: Pos2, [a, b]: [Pos2; 2]) -> (f32, f32) {
 
 pub fn closest_line(
     local_pos: Pos2,
-    design_lines: &[DesignLine],
+    design_lines: &[ReversibleLine],
     threshold: f32,
     skip: usize, // e.g.: To skip the iterator, set skip to 1.
 ) -> Option<(usize, f32)> {
@@ -118,15 +119,16 @@ pub fn closest_line(
 
 pub fn paint_directed_line_segment(
     painter: &Painter,
-    dvec: &VectoredDesignLine,
-    width: f32,
+    dvec: &VectoredLine,
+    width_length_ratio: f32,
     color: Color32,
 ) {
+    let width = dvec.vec.length() * width_length_ratio;
     let ratio = 0.2;
-    let middle = dvec.pos + (1.0 - ratio) * dvec.vec;
-    painter.line_segment([dvec.pos, middle], Stroke::new(width, color));
+    let color_division_point = dvec.pos + (1.0 - ratio) * dvec.vec;
+    painter.line_segment([dvec.pos, color_division_point], Stroke::new(width, color));
     painter.line_segment(
-        [middle, dvec.pos + dvec.vec],
+        [color_division_point, dvec.pos + dvec.vec],
         Stroke::new(width, Color32::BLACK),
     );
 }
@@ -141,7 +143,6 @@ pub fn continue_dragging_line_handle(
 ) {
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
 
-    let tuning_ratio = if fractal_app.fine_tune { 0.02 } else { 1.0 };
     let target_handles: Vec<(usize, usize, Pos2)> = match handles {
         LineHandles::SingleHandle(end_index) => {
             vec![(
@@ -149,7 +150,7 @@ pub fn continue_dragging_line_handle(
                 *end_index,
                 from_screen
                     * (to_screen * fractal.design_lines[line].line[*end_index]
-                        + tuning_ratio * click_and_drag_response.drag_delta()),
+                        + click_and_drag_response.drag_delta() / fractal_app.fine_tune),
             )]
         }
         LineHandles::BothHandles => {
@@ -160,7 +161,7 @@ pub fn continue_dragging_line_handle(
                     end_index,
                     from_screen
                         * (to_screen * fractal.design_lines[line].line[end_index]
-                            + tuning_ratio * click_and_drag_response.drag_delta()),
+                            + click_and_drag_response.drag_delta() / fractal_app.fine_tune),
                 ));
             }
             handles
@@ -210,7 +211,7 @@ pub fn start_new_line(
         let Some(screenpos) = cd_response.interact_pointer_pos() else {
             return;
         };
-        let pos = from_screen * screenpos; // TODO!!!! rename
+        let pos = from_screen * screenpos; // TODO rename
         let fractal = &fractal_app.fractals[fractal_app.fractal_index];
         let mut start_pos = pos;
         let mut new_line_index = fractal.design_lines.len();
@@ -228,7 +229,7 @@ pub fn start_new_line(
                 start_pos = fractal.design_lines[line_index].line[0];
             }
         }
-        let new_line = DesignLine {
+        let new_line = ReversibleLine {
             line: [start_pos, pos],
             reversed: false,
         };
@@ -242,7 +243,7 @@ pub fn make_loop(fractal_app: &mut FractalApp) {
     let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
     let base = fractal.design_lines[0];
     let mut remaining_lines = fractal.design_lines.split_off(1);
-    let mut new_dls: Vec<DesignLine> = Vec::with_capacity(remaining_lines.len());
+    let mut new_dls: Vec<ReversibleLine> = Vec::with_capacity(remaining_lines.len());
 
     let mut current_pos = base.line[1];
     while !remaining_lines.is_empty() {
@@ -267,7 +268,7 @@ pub fn make_loop(fractal_app: &mut FractalApp) {
     }
     let new_len = new_dls.len();
     if new_len > 1 && new_dls[new_len - 1].line[0] == base.line[0] {
-        // the last line would disappear NOTE: is it possible that other lines would disappear too? TODO!!!
+        // the last line would disappear NOTE: is it possible that other lines would disappear too? TODO!
         new_dls[new_len - 2].line[1] = new_dls[new_len - 1].line[1];
         new_dls[new_len - 1].line[0] = new_dls[new_len - 1].line[1];
     }

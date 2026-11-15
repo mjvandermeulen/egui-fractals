@@ -1,19 +1,28 @@
+use std::f32::consts::LN_2;
+
 use egui::pos2;
 
-use crate::fractal_app::structs_and_enums::{DesignLine, Fractal, LinesStyle};
+use crate::fractal_app::animation::player_state::{PlayerState, ReverseMode};
 
+use super::{
+    animation::animation_structs_and_enums::Animation,
+    structs_and_enums::{Fractal, LinesStyle, ReversibleLine},
+};
+
+// TODO!!!!: change name and file name to fractal_presets() or something like that.
 pub fn fractals() -> Vec<Fractal> {
-    vec![
+    // in VSCode, rust-analyzer stumbles over returning a vec![] directly, so we assign it to a variable first
+    let fractals = vec![
         Fractal {
             name: "Simple Twig".to_owned(),
             mirror: false,
             rainbow: false,
             design_lines: vec![
-                DesignLine {
+                ReversibleLine {
                     line: [pos2(0.0, 0.0), pos2(0.0, -1.0)],
                     reversed: false,
                 },
-                DesignLine {
+                ReversibleLine {
                     line: [pos2(0.0, -1.0), pos2(0.5, -1.5)],
                     reversed: false,
                 },
@@ -22,35 +31,52 @@ pub fn fractals() -> Vec<Fractal> {
             lines_style: LinesStyle::Free,
             zoom: 0.18,
             center: pos2(0.0, -2.5),
-            start_line_width: 2.5, // TODO strangely global screen coords width... prob OK. Has to be visible
+            initiator_width_length_ratio: 0.02,
             fixed_final_line_width: 1.0,
             depth: 9,
+            animation: Animation {
+                ln_scale: 0.0,
+                ln_scale_per_second: LN_2 / 2.0,
+                animation_loop_cycle: 3,
+                zoom_child_to_parent: false,
+                player_state: PlayerState::Paused(ReverseMode::Reverse),
+                loop_scale_reached: false,
+            },
         },
         Fractal {
             name: "Squares".to_owned(),
             mirror: false,
             rainbow: false,
             design_lines: vec![
-                DesignLine {
+                ReversibleLine {
                     line: [pos2(0.0, 0.0), pos2(0.0, -1.0)],
                     reversed: false,
                 },
-                DesignLine {
+                ReversibleLine {
                     line: [pos2(0.1, -1.0), pos2(0.9, -1.0)],
                     reversed: false,
                 },
-                DesignLine {
+                ReversibleLine {
                     line: [pos2(0.6, -1.0), pos2(0.6, -0.8)],
                     reversed: false,
                 },
             ],
             replace_line: false,
             lines_style: LinesStyle::Free,
-            zoom: 0.55592126,
+            zoom: 0.555_921_26,
             center: pos2(0.5, -0.7),
-            start_line_width: 6.0,
+            initiator_width_length_ratio: 0.15,
             fixed_final_line_width: 1.0,
             depth: 14,
+            animation: Animation {
+                ln_scale: 0.0,
+                ln_scale_per_second: LN_2 / 2.0,
+                animation_loop_cycle: 3,
+                zoom_child_to_parent: false,
+                player_state: PlayerState::Paused(ReverseMode::Reverse),
+                loop_scale_reached: false,
+            },
         },
-    ]
+    ];
+    fractals
 }
