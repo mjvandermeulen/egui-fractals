@@ -62,9 +62,14 @@ graph TD
 - [ ] add animation length slider
 - [x] always have a default animation: no Option needed!
 
-### Animation bigger
+### Animation bigger tasks and ideas
 
-- [ ] ....
+- [ ] KOCH
+- [ ] Grow the branchs vs more opaque: only draw first .phase part of the branch. (direction???)
+- [ ] Snap points / lengths to
+    - [ ] grid
+    - [ ] base line
+    - [ ] fixed fraction length (e.g. : 1/3 of baseline)
 
 ## FIX
 

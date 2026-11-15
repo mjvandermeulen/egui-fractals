@@ -19,7 +19,7 @@ impl fmt::Display for ReverseMode {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde:: Deserialize)]
 // See Claude question. Then skip serde and always start with Paused (OR stopped = paused with ln_scale = 0.0)
 pub enum PlayerState {
-    // NOTE: Stopped is Paused with ln_scale == 0.0
+    // NOTE: "Stopped" is Paused with ln_scale == 0.0
     Paused(ReverseMode),
     PlayingForward(ReverseMode),
     PlayingReverse,         // stops when ln_scale reaches 0

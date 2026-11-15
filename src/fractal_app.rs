@@ -1,11 +1,11 @@
 mod animation;
 mod bench_helpers;
 mod design_helpers;
-mod design_input;
 mod fractals;
 mod paint_fractal_helpers; // pub for benching check if needed
 mod structs_and_enums; // pub for benching TODO check if needed
 mod tools;
+mod ui;
 
 use egui::{
     Button, Color32, NumExt as _, Painter, Pos2, Rect, RichText, Stroke, Ui,
@@ -24,13 +24,13 @@ use animation::{
 use design_helpers::{
     handle_line_style_change, paint_directed_line_segment, reversible_lines_to_global_line_vectors,
 };
-use design_input::{handle_keyboard_input, handle_mouse_input};
 use fractals::fractals;
 use paint_fractal_helpers::paint_fractal_lines;
 use structs_and_enums::{
     Branch, Fractal, LineHandles, LineTransform, LinesStyle, ReversibleLine, VectoredLine,
 };
 use tools::max_depth_with_branches;
+use ui::{handle_keyboard_input, handle_mouse_input};
 
 #[expect(unused)]
 use bench_helpers::save_bench_prep_parallel_struct_to_json;
@@ -287,20 +287,11 @@ impl FractalApp {
         );
     }
 
-    fn design(&mut self, ui: &Ui, to_screen: RectTransform, painter: &Painter) {
+    fn handle_custom_ui(&mut self, ui: &Ui, to_screen: RectTransform, painter: &Painter) {
         handle_keyboard_input(ui, self);
         handle_mouse_input(ui, self, to_screen, painter.clip_rect());
-
-        let fractal = &mut self.fractals[self.fractal_index];
-        fractal.depth = fractal.depth.at_most(max_depth_with_branches(
-            MAX_PAINTED_LINE_COUNT,
-            fractal.design_lines.len() - 1,
-            fractal.mirror,
-            fractal.replace_line,
-        ));
     }
-    // TODO: if not painting abc, then no self needed and this can move to own helper library
-    // TODO!!!!!!! split off the progress. Move progress into Animation struct? NOPE: It's calculated from Animation settings.
+    // TODO: pass self.a_b_c as a mut
     // SEPARATE settings and calculations.
     // ReversePrefs does fit in Animation.
     // ScaleState: For the playerbuttons, we need to know this (allow both reverses, or just one)
@@ -411,23 +402,16 @@ impl eframe::App for FractalApp {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        let fractal = &mut self.fractals[self.fractal_index];
-
-        let dt = ui.ctx().input(|i| i.stable_dt);
-        fractal.animation.update(dt);
-
-        fractal.depth = fractal.depth.at_most(max_depth_with_branches(
-            // TODO move this to end of design. Add it to paint_fractal as a dbg assert
-            MAX_PAINTED_LINE_COUNT,
-            fractal.design_lines.len() - 1,
-            fractal.mirror,
-            fractal.replace_line,
-        ));
+        let delta_time = ui.ctx().input(|i| i.stable_dt);
         let painter = Painter::new(
             ui.ctx().clone(),
             ui.layer_id(),
             ui.available_rect_before_wrap(),
         );
+
+        let fractal = &mut self.fractals[self.fractal_index];
+        fractal.animation.update(delta_time);
+
         let to_screen = RectTransform::from_to(
             Rect::from_center_size(
                 pos2(fractal.center.x, fractal.center.y),
@@ -436,9 +420,18 @@ impl eframe::App for FractalApp {
             painter.clip_rect(),
         );
 
-        self.design(ui, to_screen, &painter);
-        let fractal = &mut self.fractals[self.fractal_index];
+        self.handle_custom_ui(ui, to_screen, &painter);
 
+        // --- clip user input ---
+        let fractal = &mut self.fractals[self.fractal_index];
+        fractal.depth = fractal.depth.at_most(max_depth_with_branches(
+            MAX_PAINTED_LINE_COUNT,
+            fractal.design_lines.len() - 1,
+            fractal.mirror,
+            fractal.replace_line,
+        ));
+
+        // --- paint (and animate) ---
         let global_design_vectors =
             reversible_lines_to_global_line_vectors(&fractal.design_lines, to_screen);
         if self.show_design_only {

@@ -98,19 +98,19 @@ pub fn handle_mouse_input(
 ) {
     let from_screen = to_screen.inverse();
     let id = ui.make_persistent_id("design_painter_interaction");
-    let cd_response = ui.interact(rect, id, egui::Sense::click_and_drag());
+    let click_and_drag_response = ui.interact(rect, id, egui::Sense::click_and_drag());
 
     // check if dragging continues first
-    if let Some((line, handle)) = fractal_app.dragged_handles
-        && cd_response.is_pointer_button_down_on()
+    if let Some((line, handles)) = fractal_app.dragged_handles
+        && click_and_drag_response.is_pointer_button_down_on()
     {
         continue_dragging_line_handle(
             fractal_app,
             from_screen,
             to_screen,
-            &cd_response,
+            &click_and_drag_response,
             line,
-            &handle,
+            &handles,
         );
         return;
     }
@@ -129,7 +129,7 @@ pub fn handle_mouse_input(
 
     // CLEAN.  This is ugly. AI suggests to return an enum. ? "StartedNewLine", "NothingStarted".
     if fractal_app.new_line_key_down {
-        start_new_line(ui, fractal_app, &cd_response, from_screen);
+        start_new_line(ui, fractal_app, &click_and_drag_response, from_screen);
         return;
     }
 
@@ -148,7 +148,7 @@ pub fn handle_mouse_input(
             }
         }
     });
-    handle_hovered_line_mouse_input(fractal_app, hover_pos, &cd_response);
+    handle_hovered_line_mouse_input(fractal_app, hover_pos, &click_and_drag_response);
 }
 
 pub fn handle_hovered_line_mouse_input(
