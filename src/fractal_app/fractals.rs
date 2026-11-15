@@ -1,11 +1,15 @@
+use std::f32::consts::LN_2;
+
 use egui::pos2;
+
+use crate::fractal_app::animation::player_state::{PlayerState, ReverseMode};
 
 use super::{
     animation::animation_structs_and_enums::Animation,
     structs_and_enums::{Fractal, LinesStyle, ReversibleLine},
 };
 
-// TODO: change name and file name to fractal_presets() or something like that.
+// TODO!!!!: change name and file name to fractal_presets() or something like that.
 pub fn fractals() -> Vec<Fractal> {
     // in VSCode, rust-analyzer stumbles over returning a vec![] directly, so we assign it to a variable first
     let fractals = vec![
@@ -30,7 +34,14 @@ pub fn fractals() -> Vec<Fractal> {
             initiator_width_length_ratio: 0.02,
             fixed_final_line_width: 1.0,
             depth: 9,
-            animation: Animation { length: 1.5 },
+            animation: Animation {
+                ln_scale: 0.0,
+                ln_scale_per_second: LN_2 / 2.0,
+                animation_loop_cycle: 3,
+                zoom_child_to_parent: false,
+                player_state: PlayerState::Paused(ReverseMode::Reverse),
+                loop_scale_reached: false,
+            },
         },
         Fractal {
             name: "Squares".to_owned(),
@@ -57,7 +68,14 @@ pub fn fractals() -> Vec<Fractal> {
             initiator_width_length_ratio: 0.15,
             fixed_final_line_width: 1.0,
             depth: 14,
-            animation: Animation { length: 1.5 },
+            animation: Animation {
+                ln_scale: 0.0,
+                ln_scale_per_second: LN_2 / 2.0,
+                animation_loop_cycle: 3,
+                zoom_child_to_parent: false,
+                player_state: PlayerState::Paused(ReverseMode::Reverse),
+                loop_scale_reached: false,
+            },
         },
     ];
     fractals

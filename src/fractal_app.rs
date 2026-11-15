@@ -1,34 +1,39 @@
 mod animation;
 mod bench_helpers;
 mod design_helpers;
-mod design_input;
 mod fractals;
-pub mod paint_fractal_helpers; // pub for benching check if needed
-pub mod structs_and_enums; // pub for benching TODO check if needed
+mod paint_fractal_helpers; // pub for benching check if needed
+mod structs_and_enums; // pub for benching TODO check if needed
 mod tools;
-
-use std::time::Instant;
+mod ui;
 
 use egui::{
-    Button, Color32, NumExt as _, Painter, Pos2, Rect, Stroke, Ui,
+    Button, Color32, NumExt as _, Painter, Pos2, Rect, RichText, Stroke, Ui,
     containers::{CollapsingHeader, Frame},
-    emath::RectTransform,
+    emath::{RectTransform, Rot2},
     pos2,
     widgets::Slider,
 };
+use std::f32::consts::LN_2;
 
-use animation::{animation_tools::find_animation_rotation_center, scale_and_rotate_vectored_lines};
-use bench_helpers::save_bench_prep_parallel_struct_to_json;
+use animation::{
+    animation_helpers::find_animation_rotation_center, animation_helpers::scale,
+    animation_structs_and_enums::AnimationProgress,
+    scale_and_rotate_vectored_lines_around_rotation_center,
+};
 use design_helpers::{
     handle_line_style_change, paint_directed_line_segment, reversible_lines_to_global_line_vectors,
 };
-use design_input::{handle_keyboard_input, handle_mouse_input};
 use fractals::fractals;
 use paint_fractal_helpers::paint_fractal_lines;
 use structs_and_enums::{
     Branch, Fractal, LineHandles, LineTransform, LinesStyle, ReversibleLine, VectoredLine,
 };
 use tools::max_depth_with_branches;
+use ui::{handle_keyboard_input, handle_mouse_input};
+
+#[expect(unused)]
+use bench_helpers::save_bench_prep_parallel_struct_to_json;
 
 // TODO: find the error that pops op when the vec gets too large.
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
@@ -41,7 +46,7 @@ pub struct FractalApp {
     #[serde(skip)]
     line_count: usize,
     #[serde(skip)]
-    fine_tune: f32, // normal 1.0, ten times (Alt) 10.0 and 100 times (Ctrl) 100.0
+    fine_tune: f32, //  1.0 (default), 10.0 times <Alt> 100.0 times <Ctrl> and 1000.0 times <Ctrl-Alt>
     #[serde(skip)]
     dragged_handles: Option<(usize, LineHandles)>, // Add option for incorrect drag. Now it catches an endpoint when dragging over it, after starting in the middle of nowhere :)
     #[serde(skip)]
@@ -56,19 +61,11 @@ pub struct FractalApp {
     // TODO: include LineHandles in the hovered_line.
 
     // TODO! put all animation stuff in a struct.
-    #[serde(skip)]
-    animation_start: Option<Instant>,
-    // TODO! progress: f32, // for animation. instead of local, so you can pause and resume.
-    #[serde(skip)]
-    animation_cycle: usize, // one cycle is when a generator line is animated to take exactly the place of the initiator.
-    #[serde(skip)]
-    new_cycle: bool,
-    #[serde(skip)]
-    animation_repetition_cycle: Option<usize>, // the cycle that can be repeated to make a continuous animation.
-    #[serde(skip)]
-    animation_cycle_start_limited_depth_paint_count: usize,
+    // ANIMATION
     #[serde(skip)]
     a_b_c: Option<(Pos2, Pos2, Pos2)>, // for animation. HACK TEMP
+
+    // BENCHING
     #[serde(skip)]
     bench_prep: bool,
 }
@@ -85,11 +82,6 @@ impl Default for FractalApp {
             new_line_key_down: false,
             trash_line_key_down: false,
             hovered_line: None,
-            animation_start: None,
-            animation_cycle: 0,
-            new_cycle: true, // works, but semi ugly.
-            animation_repetition_cycle: None,
-            animation_cycle_start_limited_depth_paint_count: 0,
             a_b_c: None,
             bench_prep: false,
         }
@@ -113,6 +105,7 @@ impl FractalApp {
         }
     }
 
+    #[expect(clippy::too_many_lines)]
     fn options_ui(&mut self, ui: &mut Ui) {
         egui::ComboBox::from_label("Select starter Fractal")
             .selected_text(&self.fractals[self.fractal_index].name)
@@ -122,99 +115,149 @@ impl FractalApp {
                 }
             });
 
-        let fractal = &mut self.fractals[self.fractal_index];
-        if ui
-            .add_enabled(
-                *fractal != Self::default().fractals[self.fractal_index],
-                Button::new(format!("Reset {}", fractal.name)),
-            )
-            .on_hover_text(format!("Reset only the {} fractal", fractal.name))
-            .clicked()
+        let max_depth;
         {
-            *fractal = Self::default().fractals[self.fractal_index].clone();
-        }
-        if ui
-            .add_enabled(
-                // TODO clippy pedantic warns about comparing floats:
-                // (fractal.zoom - Self::default
-                //  ().fractals[self.fractal_index].zoom).abs() > error_margin
-                // same for .center
-                fractal.zoom != Self::default().fractals[self.fractal_index].zoom
-                    || fractal.center != Self::default().fractals[self.fractal_index].center,
-                Button::new("Reset View"),
-            )
-            .on_hover_text("Reset the zoom and scroll")
-            .clicked()
-        {
-            fractal.zoom = Self::default().fractals[self.fractal_index].zoom;
-            fractal.center = Self::default().fractals[self.fractal_index].center;
-        }
+            let fractal = &mut self.fractals[self.fractal_index];
+            if ui
+                .add_enabled(
+                    *fractal != Self::default().fractals[self.fractal_index],
+                    Button::new(format!("Reset {}", fractal.name)),
+                )
+                .on_hover_text(format!("Reset only the {} fractal", fractal.name))
+                .clicked()
+            {
+                *fractal = Self::default().fractals[self.fractal_index].clone();
+            }
+            if ui
+                .add_enabled(
+                    // TODO clippy pedantic warns about comparing floats:
+                    // (fractal.zoom - Self::default
+                    //  ().fractals[self.fractal_index].zoom).abs() > error_margin
+                    // same for .center
+                    fractal.zoom != Self::default().fractals[self.fractal_index].zoom
+                        || fractal.center != Self::default().fractals[self.fractal_index].center,
+                    Button::new("Reset View"),
+                )
+                .on_hover_text("Reset the zoom and scroll")
+                .clicked()
+            {
+                fractal.zoom = Self::default().fractals[self.fractal_index].zoom;
+                fractal.center = Self::default().fractals[self.fractal_index].center;
+            }
 
-        let max_depth = max_depth_with_branches(
-            MAX_PAINTED_LINE_COUNT,
-            fractal.design_lines.len() - 1,
-            fractal.mirror,
-            fractal.replace_line,
-        );
-
-        ui.label(format!("Painted line count: {}", self.line_count));
-        ui.checkbox(&mut fractal.replace_line, "Replace parent with children");
-        ui.checkbox(&mut fractal.mirror, "Mirror");
-        ui.checkbox(&mut fractal.rainbow, "Rainbow");
-        ui.radio_value(&mut fractal.lines_style, LinesStyle::Free, "Free");
-        ui.radio_value(&mut fractal.lines_style, LinesStyle::Tree, "Tree");
-        ui.radio_value(&mut fractal.lines_style, LinesStyle::Loop, "Loop");
-        ui.add(Slider::new(&mut fractal.zoom, 0.001..=5.0).text("zoom"));
-        if fractal.replace_line {
-            ui.add(
-                Slider::new(&mut fractal.fixed_final_line_width, 0.05..=1.1)
-                    .logarithmic(true)
-                    .text("Final line width"),
+            max_depth = max_depth_with_branches(
+                MAX_PAINTED_LINE_COUNT,
+                fractal.design_lines.len() - 1,
+                fractal.mirror,
+                fractal.replace_line,
             );
-        } else {
-            // TODO: replace with 1 - 4% line width / length
-            // let mut inverse = 1.0 / self.value;
 
-            // // Display the slider bound to `inverse`
-            // if ui
-            //     .add(egui::Slider::new(&mut inverse, 0.1..=10.0).text("Inverse Value"))
-            //     .changed()
-            // {
-            //     // Avoid division by zero if your range includes 0
-            //     if inverse != 0.0 {
-            //         self.value = 1.0 / inverse;
-            //     }
-            // }
-
-            ui.add(
-                egui::Slider::new(&mut fractal.initiator_width_length_ratio, 0.001..=0.07)
-                    .custom_formatter(|x, _| format!("{:.1}%", x * 100.0))
-                    .text("width % of line length"),
-            );
+            ui.label(format!("Painted line count: {}", self.line_count));
+            ui.checkbox(&mut fractal.replace_line, "Replace parent with children");
+            ui.checkbox(&mut fractal.mirror, "Mirror");
+            ui.checkbox(&mut fractal.rainbow, "Rainbow");
+            ui.radio_value(&mut fractal.lines_style, LinesStyle::Free, "Free");
+            ui.radio_value(&mut fractal.lines_style, LinesStyle::Tree, "Tree");
+            ui.radio_value(&mut fractal.lines_style, LinesStyle::Loop, "Loop");
+            ui.add(Slider::new(&mut fractal.zoom, 0.001..=5.0).text("zoom"));
+            if fractal.replace_line {
+                ui.add(
+                    Slider::new(&mut fractal.fixed_final_line_width, 0.05..=1.1)
+                        .logarithmic(true)
+                        .text("Final line width"),
+                );
+            } else {
+                ui.add(
+                    egui::Slider::new(&mut fractal.initiator_width_length_ratio, 0.001..=0.07)
+                        .custom_formatter(|x, _| format!("{:.1}%", x * 100.0))
+                        .text("width % of line length"),
+                );
+            }
+            ui.add(Slider::new(&mut fractal.depth, 0..=max_depth).text("depth"));
         }
-        ui.add(Slider::new(&mut fractal.depth, 0..=max_depth).text("depth"));
 
-        egui::reset_button(ui, self, "Full Reset"); // NOTE: will not looked disabled, because of self.line_count
+        egui::reset_button(ui, self, "Full Reset"); // NOTE: will not look disabled, because of self.line_count
 
-        // ---------------------------------------------------------------------
+        // ---------------------- ANIMATION-----------------------------------------------
         ui.separator();
 
-        let animate_text = if self.animation_start.is_some() {
-            "Stop Animation"
-        } else {
-            "Start Animation"
-        };
-        if ui.add_enabled(true, Button::new(animate_text)).on_hover_text(if self.animation_start.is_some() {
-            "Stop animating the fractal. TODO! press space to pause/resume. Press R to reset animation."
-        } else {
-            "Start animating the fractal. TODO! Press space to pause/resume. Press R to reset animation."
-        }).clicked(){
-            self.animation_start = if self.animation_start.is_some() {
-                None
-            } else {
-                Some(Instant::now())
-            };
+        ui.horizontal(|ui| {
+            let fractal = &mut self.fractals[self.fractal_index];
+
+            if ui
+                .add_enabled(
+                    fractal.animation.reverse_infinite_is_enabled(),
+                    Button::new(RichText::new("◀∞").size(18.0)),
+                )
+                .on_hover_text("Zoom out forever (reverse past the start)")
+                .clicked()
+            {
+                fractal.animation.play_reverse_infinite();
+            }
+            if ui
+                .add_enabled(
+                    fractal.animation.reverse_is_enabled(),
+                    Button::new(RichText::new("◀").size(18.0)),
+                )
+                .on_hover_text("Play in reverse (stops at the start)")
+                .clicked()
+            {
+                fractal.animation.play_reverse();
+            }
+            if ui
+                .add_enabled(
+                    fractal.animation.pause_is_enabled(),
+                    Button::new(RichText::new("⏸").size(18.0)),
+                )
+                .on_hover_text("Pause")
+                .clicked()
+            {
+                fractal.animation.pause();
+            }
+            if ui
+                .add_enabled(
+                    fractal.animation.play_forward_is_enabled(),
+                    Button::new(RichText::new("▶").size(18.0)),
+                )
+                .on_hover_text("Play")
+                .clicked()
+            {
+                fractal.animation.play();
+            }
+            if ui
+                .add_enabled(
+                    fractal.animation.stop_is_enabled(),
+                    Button::new(RichText::new("⏹").size(18.0)),
+                )
+                .on_hover_text("Stop (reset the animation)")
+                .clicked()
+            {
+                fractal.animation.stop();
+            }
+        });
+        let fractal = &mut self.fractals[self.fractal_index];
+
+        // NOTE: egui has a built in way to do this, but it's not as straightforward: `from_get_set`
+        let mut zpm = fractal.animation.ln_scale_per_second() * 60.0 / LN_2;
+        if ui
+            .add(egui::Slider::new(&mut zpm, 5.0..=180.0).text("Animation Zooms per minutes"))
+            .on_hover_text("After one zoom the fractal doubles in size.")
+            .changed()
+        {
+            fractal.animation.set_ln_scale_per_second(zpm * LN_2 / 60.0);
         }
+
+        // TODO!!!! see project.md: change this to "repeat when showing" (Tool tip: percentage of length showing when repetition can start):
+        ui.add(
+            Slider::new(&mut fractal.animation.animation_loop_cycle, 0..=10)
+                .text("cycle that can be repeated"),
+        );
+
+        ui.checkbox(
+            &mut fractal.animation.zoom_child_to_parent,
+            "Zoom child to parent",
+        );
+
         // if let Some(animation) = &mut fractal.animation { TODO
         // ui.add(
         //     Slider::new(&mut fractal.animation.length, 0.5..=30.0)
@@ -244,44 +287,51 @@ impl FractalApp {
         );
     }
 
-    fn design(&mut self, ui: &Ui, to_screen: RectTransform, painter: &Painter) {
+    fn handle_custom_ui(&mut self, ui: &Ui, to_screen: RectTransform, painter: &Painter) {
         handle_keyboard_input(ui, self);
         handle_mouse_input(ui, self, to_screen, painter.clip_rect());
-
-        let fractal = &mut self.fractals[self.fractal_index];
-        fractal.depth = fractal.depth.at_most(max_depth_with_branches(
-            MAX_PAINTED_LINE_COUNT,
-            fractal.design_lines.len() - 1,
-            fractal.mirror,
-            fractal.replace_line,
-        ));
     }
-
-    fn animation_frame_vectors(
+    // TODO: pass self.a_b_c as a mut
+    // SEPARATE settings and calculations.
+    // ReversePrefs does fit in Animation.
+    // ScaleState: For the playerbuttons, we need to know this (allow both reverses, or just one)
+    // #[expect(clippy::needless_pass_by_value)] // NO LONGER NEEDED, BECAUSE OF NEW CHECK WITH EARLY RETURN LEARN. We want to consume the input vector, to force a more functional programming style. This is a design choice, not a performance choice.
+    fn animation_paint_vectors(
         &mut self,
-        gdvs: &[VectoredLine], // global design vectors
-        progress: f32,
+        animation_progress: &Option<AnimationProgress>,
+        gdvs: Vec<VectoredLine>, // global design vectors, consumed.
     ) -> Vec<VectoredLine> {
-        let cycle: usize = progress.floor() as usize;
-        self.new_cycle = cycle != self.animation_cycle;
-        self.animation_cycle = cycle;
-
+        let Some(progress) = animation_progress else {
+            return gdvs;
+        };
+        // return owned vector, because we consumed the input vector.
+        let animation = &mut self.fractals[self.fractal_index].animation;
         let cycle_angle = gdvs[0].vec.angle() - gdvs[1].vec.angle();
         let cycle_scale = gdvs[0].vec.length() / gdvs[1].vec.length();
+
+        // TODO: better naming
         // HACK, check if there is a generator line. TODO!!!!!
 
         let b = gdvs[1].pos;
         let c = gdvs[0].pos;
-
         let rotation_center = find_animation_rotation_center(b, c, cycle_angle, cycle_scale);
+        // To VISUALIZE the a b c triangle:
         self.a_b_c = Some((rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), b, c));
 
-        scale_and_rotate_vectored_lines(
-            gdvs,
+        let scale = cycle_scale.powf(progress.elapsed_wrapped);
+        let rotattion_angle = if animation.zoom_child_to_parent {
+            progress.elapsed_wrapped * cycle_angle
+        } else {
+            progress.loop_repetitions as f32 * -cycle_angle
+        };
+        let rotation = Rot2::from_angle(rotattion_angle);
+        // HACK, check if there is a generator line. TODO!!!!!
+
+        scale_and_rotate_vectored_lines_around_rotation_center(
+            &gdvs,
             rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO
-            cycle_angle,
-            cycle_scale,
-            progress,
+            scale,
+            rotation,
         )
     }
 
@@ -302,99 +352,17 @@ impl FractalApp {
         });
     }
 
-    fn paint_fractal(&mut self, painter: &Painter, vectored_design_lines: &[VectoredLine]) {
+    fn paint_fractal(
+        &mut self,
+        painter: &Painter,
+        global_design_vectors: &[VectoredLine],
+        animation_progress: Option<AnimationProgress>,
+    ) {
         let fractal = &self.fractals[self.fractal_index];
-        let debug_assert_max_depth = max_depth_with_branches(
-            MAX_PAINTED_LINE_COUNT,
-            vectored_design_lines.len() - 1,
-            fractal.mirror,
-            fractal.replace_line,
-        );
-        debug_assert!(
-            fractal.depth <= debug_assert_max_depth,
-            "fractal.depth = {}, max_depth_with_branches(...) = {debug_assert_max_depth}",
-            fractal.depth
-        );
         let rect = painter.clip_rect();
 
-        let initiator = vectored_design_lines[0];
-        let transformations: Vec<LineTransform> = vectored_design_lines[1..]
-            .iter()
-            .flat_map(|line| {
-                let mut line_transforms: Vec<LineTransform> =
-                    vec![LineTransform::from_design_vector(&initiator, *line, false)];
-                if fractal.mirror {
-                    line_transforms
-                        .push(LineTransform::from_design_vector(&initiator, *line, true));
-                }
-                line_transforms
-            })
-            .collect();
-
-        if self.bench_prep {
-            self.bench_prep = false;
-            save_bench_prep_parallel_struct_to_json(
-                rect,
-                &initiator,
-                fractal,
-                &transformations,
-                fractal.depth,
-            )
-            .expect("Expected save_bench_prep_parallel_struct_to_json not to cause any trouble");
-        }
-
-        let shapes = paint_fractal_lines(
-            rect,
-            &Branch::from_vectored_line(initiator),
-            fractal,
-            &transformations,
-            1,
-            fractal.depth,
-            None,
-        );
-        self.line_count = shapes.len();
-        // TODO: Bench and try to avoid `let shapes`, just push to painter...
-        // never mind: the std::mem::swap trick won't work.
-        painter.extend(shapes);
-    }
-
-    // TODO: This was  a verbatim copy of paint_fractal not long ago.
-    fn animate(&mut self, painter: &Painter, global_design_vectors: &[VectoredLine]) {
-        let Some(start) = self.animation_start else {
-            return;
-        };
-        let cycle_length = self.fractals[self.fractal_index].animation.length;
-        let progress = animation::animation_tools::animation_progress(
-            start,
-            cycle_length,
-            self.animation_repetition_cycle,
-        );
-        let blueprint_vectors: Vec<VectoredLine> =
-            self.animation_frame_vectors(global_design_vectors, progress);
-
-        let fractal = &self.fractals[self.fractal_index];
-        let max_depth = max_depth_with_branches(
-            MAX_PAINTED_LINE_COUNT,
-            blueprint_vectors.len() - 1,
-            fractal.mirror,
-            fractal.replace_line,
-        );
-        let started_next_cycle = self.animation_start.is_some()
-            && self.animation_repetition_cycle.is_none()
-            && self.new_cycle;
-        let paint_depth = if started_next_cycle {
-            fractal.depth - 1
-        } else {
-            fractal.depth
-        };
-        debug_assert!(
-            paint_depth <= max_depth,
-            "paint_depth = {paint_depth}, max_depth_with_branches(...) = {max_depth}"
-        );
-        let rect = painter.clip_rect();
-
-        let initiator = blueprint_vectors[0];
-        let transformations: Vec<LineTransform> = blueprint_vectors[1..]
+        let initiator = global_design_vectors[0];
+        let transformations: Vec<LineTransform> = global_design_vectors[1..]
             .iter()
             .flat_map(|line| {
                 let mut line_transforms: Vec<LineTransform> =
@@ -412,20 +380,10 @@ impl FractalApp {
             &Branch::from_vectored_line(initiator),
             fractal,
             &transformations,
-            1,
             fractal.depth,
-            Some(progress),
+            animation_progress,
         );
 
-        if started_next_cycle {
-            // if the last frame of the previous cycle has the same painted line count as the first (depth limited) frame,
-            //   we can start to repeat this cycle
-            if self.line_count == self.animation_cycle_start_limited_depth_paint_count {
-                self.animation_repetition_cycle = Some(self.animation_cycle);
-            }
-
-            self.animation_cycle_start_limited_depth_paint_count = shapes.len();
-        }
         self.line_count = shapes.len();
         painter.extend(shapes);
     }
@@ -444,20 +402,16 @@ impl eframe::App for FractalApp {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        let fractal = &mut self.fractals[self.fractal_index];
-
-        fractal.depth = fractal.depth.at_most(max_depth_with_branches(
-            // TODO move this to end of design. Add it to paint_fractal as a dbg assert
-            MAX_PAINTED_LINE_COUNT,
-            fractal.design_lines.len() - 1,
-            fractal.mirror,
-            fractal.replace_line,
-        ));
+        let delta_time = ui.ctx().input(|i| i.stable_dt);
         let painter = Painter::new(
             ui.ctx().clone(),
             ui.layer_id(),
             ui.available_rect_before_wrap(),
         );
+
+        let fractal = &mut self.fractals[self.fractal_index];
+        fractal.animation.update(delta_time);
+
         let to_screen = RectTransform::from_to(
             Rect::from_center_size(
                 pos2(fractal.center.x, fractal.center.y),
@@ -466,28 +420,44 @@ impl eframe::App for FractalApp {
             painter.clip_rect(),
         );
 
-        self.design(ui, to_screen, &painter);
+        self.handle_custom_ui(ui, to_screen, &painter);
 
-        let fractal = &mut self.fractals[self.fractal_index]; // HACK for now. Change after self.animate is coded.
+        // --- clip user input ---
+        let fractal = &mut self.fractals[self.fractal_index];
+        fractal.depth = fractal.depth.at_most(max_depth_with_branches(
+            MAX_PAINTED_LINE_COUNT,
+            fractal.design_lines.len() - 1,
+            fractal.mirror,
+            fractal.replace_line,
+        ));
+
+        // --- paint (and animate) ---
         let global_design_vectors =
             reversible_lines_to_global_line_vectors(&fractal.design_lines, to_screen);
         if self.show_design_only {
             self.paint_design(&painter, &global_design_vectors);
-        } else if self.animation_start.is_some() {
-            ui.request_repaint();
-            self.animate(&painter, &global_design_vectors);
         } else {
-            self.paint_fractal(&painter, &global_design_vectors);
-
-            if let Some((a, b, c)) = self.a_b_c {
-                painter.line_segment([a, b], Stroke::new(2.0, Color32::RED));
-                painter.line_segment([a, c], Stroke::new(2.0, Color32::GREEN));
-            }
+            let mut animation_progress: Option<AnimationProgress> = None;
+            let paint_vectors = if fractal.animation.is_stopped() {
+                global_design_vectors
+            } else {
+                if fractal.animation.not_paused_or_stopped() {
+                    painter.ctx().request_repaint();
+                }
+                let cycle_scale = scale(global_design_vectors[1], global_design_vectors[0]);
+                animation_progress = Some(AnimationProgress::new_from_cycle_scale(
+                    cycle_scale as f64,
+                    &mut fractal.animation,
+                ));
+                self.animation_paint_vectors(&animation_progress, global_design_vectors)
+            };
+            self.paint_fractal(&painter, &paint_vectors, animation_progress);
         }
 
         // Make sure we allocate what we used (everything)
         ui.expand_to_include_rect(painter.clip_rect());
 
+        // HACK: Move lines_style check to options_ui. See Claude Rust group "Checking line style changes in Rust" tab.
         let lines_style = self.fractals[self.fractal_index].lines_style;
         Frame::popup(ui.style())
             .stroke(Stroke::NONE)

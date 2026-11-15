@@ -1,3 +1,18 @@
+# Animation no rotation:
+
+## infinite reverse scaling (zoom) animation:
+
+There is a three way now:
+
+diagram moved into code: `animation_structs_and_enums.rs`
+
+Thoughts:
+enum with three stages:
+
+- init_scaling
+- post_scale_loop
+- pre_scale_loop
+
 # NOTE:
 
 ## DROPBOX and ICLOUD
@@ -11,21 +26,31 @@ in the root dir of the project
 
 # RAYON
 
-no improvements found. Only kept for benching...
+~~no improvements found. Only kept for benching...~~
+removed, since no improvement found: reason: long Shapes Vecs?
 
 # TODO
 
 ## NOW
 
-### Animation quick small
+- [x] Add Pause Animation (MOVING ALL PAINT CODE INTO ANIMATION FOR NOW.
+- [ ] FIX wrong name for paint_fractal (currently "animate")
+- [ ] Set speed in "2x zoom per minute" (currently seconds/cycles)
+- [ ] UI change of `animation_repetition_cycle` => "repeat when showing" (Tool tip: percentage of length showing when repetition can start)
+- [x] FIX: animation rainbow.
+- [x] Replace Line animation: Don't fade
+- [x] **FIX REPLACE LINE!**
+- [ ] **Reset depth when you make a change. :). Default to yes.**
 
-- [x] add scaling: ratio.pow(progress)
-- [x] refactor BIG: width always ratio of length. Otherwise animation is wrong: when scaling endpoints the length of the line changes!
-- [x] refactor: don't translate design point, but the global design vectors.
+### Animation quick now
+
+## This mermaid is outdated.
+
+Make it work again: Now multiple functions when animating. (functional programming ish ish ish)
 
 ```mermaid
 graph TD
-    Design[Design] -->|self.design_lines| ToGlobalVecs[to global design vecs]
+    Design[Design OUTDATED MERMAID DIAGRAM] -->|self.design_lines| ToGlobalVecs[to global design vecs]
     ToGlobalVecs -->|global design vectors| DO{Design Only?}
     DO --> |yes| PaintDesign[Paint Design]
     DO --> |no| AniChoice{animation?}
@@ -37,9 +62,14 @@ graph TD
 - [ ] add animation length slider
 - [x] always have a default animation: no Option needed!
 
-### Animation bigger
+### Animation bigger tasks and ideas
 
-- [ ] ....
+- [ ] KOCH
+- [ ] Grow the branchs vs more opaque: only draw first .phase part of the branch. (direction???)
+- [ ] Snap points / lengths to
+    - [ ] grid
+    - [ ] base line
+    - [ ] fixed fraction length (e.g. : 1/3 of baseline)
 
 ## FIX
 
@@ -48,7 +78,9 @@ graph TD
 ## NOTE
 
 - [ ] I have changed the naming to vec and rot (~~dir vs rot: dir is absolute. rot is relative.~~)
-- [ ] vec and **rot** INCLUDE SCALING!
+- [ ] vec and **rot** CAN INCLUDE SCALING!
+    - [ ] It's cleaner to use a non scaling rotation _and_ scaling. (UI design: use this strategy)
+    - [ ] To only do a simple matrix multiplication (Computation critical): Use only a Rot2
 
 ## LATER
 
@@ -76,6 +108,7 @@ graph TD
 # THOUGHTS
 
 - the width of the line is independent of the screen size!
+- for the crucial fast shape painting: Are we using Rot2 to scale and rotate? (In the transformations)
 
 # Design
 

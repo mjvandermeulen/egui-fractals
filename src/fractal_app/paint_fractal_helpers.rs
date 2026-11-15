@@ -1,5 +1,7 @@
 use egui::{Color32, Pos2, Rect, Shape, Vec2};
 
+use crate::fractal_app::animation::animation_structs_and_enums::AnimationProgress;
+
 use super::structs_and_enums::{Branch, Fractal, LineTransform};
 
 const RAINBOW_COLORS: [Color32; 6] = [
@@ -12,13 +14,18 @@ const RAINBOW_COLORS: [Color32; 6] = [
 ];
 // const OLD_RAINBOW_COLORS: [Color32; 6] = [Color32::RED,Color32::ORANGE,Color32::YELLOW,Color32::GREEN,Color32::BLUE,Color32::MAGENTA];
 #[must_use]
-pub fn line_color(depth: usize, rainbow: bool) -> Color32 {
-    if rainbow {
-        RAINBOW_COLORS[depth % RAINBOW_COLORS.len()]
-    } else {
-        Color32::BLACK
+pub fn line_color(depth: usize, color_offset: i128, fractal: &Fractal) -> Color32 {
+    if !fractal.rainbow {
+        return Color32::BLACK;
     }
+    let offset = if fractal.replace_line {
+        0
+    } else {
+        color_offset
+    };
+    RAINBOW_COLORS[(depth as i128 + offset).rem_euclid(RAINBOW_COLORS.len() as i128) as usize]
 }
+
 pub fn paint_line_generator(
     shapes: &mut Vec<Shape>,
     rect: Rect,
@@ -60,24 +67,28 @@ pub fn construct_current_branch_and_line(
 // starting AFTER the initiator line, applying the given transformations up to the specified max_depth.
 // Aug 30th: This needs to take a closure, since that closure is used in the parallel version and in fractal_app (when bypassing parallelization).
 // Oct 9th: bypassing parallelization is still not implemented yet :)
+// Nov 1 2026: parallelization has been removed. No increase in speed.
 #[must_use]
 pub fn paint_fractal_lines(
     rect: Rect,
     trunk: &Branch,
     fractal: &Fractal,
     transformations: &Vec<LineTransform>,
-    depth: usize,
     max_depth: usize,
-    opacity_progress: Option<f32>,
+    animation_progress: Option<AnimationProgress>,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
+    let color_offset = match animation_progress {
+        Some(progress) => progress.loop_repetitions,
+        None => 0,
+    };
     {
         // avoid having to drop the paint_line by indenting. LEARN
         let mut paint_line = paint_line_generator(
             &mut shapes,
             rect,
             fractal,
-            line_color(0, fractal.rainbow),
+            line_color(0, color_offset, fractal),
             0,
             max_depth,
         );
@@ -91,16 +102,18 @@ pub fn paint_fractal_lines(
     let mut branches = vec![*trunk];
     let mut new_branches = Vec::new();
 
-    for d in depth..=max_depth {
-        let mut color = line_color(d, fractal.rainbow);
+    for d in 1..=max_depth {
+        let mut color = line_color(d, color_offset, fractal);
         if d == max_depth
-            && let Some(progress) = opacity_progress
+            && let Some(animation_progress) = animation_progress
+            && animation_progress.looping_started()
+            && !fractal.replace_line
         {
-            let p = progress.fract();
-            color = color.gamma_multiply(p.powf(1.5)); // TODO play with this. Maybe just p * p or just p?
+            let p = animation_progress.phase();
+            // TODO!!!!! This doesn't seem to be working.
+            color = color.gamma_multiply(p * p); // TODO play with this. Maybe just p * p or just p or p.powf(1.5)?
         }
-        let mut paint_line =
-            paint_line_generator(&mut shapes, rect, fractal, color, depth, max_depth);
+        let mut paint_line = paint_line_generator(&mut shapes, rect, fractal, color, d, max_depth);
 
         if d < max_depth {
             new_branches.clear();
