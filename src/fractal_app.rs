@@ -62,8 +62,6 @@ pub struct FractalApp {
 
     // ANIMATION (temp values)
     #[serde(skip)]
-    animation_progress: Option<AnimationProgress>,
-    #[serde(skip)]
     a_b_c: Option<(Pos2, Pos2, Pos2)>, // for animation. HACK TEMP
 
     // BENCHING
@@ -83,7 +81,6 @@ impl Default for FractalApp {
             new_line_key_down: false,
             trash_line_key_down: false,
             hovered_line: None,
-            animation_progress: None,
             a_b_c: None,
             bench_prep: false,
         }
@@ -114,7 +111,7 @@ impl FractalApp {
         ));
     }
     #[expect(clippy::too_many_lines)]
-    fn options_ui(&mut self, ui: &mut Ui) {
+    fn options_ui(&mut self, ui: &mut Ui, animation_progress: Option<AnimationProgress>) {
         egui::ComboBox::from_label("Select starter Fractal")
             .selected_text(&self.fractals[self.fractal_index].name)
             .show_ui(ui, |ui| {
@@ -195,7 +192,7 @@ impl FractalApp {
                 .add_enabled(
                     fractal
                         .animation
-                        .reverse_infinite_is_enabled(self.animation_progress),
+                        .reverse_infinite_is_enabled(animation_progress),
                     Button::new(RichText::new("◀∞").size(18.0)),
                 )
                 .on_hover_text("Zoom out forever (reverse past the start)")
@@ -205,9 +202,7 @@ impl FractalApp {
             }
             if ui
                 .add_enabled(
-                    fractal
-                        .animation
-                        .reverse_is_enabled(self.animation_progress),
+                    fractal.animation.reverse_is_enabled(animation_progress),
                     Button::new(RichText::new("◀").size(18.0)),
                 )
                 .on_hover_text("Play in reverse (stops at the start)")
@@ -308,8 +303,9 @@ impl FractalApp {
     fn animation_paint_vectors(
         &mut self,
         gdvs: Vec<VectoredLine>, // global design vectors, consumed.
+        animation_progress: Option<AnimationProgress>,
     ) -> Vec<VectoredLine> {
-        let Some(progress) = self.animation_progress else {
+        let Some(progress) = animation_progress else {
             return gdvs;
         };
         // return owned vector, because we consumed the input vector.
@@ -360,7 +356,12 @@ impl FractalApp {
         });
     }
 
-    fn paint_fractal(&mut self, painter: &Painter, global_design_vectors: &[VectoredLine]) {
+    fn paint_fractal(
+        &mut self,
+        painter: &Painter,
+        global_design_vectors: &[VectoredLine],
+        animation_progress: Option<AnimationProgress>,
+    ) {
         let fractal = &self.fractals[self.fractal_index];
         let rect = painter.clip_rect();
 
@@ -384,7 +385,7 @@ impl FractalApp {
             fractal,
             &transformations,
             fractal.depth,
-            self.animation_progress,
+            animation_progress,
         );
 
         self.latest_painted_line_count = shapes.len();
@@ -435,12 +436,12 @@ impl eframe::App for FractalApp {
         ));
 
         // --- paint (and animate) ---
+        let mut animation_progress: Option<AnimationProgress> = None;
         let global_design_vectors =
             reversible_lines_to_global_line_vectors(&fractal.design_lines, to_screen);
         if self.show_design_only {
             self.paint_design(&painter, &global_design_vectors);
         } else {
-            self.animation_progress = None;
             let paint_vectors = if fractal.animation.is_stopped() {
                 global_design_vectors
             } else {
@@ -448,13 +449,13 @@ impl eframe::App for FractalApp {
                     painter.ctx().request_repaint();
                 }
                 let cycle_scale = scale(global_design_vectors[1], global_design_vectors[0]);
-                self.animation_progress = Some(AnimationProgress::new_from_cycle_scale(
+                animation_progress = Some(AnimationProgress::new_from_cycle_scale(
                     cycle_scale as f64,
                     &fractal.animation,
                 ));
-                self.animation_paint_vectors(global_design_vectors)
+                self.animation_paint_vectors(global_design_vectors, animation_progress)
             };
-            self.paint_fractal(&painter, &paint_vectors);
+            self.paint_fractal(&painter, &paint_vectors, animation_progress);
         }
 
         // Make sure we allocate what we used (everything)
@@ -472,7 +473,8 @@ impl eframe::App for FractalApp {
             .stroke(Stroke::NONE)
             .show(ui, |ui| {
                 ui.set_max_width(270.0);
-                CollapsingHeader::new("Settings").show(ui, |ui| self.options_ui(ui));
+                CollapsingHeader::new("Settings")
+                    .show(ui, |ui| self.options_ui(ui, animation_progress));
             });
         if lines_style != self.fractals[self.fractal_index].lines_style {
             handle_line_style_change(self);
