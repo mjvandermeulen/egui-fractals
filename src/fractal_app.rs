@@ -44,7 +44,7 @@ pub struct FractalApp {
     fractals: Vec<Fractal>,
     fractal_index: usize,
     #[serde(skip)]
-    line_count: usize,
+    latest_painted_line_count: usize, // line count of the most recently painted fractal.
     #[serde(skip)]
     fine_tune: f32, //  1.0 (default), 10.0 times <Alt> 100.0 times <Ctrl> and 1000.0 times <Ctrl-Alt>
     #[serde(skip)]
@@ -76,7 +76,7 @@ impl Default for FractalApp {
         Self {
             fractals: fractals(),
             fractal_index: 0,
-            line_count: 0,
+            latest_painted_line_count: 0,
             show_design_only: false,
             fine_tune: 1.0,
             dragged_handles: None,
@@ -108,7 +108,10 @@ impl FractalApp {
     }
 
     fn stats_ui(&self, ui: &mut Ui) {
-        ui.label(format!("Painted line count: {}", self.line_count));
+        ui.label(format!(
+            "Painted line count: {}",
+            self.latest_painted_line_count
+        ));
     }
     #[expect(clippy::too_many_lines)]
     fn options_ui(&mut self, ui: &mut Ui) {
@@ -384,7 +387,7 @@ impl FractalApp {
             self.animation_progress,
         );
 
-        self.line_count = shapes.len();
+        self.latest_painted_line_count = shapes.len();
         painter.extend(shapes);
     }
 }
