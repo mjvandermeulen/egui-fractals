@@ -17,7 +17,7 @@ use egui::{
 use std::f32::consts::LN_2;
 
 use animation::{
-    animation_helpers::find_animation_rotation_center, animation_helpers::scale,
+    animation_helpers::scale, animation_helpers::spiral_similarity_center,
     animation_structs_and_enums::AnimationProgress,
     scale_and_rotate_vectored_lines_around_rotation_center,
 };
@@ -318,9 +318,10 @@ impl FractalApp {
 
         let b = gdvs[1].pos;
         let c = gdvs[0].pos;
-        let rotation_center = find_animation_rotation_center(b, c, cycle_angle, cycle_scale);
+        let rotation_center = spiral_similarity_center(b, c, cycle_angle, cycle_scale)
+            .unwrap_or(Pos2::new(-2.0, -1.0)); // NOTE: This is actually OK: None means: identity tranformation: So pick your center at will.
         // To VISUALIZE the a b c triangle:
-        self.a_b_c = Some((rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), b, c));
+        self.a_b_c = Some((rotation_center, b, c));
 
         let scale = cycle_scale.powf(progress.elapsed_wrapped);
         let rotattion_angle = if animation.zoom_child_to_parent {
@@ -333,7 +334,7 @@ impl FractalApp {
 
         scale_and_rotate_vectored_lines_around_rotation_center(
             &gdvs,
-            rotation_center.unwrap_or(Pos2::new(-2.0, -1.0)), // UGLY HACK, TODO
+            rotation_center,
             scale,
             rotation,
         )

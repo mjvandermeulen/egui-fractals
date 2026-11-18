@@ -35,7 +35,7 @@ pub fn scale(reference: VectoredLine, target: VectoredLine) -> f32 {
 /// transformation is then a pure translation or the identity, and no
 /// finite center exists. Otherwise `Some(a)`.
 #[expect(clippy::similar_names)]
-pub fn find_animation_rotation_center(
+pub fn spiral_similarity_center(
     b: Pos2,
     c: Pos2,
     angle_rad: f32,
