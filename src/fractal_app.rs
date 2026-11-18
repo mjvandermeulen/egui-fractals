@@ -60,8 +60,9 @@ pub struct FractalApp {
     // NOTE: when dragging over a non green line, it will "pick up" the line
     // TODO: include LineHandles in the hovered_line.
 
-    // TODO! put all animation stuff in a struct.
-    // ANIMATION
+    // ANIMATION (temp values)
+    #[serde(skip)]
+    animation_progress: Option<AnimationProgress>,
     #[serde(skip)]
     a_b_c: Option<(Pos2, Pos2, Pos2)>, // for animation. HACK TEMP
 
@@ -82,6 +83,7 @@ impl Default for FractalApp {
             new_line_key_down: false,
             trash_line_key_down: false,
             hovered_line: None,
+            animation_progress: None,
             a_b_c: None,
             bench_prep: false,
         }
@@ -105,6 +107,9 @@ impl FractalApp {
         }
     }
 
+    fn stats_ui(&self, ui: &mut Ui) {
+        ui.label(format!("Painted line count: {}", self.line_count));
+    }
     #[expect(clippy::too_many_lines)]
     fn options_ui(&mut self, ui: &mut Ui) {
         egui::ComboBox::from_label("Select starter Fractal")
@@ -152,7 +157,6 @@ impl FractalApp {
                 fractal.replace_line,
             );
 
-            ui.label(format!("Painted line count: {}", self.line_count));
             ui.checkbox(&mut fractal.replace_line, "Replace parent with children");
             ui.checkbox(&mut fractal.mirror, "Mirror");
             ui.checkbox(&mut fractal.rainbow, "Rainbow");
@@ -186,7 +190,9 @@ impl FractalApp {
 
             if ui
                 .add_enabled(
-                    fractal.animation.reverse_infinite_is_enabled(),
+                    fractal
+                        .animation
+                        .reverse_infinite_is_enabled(self.animation_progress),
                     Button::new(RichText::new("◀∞").size(18.0)),
                 )
                 .on_hover_text("Zoom out forever (reverse past the start)")
@@ -196,7 +202,9 @@ impl FractalApp {
             }
             if ui
                 .add_enabled(
-                    fractal.animation.reverse_is_enabled(),
+                    fractal
+                        .animation
+                        .reverse_is_enabled(self.animation_progress),
                     Button::new(RichText::new("◀").size(18.0)),
                 )
                 .on_hover_text("Play in reverse (stops at the start)")
@@ -238,18 +246,18 @@ impl FractalApp {
         let fractal = &mut self.fractals[self.fractal_index];
 
         // NOTE: egui has a built in way to do this, but it's not as straightforward: `from_get_set`
-        let mut zpm = fractal.animation.ln_scale_per_second() * 60.0 / LN_2;
+        let mut zpm = fractal.animation.ln_scale_per_second * 60.0 / LN_2;
         if ui
             .add(egui::Slider::new(&mut zpm, 5.0..=180.0).text("Animation Zooms per minutes"))
             .on_hover_text("After one zoom the fractal doubles in size.")
             .changed()
         {
-            fractal.animation.set_ln_scale_per_second(zpm * LN_2 / 60.0);
+            fractal.animation.ln_scale_per_second = zpm * LN_2 / 60.0;
         }
 
         // TODO!!!! see project.md: change this to "repeat when showing" (Tool tip: percentage of length showing when repetition can start):
         ui.add(
-            Slider::new(&mut fractal.animation.animation_loop_cycle, 0..=10)
+            Slider::new(&mut fractal.animation.loop_cycle, 0..=10)
                 .text("cycle that can be repeated"),
         );
 
@@ -293,15 +301,12 @@ impl FractalApp {
     }
     // TODO: pass self.a_b_c as a mut
     // SEPARATE settings and calculations.
-    // ReversePrefs does fit in Animation.
-    // ScaleState: For the playerbuttons, we need to know this (allow both reverses, or just one)
     // #[expect(clippy::needless_pass_by_value)] // NO LONGER NEEDED, BECAUSE OF NEW CHECK WITH EARLY RETURN LEARN. We want to consume the input vector, to force a more functional programming style. This is a design choice, not a performance choice.
     fn animation_paint_vectors(
         &mut self,
-        animation_progress: &Option<AnimationProgress>,
         gdvs: Vec<VectoredLine>, // global design vectors, consumed.
     ) -> Vec<VectoredLine> {
-        let Some(progress) = animation_progress else {
+        let Some(progress) = self.animation_progress else {
             return gdvs;
         };
         // return owned vector, because we consumed the input vector.
@@ -352,12 +357,7 @@ impl FractalApp {
         });
     }
 
-    fn paint_fractal(
-        &mut self,
-        painter: &Painter,
-        global_design_vectors: &[VectoredLine],
-        animation_progress: Option<AnimationProgress>,
-    ) {
+    fn paint_fractal(&mut self, painter: &Painter, global_design_vectors: &[VectoredLine]) {
         let fractal = &self.fractals[self.fractal_index];
         let rect = painter.clip_rect();
 
@@ -381,7 +381,7 @@ impl FractalApp {
             fractal,
             &transformations,
             fractal.depth,
-            animation_progress,
+            self.animation_progress,
         );
 
         self.line_count = shapes.len();
@@ -437,7 +437,7 @@ impl eframe::App for FractalApp {
         if self.show_design_only {
             self.paint_design(&painter, &global_design_vectors);
         } else {
-            let mut animation_progress: Option<AnimationProgress> = None;
+            self.animation_progress = None;
             let paint_vectors = if fractal.animation.is_stopped() {
                 global_design_vectors
             } else {
@@ -445,13 +445,13 @@ impl eframe::App for FractalApp {
                     painter.ctx().request_repaint();
                 }
                 let cycle_scale = scale(global_design_vectors[1], global_design_vectors[0]);
-                animation_progress = Some(AnimationProgress::new_from_cycle_scale(
+                self.animation_progress = Some(AnimationProgress::new_from_cycle_scale(
                     cycle_scale as f64,
-                    &mut fractal.animation,
+                    &fractal.animation,
                 ));
-                self.animation_paint_vectors(&animation_progress, global_design_vectors)
+                self.animation_paint_vectors(global_design_vectors)
             };
-            self.paint_fractal(&painter, &paint_vectors, animation_progress);
+            self.paint_fractal(&painter, &paint_vectors);
         }
 
         // Make sure we allocate what we used (everything)
@@ -459,6 +459,12 @@ impl eframe::App for FractalApp {
 
         // HACK: Move lines_style check to options_ui. See Claude Rust group "Checking line style changes in Rust" tab.
         let lines_style = self.fractals[self.fractal_index].lines_style;
+        Frame::popup(ui.style())
+            .stroke(Stroke::NONE)
+            .show(ui, |ui| {
+                ui.set_max_width(270.0);
+                CollapsingHeader::new("Stats").show(ui, |ui| self.stats_ui(ui));
+            });
         Frame::popup(ui.style())
             .stroke(Stroke::NONE)
             .show(ui, |ui| {

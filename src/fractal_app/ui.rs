@@ -137,7 +137,7 @@ pub fn handle_mouse_input(
     ui.input(|input| {
         let zoom_delta = input.zoom_delta();
         if zoom_delta != 1.0 {
-            // clippy pedantic complains and suggests an error margin, but that's not needed here.
+            // clippy pedantic complains and suggests an error margin, but that's not needed here. TODO: add an expect
             fractal.zoom *= zoom_delta;
             return;
         }

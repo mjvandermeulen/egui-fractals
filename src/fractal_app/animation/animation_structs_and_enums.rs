@@ -24,22 +24,19 @@ use crate::fractal_app::animation::player_state::{PlayerState, ReverseMode};
 #[derive(PartialEq, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Animation {
     // IDEA: usize: zoom focus branch.
-    // next 2 lines: remove the pubs, for now needed for fractals.rs
-    // OR BETTER: remove the getter and setter. TODO!!!!
     pub ln_scale: f64,            // the state; negative = zoomed out past the start
     pub ln_scale_per_second: f32, // private, use the setter
-    pub animation_loop_cycle: usize, // the cycle that can be looped to give illusion of infinite animation.
+    pub loop_cycle: usize, // the cycle that can be looped to give illusion of infinite animation.
     pub zoom_child_to_parent: bool, // true: scale and rotate child branch to match parent. false: zoom in without rotation.
     pub player_state: PlayerState,
-    pub loop_scale_reached: bool, // ugly: this is a calculated value. MAYBE TODO!!!! change to current_loop_scale?
 }
 
 impl Animation {
-    // Rejects non-finite or zero rates.
-    pub fn set_ln_scale_per_second(&mut self, rate: f32) {
-        if rate.is_finite() && rate != 0.0 {
-            self.ln_scale_per_second = rate;
-        }
+    fn loop_scale_reached(&self, animation_progress: Option<AnimationProgress>) -> bool {
+        let Some(p) = animation_progress else {
+            return false;
+        };
+        p.elapsed_cycles >= self.loop_cycle as f64
     }
 
     /// Call once per frame with `ctx.input(|i| i.stable_dt)`.
@@ -89,9 +86,6 @@ impl Animation {
     pub fn is_stopped(&self) -> bool {
         matches!(self.player_state, PlayerState::Paused(_) if self.ln_scale == 0.0)
     }
-    pub fn ln_scale_per_second(&self) -> f32 {
-        self.ln_scale_per_second
-    }
 
     // --- handle button input ---
     pub fn play(&mut self) {
@@ -118,13 +112,18 @@ impl Animation {
     }
 
     // --- button enabled helpers ---
-    pub fn reverse_infinite_is_enabled(&self) -> bool {
+    pub fn reverse_infinite_is_enabled(
+        &self,
+        animation_progress: Option<AnimationProgress>,
+    ) -> bool {
         self.player_state != PlayerState::PlayingReverseInfinite
-            && (self.reversing_mode() != ReverseMode::Reverse || self.loop_scale_reached)
+            && (self.reversing_mode() != ReverseMode::Reverse
+                || self.loop_scale_reached(animation_progress))
     }
-    pub fn reverse_is_enabled(&self) -> bool {
+    pub fn reverse_is_enabled(&self, animation_progress: Option<AnimationProgress>) -> bool {
         self.player_state != PlayerState::PlayingReverse
-            && (self.reversing_mode() != ReverseMode::ReverseInfinite || self.loop_scale_reached)
+            && (self.reversing_mode() != ReverseMode::ReverseInfinite
+                || self.loop_scale_reached(animation_progress))
             && self.ln_scale > 0.0
     }
     pub fn pause_is_enabled(&self) -> bool {
@@ -149,14 +148,14 @@ pub struct AnimationProgress {
 }
 
 impl AnimationProgress {
-    pub fn new_from_cycle_scale(cycle_scale: f64, animation: &mut Animation) -> Self {
+    pub fn new_from_cycle_scale(cycle_scale: f64, animation: &Animation) -> Self {
         let elapsed_cycles = animation.ln_scale / cycle_scale.ln(); // convert ln_scale to elapsed_cycles
         let phase: f32 = elapsed_cycles.rem_euclid(1.0) as f32; // NOTE: -4.3.fract = -0.3 which is wrong.
-        let loop_cycle = animation.animation_loop_cycle as f64;
+        let loop_cycle = animation.loop_cycle as f64;
 
-        animation.loop_scale_reached = elapsed_cycles > loop_cycle;
+        let loop_scale_reached = elapsed_cycles >= loop_cycle;
 
-        if !animation.loop_scale_reached && animation.reversing_mode() == ReverseMode::Reverse {
+        if !loop_scale_reached && animation.reversing_mode() == ReverseMode::Reverse {
             Self {
                 elapsed_cycles,
                 loop_repetitions: 0,
@@ -175,6 +174,8 @@ impl AnimationProgress {
         self.elapsed_cycles.rem_euclid(1.0) as f32
     }
 
+    /// the loop cycle has been reached, animated and has at least been restarted once.
+    /// don't confuse with `loop_cycle_reached`
     pub fn looping_started(&self) -> bool {
         self.elapsed_cycles > self.elapsed_wrapped as f64
     }
