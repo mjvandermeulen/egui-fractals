@@ -8,6 +8,10 @@ A simple app to desing line segment fractals.
 - drag the line ends of the design lines
 - play with depth, etc etc
 
+### code terminology:
+
+- spiral similarity: a combination of rotation and scaling that causes point P -> P'
+
 ### important keys:
 
 | Key       | Function                                                                     |

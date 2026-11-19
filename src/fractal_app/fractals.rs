@@ -37,10 +37,9 @@ pub fn fractals() -> Vec<Fractal> {
             animation: Animation {
                 ln_scale: 0.0,
                 ln_scale_per_second: LN_2 / 2.0,
-                animation_loop_cycle: 3,
+                loop_cycle: 3,
                 zoom_child_to_parent: false,
                 player_state: PlayerState::Paused(ReverseMode::Reverse),
-                loop_scale_reached: false,
             },
         },
         Fractal {
@@ -71,10 +70,9 @@ pub fn fractals() -> Vec<Fractal> {
             animation: Animation {
                 ln_scale: 0.0,
                 ln_scale_per_second: LN_2 / 2.0,
-                animation_loop_cycle: 3,
+                loop_cycle: 3,
                 zoom_child_to_parent: false,
                 player_state: PlayerState::Paused(ReverseMode::Reverse),
-                loop_scale_reached: false,
             },
         },
     ];
