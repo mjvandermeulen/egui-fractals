@@ -13,6 +13,14 @@ enum with three stages:
 - post_scale_loop
 - pre_scale_loop
 
+# Bugs:
+
+- when the generator line is bigger -> cycle scale is negative -> compare scale with loop scale goes the wrong way.
+
+# wording:
+
+“The spiral similarity centered at O sends A to B” (the most common phrasing) (Claude)
+
 # NOTE:
 
 ## DROPBOX and ICLOUD

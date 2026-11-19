@@ -1,7 +1,7 @@
 #[expect(unused_imports)]
 use std::{f32::consts::LN_2, time::Duration};
 
-use egui::NumExt as _;
+use egui::{NumExt as _, Pos2};
 
 use crate::fractal_app::animation::player_state::{PlayerState, ReverseMode};
 
@@ -137,10 +137,7 @@ impl Animation {
     }
 }
 #[derive(Debug, PartialEq, Clone, Copy)]
-// All in units of 1 cycle
-// TODO!!!!! this needs to be run every frame, in case the user changes the cycle_scale
-//   and the buttons need to be updated.
-//   make progress part of the Animation? combine with Animation::update...
+/// All fields: 1 unit == 1 cycle
 pub struct AnimationProgress {
     pub elapsed_cycles: f64, // elapsed cycles, including the fractional part of the current cycle. Claude recommends f64 for this, because it can be large and we want to avoid rounding errors. The fractional part is the phase of the current cycle.
     pub loop_repetitions: i128, // how many times the loop_cycle has been completed. // could be negative, scaling down.
@@ -178,5 +175,17 @@ impl AnimationProgress {
     /// don't confuse with `loop_cycle_reached`
     pub fn looping_started(&self) -> bool {
         self.elapsed_cycles > self.elapsed_wrapped as f64
+    }
+}
+#[derive(PartialEq, Eq)]
+pub struct Triangle {
+    a: Pos2,
+    b: Pos2,
+    c: Pos2,
+}
+
+impl Triangle {
+    pub fn new(a: Pos2, b: Pos2, c: Pos2) -> Self {
+        Self { a, b, c }
     }
 }

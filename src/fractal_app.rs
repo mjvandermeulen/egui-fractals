@@ -35,6 +35,8 @@ use ui::{handle_keyboard_input, handle_mouse_input};
 #[expect(unused)]
 use bench_helpers::save_bench_prep_parallel_struct_to_json;
 
+use crate::fractal_app::animation::animation_structs_and_enums::Triangle;
+
 // TODO: find the error that pops op when the vec gets too large.
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
 
@@ -62,7 +64,7 @@ pub struct FractalApp {
 
     // ANIMATION (temp values)
     #[serde(skip)]
-    a_b_c: Option<(Pos2, Pos2, Pos2)>, // for animation. HACK TEMP
+    spiral_similarity_trangle: Option<Triangle>, // for animation. HACK TEMP
 
     // BENCHING
     #[serde(skip)]
@@ -81,7 +83,7 @@ impl Default for FractalApp {
             new_line_key_down: false,
             trash_line_key_down: false,
             hovered_line: None,
-            a_b_c: None,
+            spiral_similarity_trangle: None,
             bench_prep: false,
         }
     }
@@ -297,8 +299,6 @@ impl FractalApp {
         handle_keyboard_input(ui, self);
         handle_mouse_input(ui, self, to_screen, painter.clip_rect());
     }
-    // TODO: pass self.a_b_c as a mut
-    // SEPARATE settings and calculations.
     // #[expect(clippy::needless_pass_by_value)] // NO LONGER NEEDED, BECAUSE OF NEW CHECK WITH EARLY RETURN LEARN. We want to consume the input vector, to force a more functional programming style. This is a design choice, not a performance choice.
     fn animation_paint_vectors(
         &mut self,
@@ -308,20 +308,24 @@ impl FractalApp {
         let Some(progress) = animation_progress else {
             return gdvs;
         };
+        if gdvs.is_empty() {
+            log::warn!("The global design vectors Vec is empty. This should never happen");
+            return gdvs;
+        }
+        #[expect(clippy::bool_to_int_with_if)] // it's not really a bool to int here
+        let generator_index = if gdvs.len() == 1 { 0 } else { 1 };
         // return owned vector, because we consumed the input vector.
         let animation = &mut self.fractals[self.fractal_index].animation;
-        let cycle_angle = gdvs[0].vec.angle() - gdvs[1].vec.angle();
-        let cycle_scale = gdvs[0].vec.length() / gdvs[1].vec.length();
+        let cycle_angle = gdvs[0].vec.angle() - gdvs[generator_index].vec.angle();
+        let cycle_scale = gdvs[0].vec.length() / gdvs[generator_index].vec.length();
 
-        // TODO: better naming
-        // HACK, check if there is a generator line. TODO!!!!!
-
-        let b = gdvs[1].pos;
-        let c = gdvs[0].pos;
-        let rotation_center = spiral_similarity_center(b, c, cycle_angle, cycle_scale)
-            .unwrap_or(Pos2::new(-2.0, -1.0)); // NOTE: This is actually OK: None means: identity tranformation: So pick your center at will.
-        // To VISUALIZE the a b c triangle:
-        self.a_b_c = Some((rotation_center, b, c));
+        let point = gdvs[generator_index].pos; // pre image: P of the spiral similarity
+        let point_image = gdvs[0].pos; // image: P' of the spiral similarity
+        let center = spiral_similarity_center(point, point_image, cycle_angle, cycle_scale)
+            .unwrap_or(Pos2::new(0.0, 0.0)); // NOTE: This is actually OK: None means: identity tranformation: So pick your center at will.
+        // To VISUALIZE:
+        // Currently unused! Not even commented out code.
+        self.spiral_similarity_trangle = Some(Triangle::new(center, point, point_image));
 
         let scale = cycle_scale.powf(progress.elapsed_wrapped);
         let rotattion_angle = if animation.zoom_child_to_parent {
@@ -330,14 +334,8 @@ impl FractalApp {
             progress.loop_repetitions as f32 * -cycle_angle
         };
         let rotation = Rot2::from_angle(rotattion_angle);
-        // HACK, check if there is a generator line. TODO!!!!!
 
-        scale_and_rotate_vectored_lines_around_rotation_center(
-            &gdvs,
-            rotation_center,
-            scale,
-            rotation,
-        )
+        scale_and_rotate_vectored_lines_around_rotation_center(&gdvs, center, scale, rotation)
     }
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredLine]) {
@@ -449,7 +447,11 @@ impl eframe::App for FractalApp {
                 if fractal.animation.not_paused_or_stopped() {
                     painter.ctx().request_repaint();
                 }
-                let cycle_scale = scale(global_design_vectors[1], global_design_vectors[0]);
+                let generator_index: usize = usize::from(global_design_vectors.len() != 1);
+                let cycle_scale = scale(
+                    global_design_vectors[generator_index],
+                    global_design_vectors[0],
+                );
                 animation_progress = Some(AnimationProgress::new_from_cycle_scale(
                     cycle_scale as f64,
                     &fractal.animation,
