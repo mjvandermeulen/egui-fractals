@@ -1,17 +1,13 @@
 # Animation no rotation:
 
-## infinite reverse scaling (zoom) animation:
+# Koch zoom in:
 
-There is a three way now:
+Steps:
 
-diagram moved into code: `animation_structs_and_enums.rs`
-
-Thoughts:
-enum with three stages:
-
-- init_scaling
-- post_scale_loop
-- pre_scale_loop
+- make an OK Koch.
+- pick a branch; (say 3 2 1)
+- pick a target branch
+- animate
 
 # Bugs:
 

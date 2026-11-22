@@ -308,12 +308,16 @@ impl FractalApp {
         let Some(progress) = animation_progress else {
             return gdvs;
         };
-        if gdvs.is_empty() {
-            log::warn!("The global design vectors Vec is empty. This should never happen");
-            return gdvs;
-        }
-        #[expect(clippy::bool_to_int_with_if)] // it's not really a bool to int here
-        let generator_index = if gdvs.len() == 1 { 0 } else { 1 };
+        let generator_index = match gdvs.len() {
+            0 => {
+                log::warn!(
+                    "The global design vectors Vec is empty. This should never happen. The initiator branch (index 0) should be there."
+                );
+                return gdvs;
+            }
+            1 => 0,
+            _ => 1,
+        };
         // return owned vector, because we consumed the input vector.
         let animation = &mut self.fractals[self.fractal_index].animation;
         let cycle_angle = gdvs[0].vec.angle() - gdvs[generator_index].vec.angle();
