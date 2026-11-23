@@ -54,20 +54,6 @@ pub fn paint_line_generator(
     }
 }
 
-/// TODO!!!!!: add impl to Branch to create a branch from a parent branch
-/// TODO!!!!!: add impl fn to Branch `.line()`
-/// ^^^^^^^^^ will make this function obsolete.
-pub fn construct_current_branch_and_line(
-    parent_branch: &Branch,
-    transform: &BranchTransform,
-) -> (Branch, [Pos2; 2]) {
-    let start = parent_branch.start + transform.base_rot_scale * parent_branch.vec;
-    let vec: Vec2 = transform.rot * parent_branch.vec;
-    let child_node = start + vec;
-    let current_branch = Branch { start, vec };
-    (current_branch, [start, child_node])
-}
-
 // OLD COMMENTS:
 // Mutates a Vec of Shapes representing the fractal lines painted within the given rect,
 // starting AFTER the initiator line, applying the given transformations up to the specified max_depth.
@@ -133,10 +119,8 @@ pub fn paint_fractal_lines(
         //   Feel free to read it the other way around, which I think is more intuitive.
         for &transform in transformations {
             for parent_branch in &branches {
-                let (current_branch, line) =
-                    construct_current_branch_and_line(parent_branch, &transform);
-                paint_line(line, current_branch.vec);
-
+                let current_branch = parent_branch.child(transform);
+                paint_line(current_branch.line(), current_branch.vec);
                 // Criterion bench (2 ^ 19 test): wrapping in `if` gives a 8 - 12% improvement.
                 if d < max_depth {
                     new_branches.push(current_branch);

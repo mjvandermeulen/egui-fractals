@@ -113,16 +113,17 @@ impl Branch {
         Self { start, vec }
     }
 
-    //     #[must_use]
-    //     pub fn from_parent(parent_branch: Self, transform: BranchTransform) -> Self {
-    //         let start = parent_branch.start + transform.base_rot_scale * parent_branch.vec;
-    //         let vec: Vec2 = transform.rot * parent_branch.vec;
-    //         Self { start, vec }
-    //     }
-
-    //     pub fn line(&self) -> [Pos2; 2] {
-    //         [self.start, self.start + self.vec]
-    //     }
+    /// Constructs a child branch by performing the given `BranchTransform` on the current branch.
+    #[must_use]
+    pub fn child(&self, transform: BranchTransform) -> Self {
+        let start = self.start + transform.base_rot_scale * self.vec;
+        let vec: Vec2 = transform.rot * self.vec;
+        Self { start, vec }
+    }
+    #[must_use]
+    pub fn line(&self) -> [Pos2; 2] {
+        [self.start, self.start + self.vec]
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
