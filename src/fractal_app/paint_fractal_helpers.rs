@@ -1,6 +1,6 @@
 use std::vec;
 
-use egui::{Color32, Pos2, Rect, Shape, Vec2};
+use egui::{Color32, Rect, Shape};
 
 use crate::fractal_app::animation::animation_structs_and_enums::AnimationProgress;
 
@@ -35,9 +35,9 @@ pub fn paint_line_generator(
     color: Color32,
     depth: usize,
     max_depth: usize,
-) -> impl FnMut([Pos2; 2], Vec2) {
+) -> impl FnMut(Branch) {
     let final_depth = depth == max_depth;
-    move |line, line_vec| {
+    move |branch: Branch| {
         let width = if fractal.replace_line {
             if final_depth {
                 fractal.fixed_final_line_width
@@ -45,8 +45,9 @@ pub fn paint_line_generator(
                 return; // only the final iteration is drawn
             }
         } else {
-            line_vec.length() * fractal.initiator_width_length_ratio
+            branch.length() * fractal.initiator_width_length_ratio
         };
+        let line = branch.line();
         // culling
         if rect.intersects(Rect::from_two_pos(line[0], line[1])) {
             shapes.push(Shape::line_segment(line, (width, color)));
@@ -86,7 +87,7 @@ pub fn paint_fractal_lines(
         );
 
         // paint the trunk
-        paint_line([trunk.start, trunk.start + trunk.vec], trunk.vec);
+        paint_line(*trunk);
     }
     let mut branches = vec![*trunk];
     let mut new_branches = Vec::new();
@@ -120,7 +121,7 @@ pub fn paint_fractal_lines(
         for &transform in transformations {
             for parent_branch in &branches {
                 let current_branch = parent_branch.child(transform);
-                paint_line(current_branch.line(), current_branch.vec);
+                paint_line(current_branch);
                 // Criterion bench (2 ^ 19 test): wrapping in `if` gives a 8 - 12% improvement.
                 if d < max_depth {
                     new_branches.push(current_branch);

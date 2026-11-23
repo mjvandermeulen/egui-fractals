@@ -124,6 +124,10 @@ impl Branch {
     pub fn line(&self) -> [Pos2; 2] {
         [self.start, self.start + self.vec]
     }
+    #[must_use]
+    pub fn length(&self) -> f32 {
+        self.vec.length()
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
