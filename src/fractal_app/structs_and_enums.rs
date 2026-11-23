@@ -1,8 +1,31 @@
 use super::animation::animation_structs_and_enums::Animation;
 use egui::{Pos2, Vec2, emath::RectTransform};
 use serde::{Deserialize, Serialize};
+pub struct NearestPoint {
+    target: Pos2,
+    best_distance_sq: f32, // no need for an Option, only checked if point is Some
+    pub point: Option<Pos2>,
+}
 
-// Fractal struct
+impl NearestPoint {
+    #[expect(dead_code)]
+    pub fn new(target: Pos2) -> Self {
+        Self {
+            target,
+            best_distance_sq: f32::INFINITY, // never used before overwritten.. could be any number
+            point: None,
+        }
+    }
+
+    #[expect(dead_code)]
+    pub fn observe(&mut self, candidate: Pos2) {
+        let d = self.target.distance_sq(candidate);
+        if self.point.is_none() || self.best_distance_sq > d {
+            self.best_distance_sq = d;
+            self.point = Some(candidate);
+        }
+    }
+}
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum LinesStyle {
@@ -39,32 +62,34 @@ pub struct Fractal {
 
 // design structs
 
+/// Line segment, determined by:
+/// - start: Start point.
+/// - delta: The vector that maps the start to the endpoint.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct VectoredLine {
-    pub pos: Pos2,
-    pub vec: Vec2,
+pub struct PointVectorSegment {
+    pub start: Pos2,
+    pub delta: Vec2,
 }
 
-impl VectoredLine {
+impl PointVectorSegment {
     #[must_use]
     pub fn from_reversible_line(
         ReversibleLine { line, reversed }: ReversibleLine,
         to_screen: RectTransform,
     ) -> Self {
-        let (start, end) = if reversed {
-            (to_screen * line[1], to_screen * line[0])
-        } else {
-            (to_screen * line[0], to_screen * line[1])
-        };
-
-        let vec = end - start;
-        Self { pos: start, vec }
+        let (a, b) = (line[0], line[1]);
+        let (start, end) = if reversed { (b, a) } else { (a, b) };
+        let (start, end) = (to_screen * start, to_screen * end);
+        Self {
+            start,
+            delta: end - start,
+        }
     }
 }
 
 // paint_fractal structs
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 // OPTI!!!: add length and add length factor to LineTransform,
 //   then the lengthfactor to calculate width does not need multiple length calcs
 //   (pythagoras sqrt is expensive)
@@ -72,43 +97,57 @@ impl VectoredLine {
 // then move this to paint_fractal_helpers and remove all `pub`
 
 // TODO move this to paint fractal helpers and remove 'pub'
+//
+// NOTE: This is internally identical to PointVectorSegement, but needed in a different part of the painting.
+// Mixing them up would cause an error. This is now prevented. The compiler won't allow using them interchangebly.
 pub struct Branch {
-    pub parent_node: Pos2,
-    pub edge: Vec2,
+    pub start: Pos2,
+    pub vec: Vec2,
 }
 
 impl Branch {
     #[must_use]
-    pub fn from_vectored_line(VectoredLine { pos, vec }: VectoredLine) -> Self {
-        Self {
-            parent_node: pos,
-            edge: vec,
-        }
+    pub fn from_point_vector_segment(
+        PointVectorSegment { start, delta: vec }: PointVectorSegment,
+    ) -> Self {
+        Self { start, vec }
     }
+
+    //     #[must_use]
+    //     pub fn from_parent(parent_branch: Self, transform: BranchTransform) -> Self {
+    //         let start = parent_branch.start + transform.base_rot_scale * parent_branch.vec;
+    //         let vec: Vec2 = transform.rot * parent_branch.vec;
+    //         Self { start, vec }
+    //     }
+
+    //     pub fn line(&self) -> [Pos2; 2] {
+    //         [self.start, self.start + self.vec]
+    //     }
 }
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct LineTransform {
-    pub base_rot: egui::emath::Rot2,
+pub struct BranchTransform {
+    pub base_rot_scale: egui::emath::Rot2,
     pub rot: egui::emath::Rot2,
 }
 
-impl LineTransform {
+impl BranchTransform {
     #[must_use]
     pub fn from_design_vector(
-        base: &VectoredLine,
-        design_line: VectoredLine,
+        base: &PointVectorSegment,
+        design_line: PointVectorSegment,
         mirrored: bool,
     ) -> Self {
-        let base_to_dcl: Vec2 = design_line.pos - base.pos;
+        let base_to_dcl: Vec2 = design_line.start - base.start;
         let mirror_sign: f32 = if mirrored { -1.0 } else { 1.0 };
         Self {
-            base_rot: base_to_dcl.length() / base.vec.length()
+            base_rot_scale: base_to_dcl.length() / base.delta.length()
                 * egui::emath::Rot2::from_angle(
-                    mirror_sign * (base_to_dcl.angle() - base.vec.angle()),
+                    mirror_sign * (base_to_dcl.angle() - base.delta.angle()),
                 ),
-            rot: design_line.vec.length() / base.vec.length()
+            rot: design_line.delta.length() / base.delta.length()
                 * egui::emath::Rot2::from_angle(
-                    mirror_sign * (design_line.vec.angle() - base.vec.angle()),
+                    mirror_sign * (design_line.delta.angle() - base.delta.angle()),
                 ),
         }
     }

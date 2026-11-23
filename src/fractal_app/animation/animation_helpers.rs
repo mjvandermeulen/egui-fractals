@@ -1,9 +1,9 @@
 use egui::Pos2;
 
-use crate::fractal_app::structs_and_enums::VectoredLine;
+use crate::fractal_app::structs_and_enums::PointVectorSegment;
 
-pub fn scale(reference: VectoredLine, target: VectoredLine) -> f32 {
-    target.vec.length() / reference.vec.length()
+pub fn scale(reference: PointVectorSegment, target: PointVectorSegment) -> f32 {
+    target.delta.length() / reference.delta.length()
 }
 
 /// Finds the center `a` of the spiral similarity (rotation combined with

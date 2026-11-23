@@ -37,6 +37,7 @@ removed, since no improvement found: reason: long Shapes Vecs?
 
 ## NOW
 
+- [ ] check if looking for nearest line, compares length_sq()!
 - [x] Add Pause Animation (MOVING ALL PAINT CODE INTO ANIMATION FOR NOW.
 - [ ] FIX wrong name for paint_fractal (currently "animate")
 - [ ] Set speed in "2x zoom per minute" (currently seconds/cycles)

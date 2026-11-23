@@ -1,4 +1,4 @@
-use super::structs_and_enums::VectoredLine;
+use super::structs_and_enums::PointVectorSegment;
 use super::{FractalApp, LineHandles, LinesStyle, ReversibleLine};
 
 use egui::Response;
@@ -63,10 +63,10 @@ pub fn closest_handle(pos: Pos2, dlines: &[ReversibleLine], threshold: f32) -> O
 pub fn reversible_lines_to_global_line_vectors(
     local_canvas_lines: &[ReversibleLine],
     to_screen: RectTransform,
-) -> Vec<VectoredLine> {
+) -> Vec<PointVectorSegment> {
     local_canvas_lines
         .iter()
-        .map(|design_line| VectoredLine::from_reversible_line(*design_line, to_screen))
+        .map(|design_line| PointVectorSegment::from_reversible_line(*design_line, to_screen))
         .collect()
 }
 
@@ -119,16 +119,19 @@ pub fn closest_line(
 
 pub fn paint_directed_line_segment(
     painter: &Painter,
-    dvec: &VectoredLine,
+    dvec: &PointVectorSegment,
     width_length_ratio: f32,
     color: Color32,
 ) {
-    let width = dvec.vec.length() * width_length_ratio;
+    let width = dvec.delta.length() * width_length_ratio;
     let ratio = 0.2;
-    let color_division_point = dvec.pos + (1.0 - ratio) * dvec.vec;
-    painter.line_segment([dvec.pos, color_division_point], Stroke::new(width, color));
+    let color_division_point = dvec.start + (1.0 - ratio) * dvec.delta;
     painter.line_segment(
-        [color_division_point, dvec.pos + dvec.vec],
+        [dvec.start, color_division_point],
+        Stroke::new(width, color),
+    );
+    painter.line_segment(
+        [color_division_point, dvec.start + dvec.delta],
         Stroke::new(width, Color32::BLACK),
     );
 }

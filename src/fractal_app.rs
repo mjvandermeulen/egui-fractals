@@ -27,7 +27,7 @@ use design_helpers::{
 use fractals::fractals;
 use paint_fractal_helpers::paint_fractal_lines;
 use structs_and_enums::{
-    Branch, Fractal, LineHandles, LineTransform, LinesStyle, ReversibleLine, VectoredLine,
+    Branch, BranchTransform, Fractal, LineHandles, LinesStyle, PointVectorSegment, ReversibleLine,
 };
 use tools::max_depth_with_branches;
 use ui::{handle_keyboard_input, handle_mouse_input};
@@ -302,9 +302,9 @@ impl FractalApp {
     // #[expect(clippy::needless_pass_by_value)] // NO LONGER NEEDED, BECAUSE OF NEW CHECK WITH EARLY RETURN LEARN. We want to consume the input vector, to force a more functional programming style. This is a design choice, not a performance choice.
     fn animation_paint_vectors(
         &mut self,
-        gdvs: Vec<VectoredLine>, // global design vectors, consumed.
+        gdvs: Vec<PointVectorSegment>, // global design vectors, consumed.
         animation_progress: Option<AnimationProgress>,
-    ) -> Vec<VectoredLine> {
+    ) -> Vec<PointVectorSegment> {
         let Some(progress) = animation_progress else {
             return gdvs;
         };
@@ -320,11 +320,11 @@ impl FractalApp {
         };
         // return owned vector, because we consumed the input vector.
         let animation = &mut self.fractals[self.fractal_index].animation;
-        let cycle_angle = gdvs[0].vec.angle() - gdvs[generator_index].vec.angle();
-        let cycle_scale = gdvs[0].vec.length() / gdvs[generator_index].vec.length();
+        let cycle_angle = gdvs[0].delta.angle() - gdvs[generator_index].delta.angle();
+        let cycle_scale = gdvs[0].delta.length() / gdvs[generator_index].delta.length();
 
-        let point = gdvs[generator_index].pos; // pre image: P of the spiral similarity
-        let point_image = gdvs[0].pos; // image: P' of the spiral similarity
+        let point = gdvs[generator_index].start; // pre image: P of the spiral similarity
+        let point_image = gdvs[0].start; // image: P' of the spiral similarity
         let center = spiral_similarity_center(point, point_image, cycle_angle, cycle_scale)
             .unwrap_or(Pos2::new(0.0, 0.0)); // NOTE: This is actually OK: None means: identity tranformation: So pick your center at will.
         // To VISUALIZE:
@@ -332,17 +332,17 @@ impl FractalApp {
         self.spiral_similarity_trangle = Some(Triangle::new(center, point, point_image));
 
         let scale = cycle_scale.powf(progress.elapsed_wrapped);
-        let rotattion_angle = if animation.zoom_child_to_parent {
+        let rotation_angle = if animation.zoom_child_to_parent {
             progress.elapsed_wrapped * cycle_angle
         } else {
             progress.loop_repetitions as f32 * -cycle_angle
         };
-        let rotation = Rot2::from_angle(rotattion_angle);
+        let rotation = Rot2::from_angle(rotation_angle);
 
         scale_and_rotate_vectored_lines_around_rotation_center(&gdvs, center, scale, rotation)
     }
 
-    fn paint_design(&self, painter: &Painter, design_vectors: &[VectoredLine]) {
+    fn paint_design(&self, painter: &Painter, design_vectors: &[PointVectorSegment]) {
         let width_length_ratio = self.fractals[self.fractal_index].initiator_width_length_ratio;
         let highlight_color =
             Color32::from_hex("#0FFF50").expect("Expected hex neon green to be parsed correctly");
@@ -362,21 +362,23 @@ impl FractalApp {
     fn paint_fractal(
         &mut self,
         painter: &Painter,
-        global_design_vectors: &[VectoredLine],
+        global_design_vectors: &[PointVectorSegment],
         animation_progress: Option<AnimationProgress>,
     ) {
         let fractal = &self.fractals[self.fractal_index];
         let rect = painter.clip_rect();
 
         let initiator = global_design_vectors[0];
-        let transformations: Vec<LineTransform> = global_design_vectors[1..]
+        let transformations: Vec<BranchTransform> = global_design_vectors[1..]
             .iter()
             .flat_map(|line| {
-                let mut line_transforms: Vec<LineTransform> =
-                    vec![LineTransform::from_design_vector(&initiator, *line, false)];
+                let mut line_transforms: Vec<BranchTransform> =
+                    vec![BranchTransform::from_design_vector(
+                        &initiator, *line, false,
+                    )];
                 if fractal.mirror {
                     line_transforms
-                        .push(LineTransform::from_design_vector(&initiator, *line, true));
+                        .push(BranchTransform::from_design_vector(&initiator, *line, true));
                 }
                 line_transforms
             })
@@ -384,7 +386,7 @@ impl FractalApp {
 
         let shapes = paint_fractal_lines(
             rect,
-            &Branch::from_vectored_line(initiator),
+            &Branch::from_point_vector_segment(initiator),
             fractal,
             &transformations,
             fractal.depth,

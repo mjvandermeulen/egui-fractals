@@ -1,8 +1,10 @@
+use std::vec;
+
 use egui::{Color32, Pos2, Rect, Shape, Vec2};
 
 use crate::fractal_app::animation::animation_structs_and_enums::AnimationProgress;
 
-use super::structs_and_enums::{Branch, Fractal, LineTransform};
+use super::structs_and_enums::{Branch, BranchTransform, Fractal};
 
 const RAINBOW_COLORS: [Color32; 6] = [
     Color32::from_rgb(255, 0, 0),   // Red
@@ -51,15 +53,19 @@ pub fn paint_line_generator(
         }
     }
 }
+
+/// TODO!!!!!: add impl to Branch to create a branch from a parent branch
+/// TODO!!!!!: add impl fn to Branch `.line()`
+/// ^^^^^^^^^ will make this function obsolete.
 pub fn construct_current_branch_and_line(
     parent_branch: &Branch,
-    transform: &LineTransform,
+    transform: &BranchTransform,
 ) -> (Branch, [Pos2; 2]) {
-    let parent_node = parent_branch.parent_node + transform.base_rot * parent_branch.edge;
-    let edge = transform.rot * parent_branch.edge;
-    let child_node = parent_node + edge;
-    let current_branch = Branch { parent_node, edge };
-    (current_branch, [parent_node, child_node])
+    let start = parent_branch.start + transform.base_rot_scale * parent_branch.vec;
+    let vec: Vec2 = transform.rot * parent_branch.vec;
+    let child_node = start + vec;
+    let current_branch = Branch { start, vec };
+    (current_branch, [start, child_node])
 }
 
 // OLD COMMENTS:
@@ -73,7 +79,7 @@ pub fn paint_fractal_lines(
     rect: Rect,
     trunk: &Branch,
     fractal: &Fractal,
-    transformations: &Vec<LineTransform>,
+    transformations: &Vec<BranchTransform>,
     max_depth: usize,
     animation_progress: Option<AnimationProgress>,
 ) -> Vec<Shape> {
@@ -94,10 +100,7 @@ pub fn paint_fractal_lines(
         );
 
         // paint the trunk
-        paint_line(
-            [trunk.parent_node, trunk.parent_node + trunk.edge],
-            trunk.edge,
-        );
+        paint_line([trunk.start, trunk.start + trunk.vec], trunk.vec);
     }
     let mut branches = vec![*trunk];
     let mut new_branches = Vec::new();
@@ -132,7 +135,7 @@ pub fn paint_fractal_lines(
             for parent_branch in &branches {
                 let (current_branch, line) =
                     construct_current_branch_and_line(parent_branch, &transform);
-                paint_line(line, current_branch.edge);
+                paint_line(line, current_branch.vec);
 
                 // Criterion bench (2 ^ 19 test): wrapping in `if` gives a 8 - 12% improvement.
                 if d < max_depth {

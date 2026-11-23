@@ -5,23 +5,23 @@ use std::io::BufWriter;
 use egui::Rect;
 use serde::Serialize;
 
-use crate::fractal_app::structs_and_enums::{Fractal, LineTransform, VectoredLine};
+use crate::fractal_app::structs_and_enums::{Fractal, BranchTransform, PointVectorSegment};
 
 // Save current params to a json file,
 // in preparation for benchmarking.
 pub fn save_bench_prep_parallel_struct_to_json(
     rect: Rect,
-    initiator: &VectoredLine,
+    initiator: &PointVectorSegment,
     fractal: &Fractal,
-    transformations: &Vec<LineTransform>,
+    transformations: &Vec<BranchTransform>,
     max_depth: usize,
 ) -> Result<(), Box<dyn Error>> {
     #[derive(Debug, Serialize)]
     pub struct BenchParallelPaintFractalLinesRef<'a> {
         pub rect: Rect,
-        pub initiator: &'a VectoredLine,
+        pub initiator: &'a PointVectorSegment,
         pub fractal: &'a Fractal,
-        pub transformations: &'a Vec<LineTransform>,
+        pub transformations: &'a Vec<BranchTransform>,
         pub max_depth: usize,
     }
 
