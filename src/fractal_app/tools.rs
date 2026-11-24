@@ -1,3 +1,5 @@
+use egui::{Pos2, emath::Rot2};
+
 /// cap depth logarithmically `branches`^`depth` < `max_painted_line_count`
 ///   when replacing
 /// it gets a little more complicated when not replacing
@@ -28,4 +30,14 @@ pub fn max_depth_with_branches(
     let max_depth_float = (argument.ln() / (branch_count as f32).ln()) - 1.0;
 
     max_depth_float.floor() as usize
+}
+
+/// Rotates and scales `point` around `center`.
+///
+/// `rotation` does not have to be normalized: a non-unit `Rot2` also scales
+/// by its length, so the total scale factor is `scale * rotation.length()`.
+/// Pass a normalized rotation if `scale` should be the only scaling.
+#[must_use]
+pub fn scale_and_rotate_point(point: Pos2, center: Pos2, scale: f32, rotation: Rot2) -> Pos2 {
+    center + rotation * (point - center) * scale
 }

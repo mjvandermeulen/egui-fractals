@@ -18,8 +18,7 @@ use std::f32::consts::LN_2;
 
 use animation::{
     animation_helpers::scale, animation_helpers::spiral_similarity_center,
-    animation_structs_and_enums::AnimationProgress,
-    scale_and_rotate_vectored_lines_around_rotation_center,
+    animation_structs_and_enums::AnimationProgress, scale_rotate_and_translate_segments,
 };
 use design_helpers::{
     handle_line_style_change, paint_directed_line_segment, reversible_lines_to_global_line_vectors,
@@ -36,7 +35,9 @@ use ui::{handle_keyboard_input, handle_mouse_input};
 #[expect(unused)]
 use bench_helpers::save_bench_prep_parallel_struct_to_json;
 
-use crate::fractal_app::animation::animation_structs_and_enums::Triangle;
+use crate::fractal_app::{
+    animation::animation_structs_and_enums::Triangle, tools::scale_and_rotate_point,
+};
 
 // TODO: find the error that pops op when the vec gets too large.
 const MAX_PAINTED_LINE_COUNT: usize = (1 << 18) + 100; // 2 to the power of 18 + 1. HARDCODED
@@ -301,6 +302,7 @@ impl FractalApp {
         handle_mouse_input(ui, self, to_screen, painter.clip_rect());
     }
     // #[expect(clippy::needless_pass_by_value)] // NO LONGER NEEDED, BECAUSE OF NEW CHECK WITH EARLY RETURN LEARN. We want to consume the input vector, to force a more functional programming style. This is a design choice, not a performance choice.
+    #[must_use]
     fn animation_paint_vectors(
         &mut self,
         gdvs: Vec<PointVectorSegment>, // global design vectors, consumed.
@@ -329,7 +331,7 @@ impl FractalApp {
         let center = spiral_similarity_center(point, point_image, cycle_angle, cycle_scale)
             .unwrap_or(Pos2::new(0.0, 0.0)); // NOTE: This is actually OK: None means: identity tranformation: So pick your center at will.
         // To VISUALIZE:
-        // Currently unused! Not even commented out code.
+        // Currently unused! Not even in commented out code.
         self.spiral_similarity_trangle = Some(Triangle::new(center, point, point_image));
 
         let scale = cycle_scale.powf(progress.elapsed_wrapped);
@@ -339,8 +341,18 @@ impl FractalApp {
             progress.loop_repetitions as f32 * -cycle_angle
         };
         let rotation = Rot2::from_angle(rotation_angle);
+        // HACKING HERE ------------------------------------------------------------------------------------------------------------------
+        // HACKING HERE ------------------------------------------------------------------------------------------------------------------
 
-        scale_and_rotate_vectored_lines_around_rotation_center(&gdvs, center, scale, rotation)
+        let custom_c = Pos2::new(1000.0, 1000.0); // custom zoom center
+        let new_custom_c = scale_and_rotate_point(custom_c, center, scale, rotation);
+        let revert_vector = Some(custom_c - new_custom_c); // translates the new onto the old custom zoom center
+        // let revert_vector = None;
+
+        // HACKING HERE ------------------------------------------------------------------------------------------------------------------
+        // HACKING HERE ------------------------------------------------------------------------------------------------------------------
+
+        scale_rotate_and_translate_segments(&gdvs, center, scale, rotation, revert_vector)
     }
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[PointVectorSegment]) {
