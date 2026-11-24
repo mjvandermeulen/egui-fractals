@@ -27,7 +27,8 @@ use design_helpers::{
 use fractals::fractals;
 use paint_fractal_helpers::paint_fractal_lines;
 use structs_and_enums::{
-    Branch, BranchTransform, Fractal, LineHandles, LinesStyle, PointVectorSegment, ReversibleLine,
+    Branch, BranchTransformation, Fractal, LineHandles, LinesStyle, PointVectorSegment,
+    ReversibleLine,
 };
 use tools::max_depth_with_branches;
 use ui::{handle_keyboard_input, handle_mouse_input};
@@ -369,16 +370,17 @@ impl FractalApp {
         let rect = painter.clip_rect();
 
         let initiator = global_design_vectors[0];
-        let transformations: Vec<BranchTransform> = global_design_vectors[1..]
+        let transformations: Vec<BranchTransformation> = global_design_vectors[1..]
             .iter()
             .flat_map(|line| {
-                let mut line_transforms: Vec<BranchTransform> =
-                    vec![BranchTransform::from_design_vector(
+                let mut line_transforms: Vec<BranchTransformation> =
+                    vec![BranchTransformation::from_design_vector(
                         &initiator, *line, false,
                     )];
                 if fractal.mirror {
-                    line_transforms
-                        .push(BranchTransform::from_design_vector(&initiator, *line, true));
+                    line_transforms.push(BranchTransformation::from_design_vector(
+                        &initiator, *line, true,
+                    ));
                 }
                 line_transforms
             })
@@ -386,7 +388,7 @@ impl FractalApp {
 
         let shapes = paint_fractal_lines(
             rect,
-            &Branch::from_point_vector_segment(initiator),
+            Branch::from_point_vector_segment(initiator),
             fractal,
             &transformations,
             fractal.depth,

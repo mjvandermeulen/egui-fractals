@@ -5,7 +5,7 @@ use std::io::BufWriter;
 use egui::Rect;
 use serde::Serialize;
 
-use crate::fractal_app::structs_and_enums::{Fractal, BranchTransform, PointVectorSegment};
+use crate::fractal_app::structs_and_enums::{BranchTransformation, Fractal, PointVectorSegment};
 
 // Save current params to a json file,
 // in preparation for benchmarking.
@@ -13,7 +13,7 @@ pub fn save_bench_prep_parallel_struct_to_json(
     rect: Rect,
     initiator: &PointVectorSegment,
     fractal: &Fractal,
-    transformations: &Vec<BranchTransform>,
+    transformations: &Vec<BranchTransformation>,
     max_depth: usize,
 ) -> Result<(), Box<dyn Error>> {
     #[derive(Debug, Serialize)]
@@ -21,7 +21,7 @@ pub fn save_bench_prep_parallel_struct_to_json(
         pub rect: Rect,
         pub initiator: &'a PointVectorSegment,
         pub fractal: &'a Fractal,
-        pub transformations: &'a Vec<BranchTransform>,
+        pub transformations: &'a Vec<BranchTransformation>,
         pub max_depth: usize,
     }
 

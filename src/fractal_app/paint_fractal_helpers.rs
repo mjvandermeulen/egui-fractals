@@ -4,7 +4,7 @@ use egui::{Color32, Rect, Shape};
 
 use crate::fractal_app::animation::animation_structs_and_enums::AnimationProgress;
 
-use super::structs_and_enums::{Branch, BranchTransform, Fractal};
+use super::structs_and_enums::{Branch, BranchTransformation, Fractal};
 
 const RAINBOW_COLORS: [Color32; 6] = [
     Color32::from_rgb(255, 0, 0),   // Red
@@ -35,9 +35,9 @@ pub fn paint_line_generator(
     color: Color32,
     depth: usize,
     max_depth: usize,
-) -> impl FnMut(Branch) {
+) -> impl FnMut(&Branch) {
     let final_depth = depth == max_depth;
-    move |branch: Branch| {
+    move |branch: &Branch| {
         let width = if fractal.replace_line {
             if final_depth {
                 fractal.fixed_final_line_width
@@ -64,9 +64,9 @@ pub fn paint_line_generator(
 #[must_use]
 pub fn paint_fractal_lines(
     rect: Rect,
-    trunk: &Branch,
+    trunk: Branch,
     fractal: &Fractal,
-    transformations: &Vec<BranchTransform>,
+    transformations: &Vec<BranchTransformation>,
     max_depth: usize,
     animation_progress: Option<AnimationProgress>,
 ) -> Vec<Shape> {
@@ -75,22 +75,17 @@ pub fn paint_fractal_lines(
         Some(progress) => progress.loop_repetitions,
         None => 0,
     };
-    {
-        // avoid having to drop the paint_line by indenting. LEARN
-        let mut paint_line = paint_line_generator(
-            &mut shapes,
-            rect,
-            fractal,
-            line_color(0, color_offset, fractal),
-            0,
-            max_depth,
-        );
 
-        // paint the trunk
-        paint_line(*trunk);
-    }
-    let mut branches = vec![*trunk];
-    let mut new_branches = Vec::new();
+    paint_line_generator(
+        &mut shapes,
+        rect,
+        fractal,
+        line_color(0, color_offset, fractal),
+        0,
+        max_depth,
+    )(&trunk); // generate closure and call immediately LEARN
+    let mut branches: Vec<Branch> = vec![trunk];
+    let mut new_branches: Vec<Branch> = Vec::new();
 
     for d in 1..=max_depth {
         let mut color = line_color(d, color_offset, fractal);
@@ -118,10 +113,10 @@ pub fn paint_fractal_lines(
         //   It is (just) noticibly faster with a 1 branch depth 17 MIRRORED tree.
         // Benching: at least over 5% slower.
         //   Feel free to read it the other way around, which I think is more intuitive.
-        for &transform in transformations {
+        for &transformation in transformations {
             for parent_branch in &branches {
-                let current_branch = parent_branch.child(transform);
-                paint_line(current_branch);
+                let current_branch = parent_branch.child(transformation);
+                paint_line(&current_branch);
                 // Criterion bench (2 ^ 19 test): wrapping in `if` gives a 8 - 12% improvement.
                 if d < max_depth {
                     new_branches.push(current_branch);

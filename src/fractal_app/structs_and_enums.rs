@@ -115,9 +115,9 @@ impl Branch {
 
     /// Constructs a child branch by performing the given `BranchTransform` on the current branch.
     #[must_use]
-    pub fn child(&self, transform: BranchTransform) -> Self {
-        let start = self.start + transform.base_rot_scale * self.vec;
-        let vec: Vec2 = transform.rot * self.vec;
+    pub fn child(&self, transformation: BranchTransformation) -> Self {
+        let start = self.start + transformation.base_rot_scale * self.vec;
+        let vec: Vec2 = transformation.rot * self.vec;
         Self { start, vec }
     }
     #[must_use]
@@ -131,12 +131,12 @@ impl Branch {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct BranchTransform {
+pub struct BranchTransformation {
     pub base_rot_scale: egui::emath::Rot2,
     pub rot: egui::emath::Rot2,
 }
 
-impl BranchTransform {
+impl BranchTransformation {
     #[must_use]
     pub fn from_design_vector(
         base: &PointVectorSegment,
