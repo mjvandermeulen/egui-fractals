@@ -48,8 +48,8 @@ pub fn paint_line_generator(
             branch.length() * fractal.initiator_width_length_ratio
         };
         let line = branch.line();
-        // culling
-        if rect.intersects(Rect::from_two_pos(line[0], line[1])) {
+        // culling (allowing for line width)
+        if rect.intersects(Rect::from_two_pos(line[0], line[1]).expand(width / 2.0)) {
             shapes.push(Shape::line_segment(line, (width, color)));
         }
     }
