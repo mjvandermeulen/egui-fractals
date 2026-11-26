@@ -11,7 +11,8 @@ Steps:
 
 # Bugs:
 
-- when the generator line is bigger -> cycle scale is negative -> compare scale with loop scale goes the wrong way.
+- [x] the thick "squares" fractal disappear too soon in animation, because the culling is happening too soon.
+- [ ] when the generator line is bigger -> cycle scale is negative -> compare scale with loop scale goes the wrong way.
 
 # wording:
 
@@ -37,6 +38,8 @@ removed, since no improvement found: reason: long Shapes Vecs?
 
 ## NOW
 
+- [ ] custom zoom center. Change from global to local coords.
+- [ ] change segment back to line, to avoid confusiong with standard egui terminoly. (in egui a line is a segment....)
 - [ ] check if looking for nearest line, compares length_sq()!
 - [x] Add Pause Animation (MOVING ALL PAINT CODE INTO ANIMATION FOR NOW.
 - [ ] FIX wrong name for paint_fractal (currently "animate")

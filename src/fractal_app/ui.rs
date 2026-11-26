@@ -69,6 +69,13 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
     // n (new line)
     fractal_app.new_line_key_down = ui.input(|i| i.key_down(egui::Key::N));
 
+    // c (select zoom center)
+    fractal_app.select_custom_zoom_center = ui.input(|i| i.key_down(egui::Key::C));
+    // C cancel zoom center: (consume: so no others can use it and Ctrl-Shift-c won't count)
+    if ui.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::C)) {
+        fractal_app.custom_zoom_center = None;
+    }
+
     // t (trash line)
     fractal_app.trash_line_key_down = ui.input(|i| i.key_down(egui::Key::T));
     if fractal_app.trash_line_key_down {
@@ -76,7 +83,7 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
     }
 
     // l (log a fractal dump)
-    if ui.input(|i| i.key_down(egui::Key::L)) {
+    if ui.input(|i| i.key_pressed(egui::Key::L)) {
         log::info!("Logging a dump of the current fractal:\n\n {fractal:#?}",);
     }
 
@@ -100,6 +107,15 @@ pub fn handle_mouse_input(
     let id = ui.make_persistent_id("design_painter_interaction");
     let click_and_drag_response = ui.interact(rect, id, egui::Sense::click_and_drag());
 
+    if fractal_app.select_custom_zoom_center {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::NotAllowed);
+        ui.input(|input| {
+            if input.pointer.primary_down() {
+                fractal_app.custom_zoom_center = input.pointer.interact_pos();
+            }
+        });
+        return;
+    }
     // check if dragging continues first
     if let Some((line, handles)) = fractal_app.dragged_handles
         && click_and_drag_response.is_pointer_button_down_on()
@@ -114,7 +130,6 @@ pub fn handle_mouse_input(
         );
         return;
     }
-
     fractal_app.dragged_handles = None;
 
     let hov_response = ui.interact(rect, id, egui::Sense::hover());

@@ -56,6 +56,11 @@ pub struct FractalApp {
     #[serde(skip)]
     show_design_only: bool,
     #[serde(skip)]
+    // add this to one custom_ui_state enum
+    select_custom_zoom_center: bool,
+    #[serde(skip)]
+    custom_zoom_center: Option<Pos2>,
+    #[serde(skip)]
     new_line_key_down: bool,
     #[serde(skip)]
     trash_line_key_down: bool,
@@ -87,6 +92,8 @@ impl Default for FractalApp {
             hovered_line: None,
             spiral_similarity_trangle: None,
             bench_prep: false,
+            select_custom_zoom_center: false,
+            custom_zoom_center: None,
         }
     }
 }
@@ -343,16 +350,29 @@ impl FractalApp {
         let rotation = Rot2::from_angle(rotation_angle);
         // HACKING HERE ------------------------------------------------------------------------------------------------------------------
         // HACKING HERE ------------------------------------------------------------------------------------------------------------------
+        // LEFT OFF HERE: REFACTOR TO fn
+        let custom_center_translation = if self.custom_zoom_center.is_some() {
+            let true_scale = cycle_scale.powf(progress.elapsed_cycles as f32);
+            let true_rotation = Rot2::from_angle(0.0);
+            let custom_c = self.custom_zoom_center.unwrap(); // WIP
+            let new_custom_c = scale_and_rotate_point(custom_c, center, true_scale, true_rotation);
+            Some(custom_c - new_custom_c) // translates the new onto the old custom zoom center
+        } else {
+            None
+        };
 
-        let custom_c = Pos2::new(1000.0, 1000.0); // custom zoom center
-        let new_custom_c = scale_and_rotate_point(custom_c, center, scale, rotation);
-        let revert_vector = Some(custom_c - new_custom_c); // translates the new onto the old custom zoom center
         // let revert_vector = None;
 
         // HACKING HERE ------------------------------------------------------------------------------------------------------------------
         // HACKING HERE ------------------------------------------------------------------------------------------------------------------
 
-        scale_rotate_and_translate_segments(&gdvs, center, scale, rotation, revert_vector)
+        scale_rotate_and_translate_segments(
+            &gdvs,
+            center,
+            scale,
+            rotation,
+            custom_center_translation,
+        )
     }
 
     fn paint_design(&self, painter: &Painter, design_vectors: &[PointVectorSegment]) {

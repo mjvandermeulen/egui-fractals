@@ -24,7 +24,7 @@ use crate::fractal_app::animation::player_state::{PlayerState, ReverseMode};
 #[derive(PartialEq, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Animation {
     // IDEA: usize: zoom focus branch.
-    pub ln_scale: f64,            // the state; negative = zoomed out past the start
+    pub ln_scale: f64, // the state; negative = zoomed out past the start // TODO ask Claude about the f64
     pub ln_scale_per_second: f32, // private, use the setter
     pub loop_cycle: usize, // the cycle that can be looped to give illusion of infinite animation.
     pub zoom_child_to_parent: bool, // true: scale and rotate child branch to match parent. false: zoom in without rotation.
@@ -139,9 +139,9 @@ impl Animation {
 #[derive(Debug, PartialEq, Clone, Copy)]
 /// All fields: 1 unit == 1 cycle
 pub struct AnimationProgress {
-    pub elapsed_cycles: f64, // elapsed cycles, including the fractional part of the current cycle. Claude recommends f64 for this, because it can be large and we want to avoid rounding errors. The fractional part is the phase of the current cycle.
+    pub elapsed_cycles: f64, // elapsed cycles, including the fractional part of the current cycle. TODO: check with Claude. Claude recommends f64 for this, because it can be large and we want to avoid rounding errors. The fractional part is the phase of the current cycle.
     pub loop_repetitions: i128, // how many times the loop_cycle has been completed. // could be negative, scaling down.
-    pub elapsed_wrapped: f32, // If loop_cycle reached, this is loop_cycle plus phase. Otherwise it's elapsed.
+    pub elapsed_wrapped: f32, // If loop_cycle reached, this is loop_cycle plus phase. Otherwise it's elapsed_cycles.
 }
 
 impl AnimationProgress {
