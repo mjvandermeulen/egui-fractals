@@ -2,8 +2,16 @@
 use std::{f32::consts::LN_2, time::Duration};
 
 use egui::{NumExt as _, Pos2};
+use serde::{Deserialize, Serialize};
 
 use crate::fractal_app::animation::player_state::{PlayerState, ReverseMode};
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+pub enum AnimationZoomStyle {
+    Zoom,                           // zoom without rotation
+    CustomZoomCenter(Option<Pos2>), // zoom with custom zoom center, no rotation. when selecting, the center still needs to be set: No: it will be (0,0).
+    ChildToParent, // rotate and scale (spiral identity) child branch to parent branch
+}
 
 //
 // the boundary between left and right:        scale = loop_cycle_scale
@@ -21,13 +29,13 @@ use crate::fractal_app::animation::player_state::{PlayerState, ReverseMode};
 // └────────────────────────────────────────────────┘└────────────────────────────────────┘
 //
 //
-#[derive(PartialEq, Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Animation {
     // IDEA: usize: zoom focus branch.
     pub ln_scale: f64, // the state; negative = zoomed out past the start // TODO ask Claude about the f64
     pub ln_scale_per_second: f32, // private, use the setter
     pub loop_cycle: usize, // the cycle that can be looped to give illusion of infinite animation.
-    pub zoom_child_to_parent: bool, // true: scale and rotate child branch to match parent. false: zoom in without rotation.
+    pub animation_zoom_style: AnimationZoomStyle,
     pub player_state: PlayerState,
 }
 

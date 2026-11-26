@@ -2,7 +2,10 @@ use std::f32::consts::LN_2;
 
 use egui::pos2;
 
-use crate::fractal_app::animation::player_state::{PlayerState, ReverseMode};
+use crate::fractal_app::animation::{
+    animation_structs_and_enums::AnimationZoomStyle,
+    player_state::{PlayerState, ReverseMode},
+};
 
 use super::{
     animation::animation_structs_and_enums::Animation,
@@ -38,8 +41,8 @@ pub fn fractals() -> Vec<Fractal> {
                 ln_scale: 0.0,
                 ln_scale_per_second: LN_2 / 2.0,
                 loop_cycle: 3,
-                zoom_child_to_parent: false,
                 player_state: PlayerState::Paused(ReverseMode::Reverse),
+                animation_zoom_style: AnimationZoomStyle::Zoom,
             },
         },
         Fractal {
@@ -71,8 +74,8 @@ pub fn fractals() -> Vec<Fractal> {
                 ln_scale: 0.0,
                 ln_scale_per_second: LN_2 / 2.0,
                 loop_cycle: 3,
-                zoom_child_to_parent: false,
                 player_state: PlayerState::Paused(ReverseMode::Reverse),
+                animation_zoom_style: AnimationZoomStyle::Zoom,
             },
         },
     ];

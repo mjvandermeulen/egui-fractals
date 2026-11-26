@@ -20,15 +20,6 @@ Steps:
 
 # NOTE:
 
-## DROPBOX and ICLOUD
-
-move away from drop box and icloud storage.
-now I often have to
-
-    sudo chown -R mjvandermeulen .
-
-in the root dir of the project
-
 # RAYON
 
 ~~no improvements found. Only kept for benching...~~
@@ -38,12 +29,14 @@ removed, since no improvement found: reason: long Shapes Vecs?
 
 ## NOW
 
-- [ ] custom zoom center. Change from global to local coords.
+- [ ] custom zoom center:
+    - [ ] Change from global to local coords.
+    - [ ] store outside of the enum, so it can be used again after switching back to custom.
 - [ ] change segment back to line, to avoid confusiong with standard egui terminoly. (in egui a line is a segment....)
 - [ ] check if looking for nearest line, compares length_sq()!
 - [x] Add Pause Animation (MOVING ALL PAINT CODE INTO ANIMATION FOR NOW.
-- [ ] FIX wrong name for paint_fractal (currently "animate")
-- [ ] Set speed in "2x zoom per minute" (currently seconds/cycles)
+- [?] FIX wrong name for paint_fractal (currently "animate")
+- [x] Set speed in "2x zoom per minute" (currently seconds/cycles)
 - [ ] UI change of `animation_repetition_cycle` => "repeat when showing" (Tool tip: percentage of length showing when repetition can start)
 - [x] FIX: animation rainbow.
 - [x] Replace Line animation: Don't fade

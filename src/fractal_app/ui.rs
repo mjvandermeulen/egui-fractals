@@ -1,5 +1,7 @@
 use egui::{NumExt as _, Pos2, Rect, Response, emath::RectTransform};
 
+use crate::fractal_app::animation::animation_structs_and_enums::AnimationZoomStyle;
+
 use super::{
     FractalApp,
     design_helpers::{
@@ -72,8 +74,11 @@ pub fn handle_keyboard_input(ui: &egui::Ui, fractal_app: &mut FractalApp) {
     // c (select zoom center)
     fractal_app.select_custom_zoom_center = ui.input(|i| i.key_down(egui::Key::C));
     // C cancel zoom center: (consume: so no others can use it and Ctrl-Shift-c won't count)
-    if ui.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::C)) {
-        fractal_app.custom_zoom_center = None;
+    if let AnimationZoomStyle::CustomZoomCenter(center) =
+        &mut fractal.animation.animation_zoom_style
+        && ui.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::C))
+    {
+        *center = None;
     }
 
     // t (trash line)
@@ -103,17 +108,27 @@ pub fn handle_mouse_input(
     to_screen: RectTransform,
     rect: Rect,
 ) {
-    let from_screen = to_screen.inverse();
     let id = ui.make_persistent_id("design_painter_interaction");
+    let from_screen = to_screen.inverse();
+
+    let fractal = &mut fractal_app.fractals[fractal_app.fractal_index];
+
     let click_and_drag_response = ui.interact(rect, id, egui::Sense::click_and_drag());
 
-    if fractal_app.select_custom_zoom_center {
-        ui.ctx().set_cursor_icon(egui::CursorIcon::NotAllowed);
-        ui.input(|input| {
-            if input.pointer.primary_down() {
-                fractal_app.custom_zoom_center = input.pointer.interact_pos();
-            }
-        });
+    if fractal_app.select_custom_zoom_center
+        && let AnimationZoomStyle::CustomZoomCenter(center) =
+            &mut fractal.animation.animation_zoom_style
+    {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
+
+        if let Some(pos) = ui.input(|i| {
+            i.pointer
+                .primary_down()
+                .then(|| i.pointer.interact_pos())
+                .flatten()
+        }) {
+            *center = Some(pos);
+        }
         return;
     }
     // check if dragging continues first
