@@ -127,7 +127,8 @@ pub fn handle_mouse_input(
                 .then(|| i.pointer.interact_pos())
                 .flatten()
         }) {
-            *center = Some(pos);
+            log::info!("pos: {pos}");
+            *center = Some(from_screen * pos);
         }
         return;
     }

@@ -314,6 +314,7 @@ impl FractalApp {
         &mut self,
         gdvs: Vec<PointVectorSegment>, // global design vectors, consumed.
         animation_progress: Option<AnimationProgress>,
+        to_screen: RectTransform,
     ) -> Vec<PointVectorSegment> {
         let Some(progress) = animation_progress else {
             return gdvs;
@@ -358,9 +359,11 @@ impl FractalApp {
             {
                 let true_scale = cycle_scale.powf(progress.elapsed_cycles as f32);
                 let true_rotation = Rot2::from_angle(0.0);
-                let new_custom_c =
-                    scale_and_rotate_point(custom_zoom_center, center, true_scale, true_rotation);
-                Some(custom_zoom_center - new_custom_c) // translates the new onto the old custom zoom center
+                let global_custom_center = to_screen * custom_zoom_center;
+                log::info!("global: {global_custom_center}");
+                let new_global_custom_c =
+                    scale_and_rotate_point(global_custom_center, center, true_scale, true_rotation);
+                Some(global_custom_center - new_global_custom_c) // translates the new onto the old custom zoom center
             } else {
                 None
             };
@@ -478,6 +481,14 @@ impl eframe::App for FractalApp {
             fractal.replace_line,
         ));
 
+        // -------HACK a red dot for the custom center
+        if let AnimationZoomStyle::CustomZoomCenter(Some(local_center)) =
+            fractal.animation.animation_zoom_style
+        {
+            let center = to_screen * local_center;
+            ui.painter().circle_filled(center, 5.0, egui::Color32::RED);
+        }
+
         // --- paint (and animate) ---
         let mut animation_progress: Option<AnimationProgress> = None;
         let global_design_vectors =
@@ -500,7 +511,7 @@ impl eframe::App for FractalApp {
                     cycle_scale as f64,
                     &fractal.animation,
                 ));
-                self.animation_paint_vectors(global_design_vectors, animation_progress)
+                self.animation_paint_vectors(global_design_vectors, animation_progress, to_screen)
             };
             self.paint_fractal(&painter, &paint_vectors, animation_progress);
         }
